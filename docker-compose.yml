@@ -1,0 +1,96 @@
+services:
+  fastapi:
+    build:
+      context: ./fastapi
+      dockerfile: Dockerfile
+    container_name: fastapi
+    ports:
+      - "${FASTAPI_PORT:-8000}:8000"
+    volumes:
+      - ./fastapi:/app
+      - ./shared_data:/app/shared_data
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - ./.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '1.0'
+        reservations:
+          memory: 512m
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      comfyui:
+        condition: service_healthy
+
+  comfyui:
+    build:
+      context: ./comfyui
+      dockerfile: Dockerfile
+    container_name: comfyui
+    ports:
+      - "${COMFYUI_PORT:-8188}:8188"
+      - "8288:8288"
+    volumes:
+      - ./comfyui/volumes/custom_nodes:/app/ComfyUI/custom_nodes
+      - ./comfyui/volumes/models/checkpoints:/app/ComfyUI/models/checkpoints
+      - ./comfyui/volumes/models/clip_vision:/app/ComfyUI/models/clip_vision
+      - ./comfyui/volumes/models/controlnet:/app/ComfyUI/models/controlnet
+      - ./comfyui/volumes/models/insightface:/app/ComfyUI/models/insightface
+      - ./comfyui/volumes/models/ipadapter:/app/ComfyUI/models/ipadapter
+      - ./comfyui/volumes/models/loras:/app/ComfyUI/models/loras
+      - ./comfyui/volumes/models/onnx:/app/ComfyUI/models/onnx
+      - ./comfyui/volumes/models/ultralytics:/app/ComfyUI/models/ultralytics
+      - ./comfyui/volumes/models/vae:/app/ComfyUI/models/vae
+      - ./comfyui/volumes/scripts:/app/scripts
+      - ./shared_data/input_images:/app/input
+      - ./shared_data/reference_images:/app/reference
+      - ./shared_data/output_images:/app/ComfyUI/output
+      - ./shared_data/temp_images:/app/ComfyUI/temp
+      - ./comfyui/launcher:/app/launcher
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8188/prompt || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    shm_size: 8g
+    init: true
+    deploy:
+      resources:
+        limits:
+            memory: 26g
+            cpus: '5.0'
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    # command: python launcher/comfyui_launcher.py
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"

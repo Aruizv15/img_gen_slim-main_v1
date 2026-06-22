@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BatchApp — Model Image Generator</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+
+<input type="file" id="file-input" multiple accept="image/*" />
+<input type="file" id="csv-input" accept=".csv,.xlsx,.xls" />
+
+<div class="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <span class="topbar-title">BatchApp — Model Image Generator</span>
+    <div class="topbar-right">
+      <span class="status-dot" id="status-dot"></span>
+      <span class="status-text" id="status-text">Verificando...</span>
+      <span class="version-badge">v2.1</span>
+    </div>
+  </div>
+
+  <div class="main">
+
+
+    <!-- Content -->
+    <div class="content">
+      <div class="panels">
+
+        <!-- Panel izquierdo: input del cliente -->
+        <div class="panel">
+          <div class="ph">
+            <i class="ti ti-upload ph-icon"></i>
+            <span class="ph-title">Archivos del cliente</span>
+            <span class="badge" id="upload-badge">0 archivos</span>
+          </div>
+          <div class="pb">
+
+            <!-- Sección CSV -->
+            <div class="section-label">
+              <i class="ti ti-table"></i> CSV / Excel de características
+            </div>
+            <div class="csv-zone" id="csv-zone" onclick="document.getElementById('csv-input').click()">
+              <div class="csv-icon"><i class="ti ti-file-spreadsheet"></i></div>
+              <div class="csv-text" id="csv-text">Haz clic para subir el CSV / Excel</div>
+              <div class="csv-sub">model_info.csv o .xlsx</div>
+            </div>
+
+            <!-- Lista de modelos del CSV (visible solo cuando hay CSV cargado) -->
+            <div id="model-list-container" style="display:none;"></div>
+
+            <!-- Sección imágenes -->
+            <div class="section-label" style="margin-top:6px;">
+              <i class="ti ti-photo"></i> Imágenes de referencia
+              <span style="color:#555;font-size:10px;margin-left:4px;">(máx. 6 por modelo)</span>
+            </div>
+            <div class="upload-grid" id="upload-grid">
+              <div class="add-slot" id="add-slot" onclick="openFilePicker()">
+                <i class="ti ti-plus" style="font-size:20px;color:#444;"></i>
+                <span style="font-size:9px;color:#555;">Subir imágenes</span>
+              </div>
+            </div>
+            <div class="drop-area" id="drop-area">
+              <i class="ti ti-cloud-upload drop-icon"></i>
+              <span class="drop-text">Arrastra imágenes aquí<br>o haz clic para seleccionar</span>
+              <button class="ubtn" onclick="openFilePicker()">Explorar archivos</button>
+            </div>
+
+            <!-- Botón subir al servidor -->
+            <button class="btn-upload-server" id="btn-upload-server" onclick="uploadToServer()">
+              <i class="ti ti-cloud-upload"></i> Enviar al servidor
+            </button>
+            <div class="upload-progress" id="upload-progress" style="display:none;">
+              <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+              <span class="progress-text" id="progress-text">Subiendo...</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Panel derecho: imágenes generadas -->
+        <div class="panel">
+          <div class="ph">
+            <i class="ti ti-sparkles ph-icon"></i>
+            <span class="ph-title">Imágenes generadas</span>
+            <span class="badge" id="gen-badge">0 generadas</span>
+            <button class="refresh-btn" onclick="fetchGeneratedImages()" title="Actualizar">
+              <i class="ti ti-refresh"></i>
+            </button>
+          </div>
+          <div class="gen-panel-body">
+            <div class="page-area" id="page-area">
+              <div class="empty-state">
+                <i class="ti ti-photo-off"></i>
+                <span>Sin imágenes generadas aún</span>
+              </div>
+            </div>
+            <div class="page-nav">
+              <button class="nav-btn" id="prev-btn" onclick="changePage(-1)" disabled>
+                <i class="ti ti-chevron-left"></i> Ant
+              </button>
+              <div class="nav-center">
+                <div class="page-dots" id="page-dots"></div>
+                <span class="page-info" id="page-info">—</span>
+              </div>
+              <button class="nav-btn" id="next-btn" onclick="changePage(1)" disabled>
+                Sig <i class="ti ti-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-approve" onclick="approveSelected()">
+              <i class="ti ti-circle-check"></i> Aprobado
+            </button>
+            <button class="btn-discard" onclick="discardSelected()">
+              <i class="ti ti-circle-x"></i> Descartado
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Barra de progreso secuencial (visible solo durante ejecución por modelo) -->
+      <div id="seq-progress" style="display:none;">
+        <div id="seq-status"></div>
+        <button id="btn-continue" onclick="continueToNextModel()" style="display:none;">
+          <i class="ti ti-player-skip-forward"></i> Continuar con siguiente modelo
+        </button>
+      </div>
+
+      <!-- Bottom bar -->
+      <div class="bottombar">
+        <button class="btn-dl" onclick="downloadApproved()">
+          <i class="ti ti-download"></i> Descargar aprobadas
+        </button>
+        <span class="appr-count">
+          <span class="appr-num" id="appr-count">0</span>
+          de <span id="total-count">0</span> aprobadas
+        </span>
+        <button class="btn-clear" onclick="clearServerImages()" title="Eliminar todas las imágenes del servidor">
+          <i class="ti ti-trash"></i> Limpiar servidor
+        </button>
+        <button class="btn-run" id="btn-run" onclick="startExecution()">
+          <i class="ti ti-player-play"></i> Iniciar ejecución
+        </button>
+        <button class="btn-stop" onclick="stopExecution()">
+          <i class="ti ti-player-stop"></i> Detener
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

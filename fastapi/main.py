@@ -1,0 +1,311 @@
+import os
+import time
+import httpx
+import pathlib
+import docker
+import uuid
+import sys
+import threading
+
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from typing import List, Optional
+from dotenv import load_dotenv
+sys.path.insert(0, "/workspace/ImgGenScript")
+from backend.src.batch.orchestrator import run_batch
+
+current_job = {
+    "job_id": None,
+    "status": "idle",
+    "started_at": None,
+    "finished_at": None,
+    "error": None
+}
+
+INPUT_IMG_DIR  = "/app/shared_data/input_images"
+REF_IMG_DIR    = "/app/shared_data/reference_images"
+OUTPUT_IMG_DIR = "/app/shared_data/output_images"
+TEMP_IMG_DIR   = "/app/shared_data/temp_images"
+CSV_DATA_PATH  = "/app/shared_data/model_data.csv"
+
+load_dotenv()
+
+RESTART_TOKEN = str(os.getenv("RESTART_TOKEN"))
+
+security = HTTPBearer()
+
+try:
+    docker_client = docker.from_env()
+    DOCKER_AVAILABLE = True
+except Exception as e:
+    print(f"Docker socket not available: {e}")
+    DOCKER_AVAILABLE = False
+    docker_client = None
+
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if credentials.credentials != RESTART_TOKEN:
+        raise HTTPException(status_code=401, detail="Token inválido")
+    return credentials.credentials
+
+
+def del_all_files(path: str) -> None:
+    folder = pathlib.Path(path)
+    if not folder.is_dir():
+        print(f"Error: '{path}' is not a valid folder.")
+        return
+    for item in folder.iterdir():
+        if item.is_file():
+            try:
+                os.remove(item)
+            except OSError as e:
+                print(f"Error deleting file '{item}': {e}")
+
+
+async def save_uploaded_images(path: str, files: List[UploadFile]) -> None:
+    del_all_files(path)
+    for file in files:
+        try:
+            file_path = os.path.join(path, file.filename)
+            with open(file_path, "wb") as f:
+                while contents := await file.read(1024):
+                    f.write(contents)
+        except Exception as e:
+            print(f"Error saving file {file.filename}: {e}")
+        finally:
+            await file.close()
+
+
+async def save_reference_image(path: str, file: UploadFile) -> str:
+    os.makedirs(path, exist_ok=True)
+    del_all_files(path)
+    filename = file.filename
+    try:
+        file_path = os.path.join(path, filename)
+        with open(file_path, "wb") as f:
+            while contents := await file.read(1024):
+                f.write(contents)
+    except Exception as e:
+        raise RuntimeError(f"Error saving image '{filename}': {e}")
+    finally:
+        await file.close()
+    return filename
+
+
+app = FastAPI()
+templates = Jinja2Templates(directory="/app/templates")
+
+app.mount("/static", StaticFiles(directory="/app/static"), name="static")
+app.mount("/images", StaticFiles(directory="/app/shared_data/output_images"), name="images")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/", response_class=HTMLResponse)
+async def read_index(request: Request):
+    comfyui_port = os.getenv("COMFYUI_PORT", "8188")
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, "comfyui_port": comfyui_port}
+    )
+
+
+@app.get("/health", status_code=status.HTTP_200_OK)
+async def health_check():
+    return {"status": "UP"}
+
+
+@app.get("/list_images")
+def list_generated_images():
+    images = [
+        f for f in os.listdir(OUTPUT_IMG_DIR)
+        if f.lower().endswith(('.png', '.jpg', '.jpeg'))
+    ]
+    return {"images": images}
+
+
+@app.post("/clear_images")
+async def clear_images():
+    try:
+        for dir_path in [INPUT_IMG_DIR, OUTPUT_IMG_DIR, REF_IMG_DIR]:
+            for file in os.listdir(dir_path):
+                os.remove(os.path.join(dir_path, file))
+        return {"status": "success", "message": "All images cleared."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/clear_output")
+async def clear_output():
+    """Clears only the output_images directory (used between sequential model runs)."""
+    try:
+        del_all_files(OUTPUT_IMG_DIR)
+        return {"status": "success", "message": "Output images cleared."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/upload_images")
+async def upload_and_save_images_optional(
+    images: Optional[List[UploadFile]] = File(default=[]),
+    reference: Optional[UploadFile] = File(None),
+    csv: Optional[UploadFile] = File(None),
+):
+    """
+    Accepts model input images, an optional pose reference image, and/or a CSV file
+    with model characteristics (vreproID, age, skinTone, etc.).
+    The CSV is saved to shared_data so the orchestrator can read it.
+    """
+    ref_name = None
+    try:
+        if images:
+            await save_uploaded_images(INPUT_IMG_DIR, images)
+        else:
+            del_all_files(INPUT_IMG_DIR)
+
+        if reference:
+            ref_name = await save_reference_image(REF_IMG_DIR, reference)
+        else:
+            del_all_files(REF_IMG_DIR)
+
+        if csv:
+            content = await csv.read()
+            with open(CSV_DATA_PATH, "wb") as f:
+                f.write(content)
+            await csv.close()
+
+        if not images and not reference and not csv:
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": "No images, reference image, or CSV provided."}
+            )
+
+        del_all_files(TEMP_IMG_DIR)
+
+        return {
+            "status": "success",
+            "message": "Upload process completed.",
+            "uploaded_images_count": len(images) if images else 0,
+            "reference_filename": ref_name,
+            "csv_saved": csv is not None,
+        }
+    except Exception as e:
+        print(e)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+@app.post("/free_vram")
+async def free_memory():
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post("http://comfyui:8288/free_vram")
+            if response.status_code == 200:
+                return {"status": "success", "message": "VRAM freed in ComfyUI", "details": response.json()}
+            return {"status": "error", "message": f"ComfyUI responded with code {response.status_code}", "response": response.text}
+    except httpx.ConnectError:
+        return {"status": "error", "message": "Could not connect to ComfyUI. Is port 8288 active?"}
+    except httpx.TimeoutException:
+        return {"status": "error", "message": "Timeout connecting to ComfyUI"}
+    except Exception as e:
+        return {"status": "error", "message": f"Unexpected error: {str(e)}"}
+
+
+@app.get("/comfyui_status")
+async def comfyui_status():
+    if not DOCKER_AVAILABLE:
+        return {"status": "error", "message": "Docker not available"}
+    try:
+        container = docker_client.containers.get("comfyui")
+        attrs = container.attrs
+        state = attrs['State']
+        return {
+            "container": "comfyui",
+            "status": state['Status'],
+            "started_at": state['StartedAt'],
+            "pid": state['Pid'],
+            "health": attrs.get('State', {}).get('Health', {}).get('Status', 'no healthcheck'),
+        }
+    except docker.errors.NotFound:
+        return {"status": "error", "message": "Container 'comfyui' not found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/restart_comfyui")
+async def restart_comfyui(token: str = Depends(verify_token)):
+    if not DOCKER_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Docker not available in FastAPI")
+    try:
+        container = docker_client.containers.get("comfyui")
+        if container.status != "running":
+            return {"status": "warning", "message": f"ComfyUI is already {container.status}"}
+        container.restart()
+        time.sleep(1)
+        return {"status": "success", "message": "Container 'comfyui' restarted", "timestamp": time.time()}
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail="Container 'comfyui' not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Docker error: {str(e)}")
+
+
+@app.post("/jobs")
+async def start_job(
+    generation_type: str = "fullbody",
+    max_cycles: int = 1,
+    donor_list: str = "",
+    use_pose: bool = False,
+    use_hands_refiner: bool = True,
+    use_amateur_effect: bool = False,
+):
+    global current_job
+    if current_job["status"] == "running":
+        raise HTTPException(status_code=409, detail="Ya hay un job en ejecución.")
+
+    job_id = str(uuid.uuid4())
+    donors = [d.strip() for d in donor_list.split(",") if d.strip()]
+    current_job = {
+        "job_id": job_id,
+        "status": "running",
+        "started_at": time.time(),
+        "finished_at": None,
+        "error": None,
+    }
+
+    def run():
+        global current_job
+        try:
+            run_batch(
+                generation_type=generation_type,
+                max_cycles=max_cycles,
+                donor_list=donors,
+                use_pose_override=use_pose,
+                use_hands_refiner_override=use_hands_refiner,
+                use_amateur_effect_override=use_amateur_effect,
+            )
+            current_job["status"] = "done"
+            current_job["finished_at"] = time.time()
+            # Clean up input/temp only; output images stay for user review/download
+            for path in [INPUT_IMG_DIR, TEMP_IMG_DIR]:
+                del_all_files(path)
+        except Exception as e:
+            current_job["status"] = "error"
+            current_job["error"] = str(e)
+            current_job["finished_at"] = time.time()
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"job_id": job_id, "status": "running", "message": "Batch iniciado"}
+
+
+@app.get("/jobs/current")
+async def get_current_job():
+    return current_job

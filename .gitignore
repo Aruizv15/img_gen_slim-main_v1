@@ -1,0 +1,59 @@
+# Sensitive and environment files
+.env
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Large model and data files
+*.safetensors
+*.bin
+*.zip
+*.rar
+*.tz
+*.tar
+*.onnx
+*.pt
+*.ckpt
+*.pth
+*.Identifier
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.jpng
+*.gif
+*.bmp
+*.webp
+*.svg
+
+# Temp Files
+*.log
+*.tmp
+*.temp
+
+# Directories
+comfyui/volumes/custom_nodes/*
+!comfyui/volumes/custom_nodes/.gitkeep
+
+comfyui/volumes/models/checkpoints/*
+comfyui/volumes/models/clip_vision/*
+comfyui/volumes/models/controlnet/*
+comfyui/volumes/models/insightface/*
+comfyui/volumes/models/ipadapter/*
+comfyui/volumes/models/loras/*
+comfyui/volumes/models/onnx/*
+comfyui/volumes/models/ultralytics/*
+comfyui/volumes/models/vae/*
+!comfyui/volumes/models/**/.gitkeep
+
+comfyui/volumes/scripts/*
+!comfyui/volumes/scripts/.gitkeep
+
+shared_data/input_images/*
+shared_data/output_images/*
+shared_data/reference_images/*
+shared_data/temp_images/*
