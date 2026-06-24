@@ -406,6 +406,6 @@ async def get_current_job():
 async def debug_b2():
     try:
         auth = await b2_authorize()
-        return {"status": "ok", "key_id": os.getenv('B2_KEY_ID'), "auth": auth.get("accountId")}
+        return {"status": "ok", "auth_response": auth}
     except Exception as e:
-        return {"status": "error", "key_id": os.getenv('B2_KEY_ID'), "message": str(e)}
+        return {"status": "error", "message": str(e)}
