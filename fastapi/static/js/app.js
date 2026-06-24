@@ -787,6 +787,16 @@ function stopPolling() {
   pollTimer = null;
 }
 
+
+function setMode(btn) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function toggleCb(el) {
+  el.classList.toggle('on');
+}
+
 /* ============================================================
    INIT
    ============================================================ */

@@ -26,7 +26,35 @@
 
   <div class="main">
 
-
+    <div class="sidebar">
+  <div>
+    <div class="slabel">Modo</div>
+    <div class="mode-group">
+      <button class="mode-btn active" onclick="setMode(this)">Fullbody</button>
+      <button class="mode-btn" onclick="setMode(this)">Portrait</button>
+    </div>
+  </div>
+  <div>
+    <div class="slabel">Ciclos Fullbody</div>
+    <input class="fin" id="fb-cycles" value="1" type="number" min="1" />
+  </div>
+  <div>
+    <div class="slabel">Ciclos Portrait</div>
+    <input class="fin" id="pt-cycles" value="1" type="number" min="1" />
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="opt-row"><div class="cb" id="cb-pose" onclick="toggleCb(this)"></div> Use Pose</div>
+    <div class="opt-row"><div class="cb on" id="cb-hands" onclick="toggleCb(this)"></div> Hands Refiner</div>
+    <div class="opt-row"><div class="cb" id="cb-amateur" onclick="toggleCb(this)"></div> Amateur Effect</div>
+  </div>
+  <div>
+    <div class="slabel">Lista de modelos</div>
+    <input class="fin" id="model-list" placeholder="Ej: 609, 1673" />
+  </div>
+  <div style="margin-top:auto;">
+    <div class="slabel" id="server-info" style="white-space:pre;line-height:1.8;">—</div>
+  </div>
+</div>
     <!-- Content -->
     <div class="content">
       <div class="panels">
