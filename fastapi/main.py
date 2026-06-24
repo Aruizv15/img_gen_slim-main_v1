@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from typing import List, Optional
 from dotenv import load_dotenv
 sys.path.insert(0, "/workspace/ImgGenScript")
+sys.path.insert(0, "/workspace/ImgGenScript/backend")
 from backend.src.batch.orchestrator import run_batch
 
 current_job = {
