@@ -239,7 +239,7 @@ async def upload_and_save_images_optional(
                 import pandas as pd
                 import io
                 df = pd.read_excel(io.BytesIO(content))
-                content = df.to_csv(index=False).encode('utf-8')
+                content = df.to_csv(index=False, sep=';').encode('utf-8')
             with open(CSV_DATA_PATH, "wb") as f:
                 f.write(content)
             await csv.close()
