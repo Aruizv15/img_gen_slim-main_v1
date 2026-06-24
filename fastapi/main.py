@@ -15,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from typing import List, Optional
 from dotenv import load_dotenv
+
+
 # Orchestrator solo disponible en RunPod
 
 current_job = {
@@ -42,7 +44,12 @@ def get_b2_client():
         endpoint_url=os.getenv('B2_ENDPOINT'),
         aws_access_key_id=os.getenv('B2_KEY_ID'),
         aws_secret_access_key=os.getenv('B2_APP_KEY'),
-        config=Config(signature_version='s3v4')
+        region_name='us-east-005',
+        config=Config(
+            signature_version='s3v4',
+            s3={'addressing_style': 'path'},
+            retries={'max_attempts': 3}
+        )
     )
 
 def upload_to_b2(local_path: str, b2_key: str):
