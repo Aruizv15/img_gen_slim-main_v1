@@ -1,6 +1,7 @@
 import os
 import time
 import httpx
+import base64
 import pathlib
 import docker
 import uuid
@@ -35,32 +36,57 @@ CSV_DATA_PATH  = "/app/shared_data/model_data.csv"
 
 load_dotenv()
 
-def get_b2_client():
-    import boto3
-    from botocore.client import Config
-    return boto3.client(
-        's3',
-        endpoint_url='https://s3.us-east-005.backblazeb2.com',
-        aws_access_key_id=os.getenv('B2_KEY_ID'),
-        aws_secret_access_key=os.getenv('B2_APP_KEY'),
-        config=Config(
-            signature_version='s3v4',
-            s3={'addressing_style': 'path'}
+async def b2_authorize():
+    key_id = os.getenv('B2_KEY_ID')
+    app_key = os.getenv('B2_APP_KEY')
+    credentials = base64.b64encode(f"{key_id}:{app_key}".encode()).decode()
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            "https://api.backblazeb2.com/b2api/v2/b2_authorize_account",
+            headers={"Authorization": f"Basic {credentials}"}
         )
-    )
+        return r.json()
 
-def upload_to_b2(local_path: str, b2_key: str):
-    client = get_b2_client()
-    with open(local_path, 'rb') as f:
-        client.put_object(
-            Bucket=os.getenv('B2_BUCKET'),
-            Key=b2_key,
-            Body=f
+async def upload_to_b2(local_path: str, b2_key: str):
+    auth = await b2_authorize()
+    api_url = auth["apiUrl"]
+    auth_token = auth["authorizationToken"]
+    bucket_id = None
+
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{api_url}/b2api/v2/b2_list_buckets",
+            headers={"Authorization": auth_token},
+            params={"accountId": auth["accountId"], "bucketName": os.getenv('B2_BUCKET')}
         )
+        buckets = r.json().get("buckets", [])
+        if buckets:
+            bucket_id = buckets[0]["bucketId"]
 
-def download_from_b2(b2_key: str, local_path: str):
-    client = get_b2_client()
-    client.download_file(os.getenv('B2_BUCKET'), b2_key, local_path)
+        upload_url_r = await client.get(
+            f"{api_url}/b2api/v2/b2_get_upload_url",
+            headers={"Authorization": auth_token},
+            params={"bucketId": bucket_id}
+        )
+        upload_data = upload_url_r.json()
+
+        with open(local_path, "rb") as f:
+            content = f.read()
+
+        import hashlib
+        sha1 = hashlib.sha1(content).hexdigest()
+
+        await client.post(
+            upload_data["uploadUrl"],
+            headers={
+                "Authorization": upload_data["authorizationToken"],
+                "X-Bz-File-Name": b2_key,
+                "Content-Type": "b2/x-auto",
+                "Content-Length": str(len(content)),
+                "X-Bz-Content-Sha1": sha1
+            },
+            content=content
+        )
 
 
 RESTART_TOKEN = str(os.getenv("RESTART_TOKEN"))
@@ -225,9 +251,9 @@ async def upload_and_save_images_optional(
         try:
             for f in os.listdir(INPUT_IMG_DIR):
                 local = os.path.join(INPUT_IMG_DIR, f)
-                upload_to_b2(local, f"input_images/{f}")
+                await upload_to_b2(local, f"input_images/{f}")
             if csv:
-                upload_to_b2(CSV_DATA_PATH, "csv/model_data.csv")
+                await upload_to_b2(CSV_DATA_PATH, "csv/model_data.csv")
         except Exception as e:
             print(f"[B2] Error subiendo a Backblaze: {e}")
 
