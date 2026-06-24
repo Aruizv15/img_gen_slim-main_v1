@@ -35,6 +35,26 @@ CSV_DATA_PATH  = "/app/shared_data/model_data.csv"
 
 load_dotenv()
 
+import boto3
+from botocore.client import Config
+
+def get_b2_client():
+    return boto3.client(
+        's3',
+        endpoint_url=os.getenv('B2_ENDPOINT'),
+        aws_access_key_id=os.getenv('B2_KEY_ID'),
+        aws_secret_access_key=os.getenv('B2_APP_KEY'),
+        config=Config(signature_version='s3v4')
+    )
+
+def upload_to_b2(local_path: str, b2_key: str):
+    client = get_b2_client()
+    client.upload_file(local_path, os.getenv('B2_BUCKET'), b2_key)
+
+def download_from_b2(b2_key: str, local_path: str):
+    client = get_b2_client()
+    client.download_file(os.getenv('B2_BUCKET'), b2_key, local_path)
+
 RESTART_TOKEN = str(os.getenv("RESTART_TOKEN"))
 
 security = HTTPBearer()
@@ -203,6 +223,15 @@ async def upload_and_save_images_optional(
     except Exception as e:
         print(e)
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+# Subir a Backblaze
+for file in os.listdir(INPUT_IMG_DIR):
+    local = os.path.join(INPUT_IMG_DIR, file)
+    upload_to_b2(local, f"input_images/{file}")
+
+if csv:
+    upload_to_b2(CSV_DATA_PATH, "csv/model_data.csv")
 
 
 @app.post("/free_vram")
