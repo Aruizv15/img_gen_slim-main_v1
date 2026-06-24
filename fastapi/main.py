@@ -273,6 +273,7 @@ async def start_job(
 
     job_id = str(uuid.uuid4())
     donors = [d.strip() for d in donor_list.split(",") if d.strip()]
+    
     current_job = {
         "job_id": job_id,
         "status": "running",
@@ -284,27 +285,51 @@ async def start_job(
     def run():
         global current_job
         try:
-            run_batch(
-                generation_type=generation_type,
-                max_cycles=max_cycles,
-                donor_list=donors,
-                use_pose_override=use_pose,
-                use_hands_refiner_override=use_hands_refiner,
-                use_amateur_effect_override=use_amateur_effect,
+            import requests as req
+            runpod_api_key = os.getenv("RUNPOD_API_KEY")
+            runpod_endpoint = os.getenv("RUNPOD_ENDPOINT")
+            
+            response = req.post(
+                f"https://api.runpod.ai/v2/{runpod_endpoint}/run",
+                headers={
+                    "Authorization": f"Bearer {runpod_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "input": {
+                        "vreproID": donors[0] if donors else "",
+                        "generation_type": generation_type,
+                        "max_cycles": max_cycles,
+                    }
+                }
             )
+            
+            runpod_job = response.json()
+            runpod_job_id = runpod_job.get("id")
+            
+            # Espera el resultado
+            while True:
+                status_response = req.get(
+                    f"https://api.runpod.ai/v2/{runpod_endpoint}/status/{runpod_job_id}",
+                    headers={"Authorization": f"Bearer {runpod_api_key}"}
+                )
+                status = status_response.json()
+                
+                if status.get("status") in ["COMPLETED", "FAILED"]:
+                    break
+                    
+                time.sleep(5)
+            
             current_job["status"] = "done"
             current_job["finished_at"] = time.time()
-            # Clean up input/temp only; output images stay for user review/download
-            for path in [INPUT_IMG_DIR, TEMP_IMG_DIR]:
-                del_all_files(path)
+            
         except Exception as e:
             current_job["status"] = "error"
             current_job["error"] = str(e)
             current_job["finished_at"] = time.time()
 
     threading.Thread(target=run, daemon=True).start()
-    return {"job_id": job_id, "status": "running", "message": "Batch iniciado"}
-
+    return {"job_id": job_id, "status": "running", "message": "Batch iniciado en RunPod"}
 
 @app.get("/jobs/current")
 async def get_current_job():

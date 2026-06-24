@@ -1,0 +1,76 @@
+{
+    "geometry": {
+        "min": 1,
+        "max": 1,
+        "effects": [
+            "random_rotation"
+        ]
+    },
+    "tone_and_color": {
+        "min": 0,
+        "max": 2,
+        "effects": [
+            "random_tint",
+            "random_contrast"
+        ]
+    },
+    "saturation": {
+        "min": 1,
+        "max": 1,
+        "effects": [
+            "random_saturation"
+        ]
+    },
+    "lens_defects": {
+        "min": 0,
+        "max": 1,
+        "effects": [
+            "lens_distortion"
+        ]
+    },
+    "light_artifacts": {
+        "min": 0,
+        "max": 2,
+        "effects": [
+            "chromatic_aberration",
+            "vignette"
+        ]
+    },
+    "capture_imperfections": {
+        "min": 0,
+        "max": 1,
+        "effects": [
+            "lens_dust_spots",
+            "flash_effect"
+        ]
+    },
+    "detail_loss": {
+        "min": 0,
+        "max": 1,
+        "effects": [
+            "blur",
+            "motion_blur"
+        ]
+    },
+    "noise": {
+        "min": 0,
+        "max": 1,
+        "effects": [
+            "add_noise"
+        ]
+    },
+    "sharpening": {
+        "min": 0,
+        "max": 1,
+        "effects": [
+            "over_sharpening"
+        ]
+    },
+    "artifacts": {
+        "min": 1,
+        "max": 1,
+        "effects": [
+            "jpeg_compression_artifacts"
+        ]
+    }
+}

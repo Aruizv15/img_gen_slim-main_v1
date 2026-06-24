@@ -1,0 +1,67 @@
+{
+"makeups":[
+  {
+    "value": "No",
+    "tags": {
+      "makeup_intensity": ["makeup_intensity_none"]
+    },
+    "style": ["style_casual", "style_sporty", "style_minimalist", "style_boho", "style_athleisure", "style_soft"]
+  },
+  {
+    "value": "Natural",
+    "tags": {
+      "makeup_intensity": ["makeup_intensity_light"]
+    },
+    "style": ["style_casual", "style_formal", "style_soft", "style_sporty", "style_chic", "style_vintage", "style_minimalist", "style_street", "style_boho", "style_academic", "style_preppy", "style_athleisure"]
+  },
+  {
+    "value": "Everyday",
+    "tags": {
+      "makeup_intensity": ["makeup_intensity_light"]
+    },
+    "style": ["style_casual", "style_formal", "style_soft", "style_sporty", "style_chic", "style_vintage", "style_minimalist", "style_street", "style_boho", "style_academic", "style_preppy", "style_athleisure"]
+  },
+  {
+    "value": "Sober",
+    "tags": {
+      "makeup_intensity": ["makeup_intensity_light"]
+    },
+    "style": ["style_formal", "style_chic", "style_minimalist", "style_academic", "style_preppy"]
+  },
+  {
+    "value": "Classic",
+    "tags": {
+      "makeup_intensity": ["makeup_intensity_medium"]
+    },
+    "style": ["style_formal", "style_chic", "style_vintage", "style_glam", "style_preppy"]
+  },
+  {
+    "value": "Smokey Eye",
+    "tags": {
+      "makeup_intensity": ["makeup_intensity_heavy"]
+    },
+    "style": ["style_edgy", "style_glam", "style_street", "style_chic"]
+  },
+  {
+    "value": "Glam",
+    "tags": {
+      "makeup_intensity": ["makeup_intensity_heavy"]
+    },
+    "style": ["style_glam", "style_chic", "style_edgy", "style_formal"]
+  },
+  {
+    "value": "Editorial",
+    "tags": {
+      "makeup_intensity": ["makeup_intensity_heavy"]
+    },
+    "style": ["style_edgy", "style_street", "style_glam"]
+  },
+  {
+    "value": "Soft Glam",
+    "tags": {
+      "makeup_intensity": ["makeup_intensity_medium"]
+    },
+    "style": ["style_glam", "style_chic", "style_soft", "style_formal"]
+  }
+]
+}

@@ -1,0 +1,546 @@
+{
+    "outfits_portrait": [
+        {
+            "value": "{outfit_color} t-shirt",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor", "env_urban", "env_outdoor", "env_natural"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium", "saturation_high"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_cyan", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_none", "makeup_intensity_light"],
+                "items": ["item_tshirt"]
+            },
+            "style": ["style_casual", "style_minimalist"]
+        },
+        {
+            "value": "{outfit_color} cropped t-shirt",
+            "tags": {
+                "temperature": ["temp_hot"],
+                "environment": ["env_studio", "env_indoor", "env_urban"],
+                "color_clarity": ["clarity_light", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium", "saturation_high", "saturation_extreme"],
+                "color_hue": ["hue_cool", "hue_warm"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_cyan", "family_yellow", "family_magenta", "family_orange", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_tshirt", "item_top"]
+            },
+            "style": ["style_casual", "style_street"]
+        },
+        {
+            "value": "{outfit_color} loose blouse",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_blouse"]
+            },
+            "style": ["style_soft", "style_chic", "style_formal"]
+        },
+        {
+            "value": "{outfit_color} linen blouse",
+            "tags": {
+                "temperature": ["temp_hot"],
+                "environment": ["env_indoor", "env_natural", "env_outdoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm"],
+                "color_family": ["family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white"],
+                "makeup_intensity": ["makeup_intensity_none", "makeup_intensity_light"],
+                "items": ["item_blouse"]
+            },
+            "style": ["style_soft", "style_boho", "style_casual"]
+        },
+        {
+            "value": "{outfit_color} flowy blouse",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor", "env_natural", "env_outdoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white"],
+                "makeup_intensity": ["makeup_intensity_none", "makeup_intensity_light"],
+                "items": ["item_blouse"]
+            },
+            "style": ["style_soft", "style_boho"]
+        },
+        {
+            "value": "{outfit_color} off-the-shoulder blouse",
+            "tags": {
+                "temperature": ["temp_hot"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_blouse"]
+            },
+            "style": ["style_soft", "style_chic"]
+        },
+        {
+            "value": "{outfit_color} sweater",
+            "tags": {
+                "temperature": ["temp_cold", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor", "env_natural", "env_outdoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_none", "makeup_intensity_light"],
+                "items": ["item_sweater"]
+            },
+            "style": ["style_casual", "style_academic"]
+        },
+        {
+            "value": "{outfit_color} chunky knit sweater",
+            "tags": {
+                "temperature": ["temp_cold"],
+                "environment": ["env_studio", "env_indoor", "env_natural", "env_outdoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_none", "makeup_intensity_light"],
+                "items": ["item_sweater"]
+            },
+            "style": ["style_casual", "style_vintage", "style_boho"]
+        },
+        {
+            "value": "{outfit_color} cardigan worn as a top",
+            "tags": {
+                "temperature": ["temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_cardigan"]
+            },
+            "style": ["style_chic", "style_academic", "style_soft"]
+        },
+        {
+            "value": "{outfit_color} turtleneck sweater",
+            "tags": {
+                "temperature": ["temp_cold"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_sweater"]
+            },
+            "style": ["style_chic", "style_minimalist", "style_academic"]
+        },
+        {
+            "value": "{outfit_color} oversized turtleneck sweater",
+            "tags": {
+                "temperature": ["temp_cold"],
+                "environment": ["env_studio", "env_indoor", "env_urban"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium", "saturation_high"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_sweater"]
+            },
+            "style": ["style_street", "style_casual"]
+        },
+        {
+            "value": "{outfit_color} fine-knit turtleneck sweater",
+            "tags": {
+                "temperature": ["temp_cold", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_sweater"]
+            },
+            "style": ["style_formal", "style_chic", "style_minimalist"]
+        },
+        {
+            "value": "{outfit_color} turtleneck sweater worn off-the-shoulder",
+            "tags": {
+                "temperature": ["temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium", "saturation_high"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_medium", "makeup_intensity_heavy"],
+                "items": ["item_sweater"]
+            },
+            "style": ["style_chic", "style_street"]
+        },
+        {
+            "value": "{outfit_color} tank top",
+            "tags": {
+                "temperature": ["temp_hot"],
+                "environment": ["env_studio", "env_indoor", "env_natural", "env_outdoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium", "saturation_high"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_cyan", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_none", "makeup_intensity_light"],
+                "items": ["item_tank_top"]
+            },
+            "style": ["style_casual", "style_sporty"]
+        },
+        {
+            "value": "{outfit_color} silk tank top",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_tank_top"]
+            },
+            "style": ["style_chic", "style_soft", "style_minimalist"]
+        },
+        {
+            "value": "{outfit_color} silk camisole",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "makeup_intensity": ["makeup_intensity_medium", "makeup_intensity_heavy"],
+                "items": ["item_top"]
+            },
+            "style": ["style_chic", "style_soft", "style_minimalist", "style_edgy"]
+        },
+        {
+            "value": "{outfit_color} flannel overshirt",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_cold"],
+                "environment": ["env_urban", "env_natural", "env_outdoor"],
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium", "saturation_high"],
+                "color_hue": ["hue_cool", "hue_warm"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_orange", "family_brown"],
+                "makeup_intensity": ["makeup_intensity_light"],
+                "items": ["item_jacket"]
+            },
+            "style": ["style_casual", "style_street", "style_vintage"]
+        },
+        {
+            "value": "{outfit_color} flannel overshirt open over a white t-shirt",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_cold"],
+                "environment": ["env_urban", "env_natural", "env_outdoor", "env_indoor"],
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium", "saturation_high"],
+                "color_hue": ["hue_cool", "hue_warm"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_orange", "family_brown"],
+                "makeup_intensity": ["makeup_intensity_light"],
+                "items": ["item_jacket", "item_tshirt"]
+            },
+            "style": ["style_casual", "style_street", "style_vintage"]
+        },
+        {
+            "value": "{outfit_color} blazer",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_cold"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_brown", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_blazer"]
+            },
+            "style": ["style_formal", "style_chic", "style_academic"]
+        },
+        {
+            "value": "{outfit_color} blazer over a simple t-shirt",
+            "tags": {
+                "temperature": ["temp_neutral"],
+                "environment": ["env_studio", "env_indoor", "env_urban"],
+                "color_clarity": ["clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_brown", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_blazer", "item_tshirt"]
+            },
+            "style": ["style_chic", "style_casual", "style_street"]
+        },
+        {
+            "value": "{outfit_color} denim jacket",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_hot"],
+                "environment": ["env_urban", "env_natural", "env_outdoor", "env_indoor"],
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_blue"],
+                "makeup_intensity": ["makeup_intensity_light"],
+                "items": ["item_jacket"]
+            },
+            "style": ["style_casual", "style_street", "style_vintage"]
+        },
+        {
+            "value": "{outfit_color} denim jacket over a t-shirt",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_hot"],
+                "environment": ["env_urban", "env_natural", "env_outdoor", "env_indoor"],
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_blue"],
+                "makeup_intensity": ["makeup_intensity_light"],
+                "items": ["item_jacket", "item_tshirt"]
+            },
+            "style": ["style_casual", "style_street"]
+        },
+        {
+            "value": "{outfit_color} cardigan",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_cold"],
+                "environment": ["env_studio", "env_indoor", "env_natural", "env_outdoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_none", "makeup_intensity_light"],
+                "items": ["item_cardigan"]
+            },
+            "style": ["style_soft", "style_casual", "style_academic"]
+        },
+        {
+            "value": "{outfit_color} cardigan over a camisole",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_cold"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_cardigan", "item_top"]
+            },
+            "style": ["style_soft", "style_casual"]
+        },
+        {
+            "value": "{outfit_color} trench coat",
+            "tags": {
+                "temperature": ["temp_cold"],
+                "environment": ["env_urban", "env_studio", "env_indoor"],
+                "color_clarity": ["clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_warm", "hue_neutral"],
+                "color_family": ["family_brown", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_coat"]
+            },
+            "style": ["style_formal", "style_chic", "style_minimalist"]
+        },
+        {
+            "value": "{outfit_color} leather jacket",
+            "tags": {
+                "temperature": ["temp_cold", "temp_neutral"],
+                "environment": ["env_urban", "env_studio", "env_indoor"],
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_black"],
+                "makeup_intensity": ["makeup_intensity_medium", "makeup_intensity_heavy"],
+                "items": ["item_jacket"]
+            },
+            "style": ["style_edgy", "style_street"]
+        },
+        {
+            "value": "{outfit_color} leather jacket over a white t-shirt",
+            "tags": {
+                "temperature": ["temp_cold", "temp_neutral"],
+                "environment": ["env_urban", "env_studio", "env_indoor"],
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_jacket", "item_tshirt"]
+            },
+            "style": ["style_edgy", "style_street", "style_casual"]
+        },
+        {
+            "value": "{outfit_color} leather shirt worn as a jacket",
+            "tags": {
+                "temperature": ["temp_neutral"],
+                "environment": ["env_urban", "env_studio", "env_indoor"],
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_black"],
+                "makeup_intensity": ["makeup_intensity_medium", "makeup_intensity_heavy"],
+                "items": ["item_jacket"]
+            },
+            "style": ["style_edgy", "style_chic"]
+        },
+        {
+            "value": "{outfit_color} shirt dress",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_chic", "style_minimalist", "style_casual"]
+        },
+        {
+            "value": "{outfit_color} belted shirt dress",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_chic", "style_formal"]
+        },
+        {
+            "value": "{outfit_color} slip dress",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_soft", "style_minimalist", "style_chic"]
+        },
+        {
+            "value": "{outfit_color} slip dress layered over a white t-shirt",
+            "tags": {
+                "temperature": ["temp_neutral"],
+                "environment": ["env_studio", "env_indoor", "env_urban"],
+                "color_clarity": ["clarity_light", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light"],
+                "items": ["item_dress", "item_tshirt"]
+            },
+            "style": ["style_street", "style_casual", "style_vintage"]
+        },
+        {
+            "value": "{outfit_color} ribbed knit dress",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_cold"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_minimalist", "style_chic"]
+        },
+        {
+            "value": "{outfit_color} bodycon knit dress",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_cold"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium", "saturation_high"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_medium", "makeup_intensity_heavy"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_chic", "style_edgy"]
+        },
+        {
+            "value": "{outfit_color} fitted dress",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_light", "makeup_intensity_medium"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_chic", "style_formal"]
+        },
+        {
+            "value": "{outfit_color} sweater dress",
+            "tags": {
+                "temperature": ["temp_cold"],
+                "environment": ["env_studio", "env_indoor", "env_natural", "env_outdoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_none", "makeup_intensity_light"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_casual", "style_chic"]
+        },
+        {
+            "value": "{outfit_color} flowy midi dress",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_indoor", "env_natural", "env_outdoor"],
+                "color_clarity": ["clarity_light", "clarity_neutral"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_cool", "hue_warm"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white"],
+                "makeup_intensity": ["makeup_intensity_none", "makeup_intensity_light"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_soft", "style_boho"]
+        },
+        {
+            "value": "{outfit_color} bodycon midi dress",
+            "tags": {
+                "temperature": ["temp_hot", "temp_neutral"],
+                "environment": ["env_studio", "env_indoor"],
+                "color_clarity": ["clarity_light", "clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium", "saturation_high"],
+                "color_hue": ["hue_cool", "hue_warm", "hue_neutral"],
+                "color_family": ["family_red", "family_green", "family_blue", "family_yellow", "family_magenta", "family_orange", "family_brown", "family_white", "family_black"],
+                "makeup_intensity": ["makeup_intensity_medium", "makeup_intensity_heavy"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_chic", "style_edgy", "style_glam"]
+        },
+        {
+            "value": "{outfit_color} leather dress",
+            "tags": {
+                "temperature": ["temp_neutral", "temp_cold"],
+                "environment": ["env_studio", "env_indoor", "env_urban"],
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_low", "saturation_medium"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_black"],
+                "makeup_intensity": ["makeup_intensity_medium", "makeup_intensity_heavy"],
+                "items": ["item_dress"]
+            },
+            "style": ["style_edgy", "style_chic", "style_glam"]
+        }
+    ]
+}

@@ -1,0 +1,364 @@
+{
+    "outfit_colors": [
+        {
+            "value": "White",
+            "tags": {
+                "color_clarity": ["clarity_neutral", "clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_white"]
+            },
+            "style": ["style_soft", "style_minimalist", "style_chic"]
+        },
+        {
+            "value": "Grey",
+            "tags": {
+                "color_clarity": ["clarity_neutral", "clarity_dark", "clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_black"]
+            },
+            "style": ["style_formal", "style_casual", "style_minimalist", "style_street"]
+        },
+        {
+            "value": "Beige",
+            "tags": {
+                "color_clarity": ["clarity_neutral", "clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_brown"]
+            },
+            "style": ["style_casual", "style_soft", "style_minimalist", "style_boho"]
+        },
+        {
+            "value": "Cream",
+            "tags": {
+                "color_clarity": ["clarity_neutral", "clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_white"]
+            },
+            "style": ["style_soft", "style_vintage", "style_chic"]
+        },
+        {
+            "value": "Light Grey",
+            "tags": {
+                "color_clarity": ["clarity_neutral", "clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_black"]
+            },
+            "style": ["style_soft", "style_minimalist", "style_casual"]
+        },
+        {
+            "value": "Navy Blue",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_blue"]
+            },
+            "style": ["style_formal", "style_preppy", "style_chic"]
+        },
+        {
+            "value": "Blue",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_high"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_blue"]
+            },
+            "style": ["style_casual", "style_sporty", "style_street"]
+        },
+        {
+            "value": "Baby Blue",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_blue"]
+            },
+            "style": ["style_soft", "style_casual"]
+        },
+        {
+            "value": "Teal",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_high"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_cyan", "family_blue", "family_green"]
+            },
+            "style": ["style_casual", "style_boho", "style_chic"]
+        },
+        {
+            "value": "Turquoise",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_high"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_cyan", "family_blue", "family_green"]
+            },
+            "style": ["style_sporty", "style_boho", "style_casual"]
+        },
+        {
+            "value": "Mint Green",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_green"]
+            },
+            "style": ["style_soft", "style_casual"]
+        },
+        {
+            "value": "Red",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_high"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_red"]
+            },
+            "style": ["style_sporty", "style_glam", "style_edgy", "style_street"]
+        },
+        {
+            "value": "Burgundy",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_red"]
+            },
+            "style": ["style_formal", "style_chic", "style_vintage"]
+        },
+        {
+            "value": "Orange",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_high"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_orange"]
+            },
+            "style": ["style_sporty", "style_boho", "style_street"]
+        },
+        {
+            "value": "Peach",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_yellow"]
+            },
+            "style": ["style_soft", "style_casual"]
+        },
+        {
+            "value": "Yellow",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_high"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_yellow"]
+            },
+            "style": ["style_casual", "style_sporty", "style_street"]
+        },
+        {
+            "value": "Mustard Yellow",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_yellow"]
+            },
+            "style": ["style_casual", "style_vintage", "style_boho"]
+        },
+        {
+            "value": "Pastel Pink",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_magenta"]
+            },
+            "style": ["style_soft", "style_preppy"]
+        },
+        {
+            "value": "Lavender",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_magenta"]
+            },
+            "style": ["style_soft", "style_boho"]
+        },
+        {
+            "value": "Mauve",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_magenta"]
+            },
+            "style": ["style_casual", "style_soft", "style_vintage"]
+        },
+        {
+            "value": "Light Blue",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_blue"]
+            },
+            "style": ["style_soft", "style_casual"]
+        },
+        {
+            "value": "Pale Green",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_green"]
+            },
+            "style": ["style_soft"]
+        },
+        {
+            "value": "Light Yellow",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_yellow"]
+            },
+            "style": ["style_soft", "style_casual"]
+        },
+        {
+            "value": "Forest Green",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_green"]
+            },
+            "style": ["style_formal", "style_casual", "style_vintage"]
+        },
+        {
+            "value": "Olive Green",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_green"]
+            },
+            "style": ["style_casual", "style_street", "style_boho"]
+        },
+        {
+            "value": "Brown",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_brown"]
+            },
+            "style": ["style_formal", "style_casual", "style_vintage", "style_academic"]
+        },
+        {
+            "value": "Deep Purple",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_magenta"]
+            },
+            "style": ["style_formal", "style_glam", "style_edgy"]
+        },
+        {
+            "value": "Terracotta",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_brown"]
+            },
+            "style": ["style_casual", "style_boho", "style_vintage"]
+        },
+        {
+            "value": "Neon Green",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_extreme"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_green"]
+            },
+            "style": ["style_sporty", "style_edgy", "style_street"]
+        },
+        {
+            "value": "Neon Pink",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_extreme"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_magenta"]
+            },
+            "style": ["style_sporty", "style_edgy", "style_street", "style_glam"]
+        },
+        {
+            "value": "Black",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_black"]
+            },
+            "style": ["style_formal", "style_chic", "style_minimalist", "style_edgy", "style_street", "style_glam"]
+        },
+        {
+            "value": "Charcoal Grey",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_black"]
+            },
+            "style": ["style_formal", "style_minimalist", "style_edgy", "style_street", "style_chic"]
+        },
+        {
+            "value": "Heather Grey",
+            "tags": {
+                "color_clarity": ["clarity_neutral", "clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_neutral"],
+                "color_family": ["family_black"]
+            },
+            "style": ["style_casual", "style_sporty", "style_athleisure", "style_minimalist"]
+        },
+        {
+            "value": "Hunter Green",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_green"]
+            },
+            "style": ["style_formal", "style_vintage", "style_academic", "style_preppy"]
+        },
+        {
+            "value": "Maroon",
+            "tags": {
+                "color_clarity": ["clarity_dark"],
+                "color_saturation": ["saturation_medium"],
+                "color_hue": ["hue_warm"],
+                "color_family": ["family_red"]
+            },
+            "style": ["style_formal", "style_vintage", "style_academic", "style_preppy"]
+        },
+        {
+            "value": "Sage Green",
+            "tags": {
+                "color_clarity": ["clarity_light"],
+                "color_saturation": ["saturation_low"],
+                "color_hue": ["hue_cool"],
+                "color_family": ["family_green"]
+            },
+            "style": ["style_soft", "style_boho", "style_vintage", "style_minimalist"]
+        }
+    ]
+}

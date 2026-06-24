@@ -1,0 +1,104 @@
+#main-horizontal-container {
+    layout: grid;
+    grid-size: 2; /* Two columns */
+    grid-columns: 1fr 1fr; /* Equal width columns */
+    height: 100%;
+    padding: 1;
+}
+
+#left-panel {
+    align: center middle; /* Changed from 'align: center middle;' to 'align: center middle;' as it was already correct for overall alignment in previous version. Make sure to keep it for content within left panel. */
+    padding-right: 1; /* Add some padding between the panels */
+}
+
+#right-panel {
+    border: solid $surface; /* Add a border to visually define the output panel */
+    padding: 1;
+    align: left top; /* Corregido: el orden debe ser horizontal vertical (left top es válido) */
+    max-height: 100%;
+}
+
+.title {
+    text-align: center;
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+}
+
+.description {
+    text-align: center;
+}
+
+#checkbox-options {
+    width: 100%;
+    align: center middle;
+    margin-bottom: 1;
+}
+
+#fullbody-controls {
+    border: solid $surface;
+    padding: 0 1;
+    width: 100%; 
+    align: center middle;
+    min-height: 12;
+    max-height: 12;
+    margin-bottom: 1;
+}
+
+#portrait-controls, #donor-list-controls {
+    border: solid $surface;
+    padding: 0 1;
+    width: 100%;
+    min-height: 7;
+    max-height: 7;
+    align: center middle;
+    margin-bottom: 1;
+}
+
+Label {
+    text-style: bold;
+    margin-bottom: 0;
+    color: $text;
+}
+
+Input {
+    margin-bottom: 1;
+    width: 100%;
+    color: $text;
+}
+
+#fullbody-checkboxes {
+    width: 100%;
+    align: center middle;
+    height: auto;
+}
+
+#checkbox-fullbody-use-pose, #checkbox-fullbody-hands-refiner, #checkbox-amateur-effect {
+    margin-top: 1;
+    margin-right: 2;
+}
+
+#action-buttons {
+    width: auto;
+    align: center middle;
+    margin-top: 0;
+}
+
+#run-button {
+    width: 1fr; /* Make buttons take equal width */
+    margin-right: 1; /* Añadir un pequeño margen a la derecha para separar el botón de "Start" del de "Stop" */
+}
+
+#stop-button {
+    width: 1fr; /* Make buttons take equal width */
+}
+
+
+.terminal-output-style {
+    text-align: left;
+    width: 100%;
+    height: 100%;
+    background: $surface;
+    color: $text;
+    padding: 0 1; /* Add some padding inside the log area */
+}

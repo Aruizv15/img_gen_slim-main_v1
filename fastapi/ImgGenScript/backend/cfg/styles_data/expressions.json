@@ -1,0 +1,116 @@
+{
+    "expressions": [
+        {
+            "value": "amused",
+            "tags": {
+                "emotion": ["emotion_happy", "emotion_playful"]
+            },
+            "style": ["style_playful", "style_casual", "style_street"]
+        },
+        {
+            "value": "cheerful",
+            "tags": {
+                "emotion": ["emotion_happy"]
+            },
+            "style": ["style_playful", "style_casual", "style_soft", "style_sporty"]
+        },
+        {
+            "value": "confident",
+            "tags": {
+                "emotion": ["emotion_confident"]
+            },
+            "style": ["style_chic", "style_formal", "style_edgy", "style_street", "style_glam"]
+        },
+        {
+            "value": "curious",
+            "tags": {
+                "emotion": ["emotion_thoughtful", "emotion_playful"]
+            },
+            "style": ["style_academic", "style_casual", "style_vintage"]
+        },
+        {
+            "value": "dreamy",
+            "tags": {
+                "emotion": ["emotion_thoughtful", "emotion_calm"]
+            },
+            "style": ["style_soft", "style_boho", "style_vintage"]
+        },
+        {
+            "value": "happy",
+            "tags": {
+                "emotion": ["emotion_happy"]
+            },
+            "style": ["style_casual", "style_playful", "style_soft", "style_sporty"]
+        },
+        {
+            "value": "neutral",
+            "tags": {
+                "emotion": ["emotion_neutral"]
+            },
+            "style": ["style_minimalist", "style_formal", "style_chic", "style_edgy", "style_street"]
+        },
+        {
+            "value": "peaceful",
+            "tags": {
+                "emotion": ["emotion_calm"]
+            },
+            "style": ["style_soft", "style_boho", "style_minimalist"]
+        },
+        {
+            "value": "playful",
+            "tags": {
+                "emotion": ["emotion_playful", "emotion_happy", "emotion_confident"]
+            },
+            "style": ["style_playful", "style_casual", "style_street", "style_sporty"]
+        },
+        {
+            "value": "relaxed",
+            "tags": {
+                "emotion": ["emotion_calm"]
+            },
+            "style": ["style_casual", "style_soft", "style_boho", "style_minimalist"]
+        },
+        {
+            "value": "serene",
+            "tags": {
+                "emotion": ["emotion_calm"]
+            },
+            "style": ["style_soft", "style_boho", "style_minimalist", "style_vintage"]
+        },
+        {
+            "value": "soft smile",
+            "tags": {
+                "emotion": ["emotion_happy", "emotion_calm"]
+            },
+            "style": ["style_soft", "style_chic", "style_casual", "style_formal", "style_academic"]
+        },
+        {
+            "value": "thoughtful",
+            "tags": {
+                "emotion": ["emotion_thoughtful", "emotion_calm"]
+            },
+            "style": ["style_academic", "style_vintage", "style_minimalist", "style_soft"]
+        },
+        {
+            "value": "smirking",
+            "tags": {
+                "emotion": ["emotion_confident", "emotion_playful", "emotion_intense"]
+            },
+            "style": ["style_edgy", "style_street", "style_chic", "style_glam"]
+        },
+        {
+            "value": "intense gaze",
+            "tags": {
+                "emotion": ["emotion_confident", "emotion_intense"]
+            },
+            "style": ["style_edgy", "style_glam", "style_formal", "style_chic"]
+        },
+        {
+            "value": "pensive",
+            "tags": {
+                "emotion": ["emotion_thoughtful", "emotion_calm"]
+            },
+            "style": ["style_academic", "style_vintage", "style_soft"]
+        }
+    ]
+}

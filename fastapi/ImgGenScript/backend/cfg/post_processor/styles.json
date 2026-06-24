@@ -1,0 +1,842 @@
+{
+    "style_casual": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 2 }
+            },
+            "random_tint": {
+                "probability": 0.75,
+                "params": { "intensity": 20 }
+            },
+            "random_contrast": {
+                "probability": 0.75,
+                "params": { "low": 0.92, "high": 1 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.8, "high": 0.85 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.02 }
+            },
+            "chromatic_aberration": {
+                "probability": 0.1,
+                "params": { "strength": 2 }
+            },
+            "vignette": {
+                "probability": 0.25,
+                "params": { "low": 0.1, "high": 0.15 }
+            },
+            "flash_effect": {
+                "probability": 0.1,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.5,
+                "params": { "num_spots": 30, "max_size": 12, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.25,
+                "params": { "min_kernel_size": 3, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.25,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 0.7,
+                "params": { "min_std": 3, "max_std": 4 }
+            },
+            "over_sharpening": {
+                "probability": 0.1,
+                "params": { "radius": 1.0, "percent": 110, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 70, "max_quality": 80 }
+            }
+        }
+    },
+    "style_formal": {
+        "effects": {
+            "random_rotation": {
+                "probability": 0.5,
+                "params": { "max_angle": 2 }
+            },
+            "random_tint": {
+                "probability": 0.5,
+                "params": { "intensity": 10 }
+            },
+            "random_contrast": {
+                "probability": 0.5,
+                "params": { "low": 0.92, "high": 1.08 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.75, "high": 0.8 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.02 }
+            },
+            "chromatic_aberration": {
+                "probability": 0,
+                "params": { "strength": 0 }
+            },
+            "vignette": {
+                "probability": 0.3,
+                "params": { "low": 0.05, "high": 0.1 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.1,
+                "params": { "num_spots": 10, "max_size": 10, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.1,
+                "params": { "min_kernel_size": 3, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.1,
+                "params": { "min_kernel_size": 3, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 0.5,
+                "params": { "min_std": 2, "max_std": 3 }
+            },
+            "over_sharpening": {
+                "probability": 0.5,
+                "params": { "radius": 1.0, "percent": 120, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 90, "max_quality": 95 }
+            }
+        }
+    },
+    "style_soft": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 1 }
+            },
+            "random_tint": {
+                "probability": 0.75,
+                "params": { "intensity": 30 }
+            },
+            "random_contrast": {
+                "probability": 0.25,
+                "params": { "low": 0.9, "high": 0.95 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.8, "high": 0.85 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.1 }
+            },
+            "chromatic_aberration": {
+                "probability": 0,
+                "params": { "strength": 0 }
+            },
+            "vignette": {
+                "probability": 0.5,
+                "params": { "low": 0.35, "high": 0.45 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.25,
+                "params": { "num_spots": 30, "max_size": 12, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.75,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.1,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 0.75,
+                "params": { "min_std": 2, "max_std": 3 }
+            },
+            "over_sharpening": {
+                "probability": 0.1,
+                "params": { "radius": 1.0, "percent": 110, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 90, "max_quality": 95 }
+            }
+        }
+    },
+    "style_sporty": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 2.5 }
+            },
+            "random_tint": {
+                "probability": 0.75,
+                "params": { "intensity": 20 }
+            },
+            "random_contrast": {
+                "probability": 0.75,
+                "params": { "low": 0.9, "high": 1.0 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.8, "high": 0.85 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.15 }
+            },
+            "chromatic_aberration": {
+                "probability": 0.5,
+                "params": { "strength": 1 }
+            },
+            "vignette": {
+                "probability": 0.05,
+                "params": { "low": 0.05, "high": 0.1 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.75,
+                "params": { "num_spots": 75, "max_size": 15, "opacity": 0.15 }
+            },
+            "blur": {
+                "probability": 0.7,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.7,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 4 }
+            },
+            "add_noise": {
+                "probability": 0.75,
+                "params": { "min_std": 3, "max_std": 4 }
+            },
+            "over_sharpening": {
+                "probability": 0.5,
+                "params": { "radius": 1.0, "percent": 120, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 80, "max_quality": 85 }
+            }
+        }
+    },
+    "style_chic": {
+        "effects": {
+            "random_rotation": {
+                "probability": 0.6,
+                "params": { "max_angle": 0.5 }
+            },
+            "random_tint": {
+                "probability": 0.1,
+                "params": { "intensity": 5 }
+            },
+            "random_contrast": {
+                "probability": 0.5,
+                "params": { "low": 0.95, "high": 1.05 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.85, "high": 0.9 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.02 }
+            },
+            "chromatic_aberration": {
+                "probability": 0,
+                "params": { "strength": 0 }
+            },
+            "vignette": {
+                "probability": 1,
+                "params": { "low": 0.2, "high": 0.25 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.05,
+                "params": { "num_spots": 10, "max_size": 10, "opacity": 0.1 }
+            },
+            "blur": {
+                "probability": 0.05,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.05,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 0.75,
+                "params": { "min_std": 2, "max_std": 3 }
+            },
+            "over_sharpening": {
+                "probability": 0.7,
+                "params": { "radius": 1.5, "percent": 110, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 90, "max_quality": 99 }
+            }
+        }
+    },
+    "style_vintage": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 2 }
+            },
+            "random_tint": {
+                "probability": 0.9,
+                "params": { "intensity": 50 }
+            },
+            "random_contrast": {
+                "probability": 0.5,
+                "params": { "low": 0.9, "high": 0.95 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.8, "high": 0.85 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.15 }
+            },
+            "chromatic_aberration": {
+                "probability": 0.75,
+                "params": { "strength": 1 }
+            },
+            "vignette": {
+                "probability": 0.7,
+                "params": { "low": 0.15, "high": 0.3 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.9,
+                "params": { "num_spots": 75, "max_size": 15, "opacity": 0.15 }
+            },
+            "blur": {
+                "probability": 0.6,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.4,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 1,
+                "params": { "min_std": 5, "max_std": 6 }
+            },
+            "over_sharpening": {
+                "probability": 0,
+                "params": { "radius": 1.0, "percent": 120, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 75, "max_quality": 80 }
+            }
+        }
+    },
+    "style_minimalist": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 0.5 }
+            },
+            "random_tint": {
+                "probability": 0.1,
+                "params": { "intensity": 10 }
+            },
+            "random_contrast": {
+                "probability": 0.5,
+                "params": { "low": 0.90, "high": 0.95 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.75, "high": 0.8 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.01 }
+            },
+            "chromatic_aberration": {
+                "probability": 0,
+                "params": { "strength": 0 }
+            },
+            "vignette": {
+                "probability": 0.3,
+                "params": { "low": 0.1, "high": 0.2 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0,
+                "params": { "num_spots": 10, "max_size": 10, "opacity": 0.1 }
+            },
+            "blur": {
+                "probability": 0.1,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.1,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 0.3,
+                "params": { "min_std": 1, "max_std": 2 }
+            },
+            "over_sharpening": {
+                "probability": 0.1,
+                "params": { "radius": 1.5, "percent": 120, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 95, "max_quality": 100 }
+            }
+        }
+    },
+    "style_street": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 5 }
+            },
+            "random_tint": {
+                "probability": 0.75,
+                "params": { "intensity": 40 }
+            },
+            "random_contrast": {
+                "probability": 0.8,
+                "params": { "low": 1, "high": 1.1 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.75, "high": 0.8 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.1 }
+            },
+            "chromatic_aberration": {
+                "probability": 0.6,
+                "params": { "strength": 1 }
+            },
+            "vignette": {
+                "probability": 0.5,
+                "params": { "low": 0.15, "high": 0.2 }
+            },
+            "flash_effect": {
+                "probability": 0.5,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.7,
+                "params": { "num_spots": 50, "max_size": 15, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.75,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.75,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 4 }
+            },
+            "add_noise": {
+                "probability": 0.8,
+                "params": { "min_std": 4, "max_std": 5 }
+            },
+            "over_sharpening": {
+                "probability": 0.5,
+                "params": { "radius": 1.1, "percent": 110, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 75, "max_quality": 80 }
+            }
+        }
+    },
+    "style_boho": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 2 }
+            },
+            "random_tint": {
+                "probability": 0.7,
+                "params": { "intensity": 30 }
+            },
+            "random_contrast": {
+                "probability": 0.3,
+                "params": { "low": 0.75, "high": 0.8 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.8, "high": 0.85 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.05 }
+            },
+            "chromatic_aberration": {
+                "probability": 0,
+                "params": { "strength": 0 }
+            },
+            "vignette": {
+                "probability": 0.6,
+                "params": { "low": 0.1, "high": 0.2 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.75,
+                "params": { "num_spots": 75, "max_size": 12, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.5,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.3,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 0.5,
+                "params": { "min_std": 3, "max_std": 4 }
+            },
+            "over_sharpening": {
+                "probability": 0.1,
+                "params": { "radius": 1.0, "percent": 110, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 80, "max_quality": 90 }
+            }
+        }
+    },
+    "style_edgy": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 5 }
+            },
+            "random_tint": {
+                "probability": 0.75,
+                "params": { "intensity": 30 }
+            },
+            "random_contrast": {
+                "probability": 0.9,
+                "params": { "low": 0.9, "high": 1.1 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.8, "high": 0.85 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.15 }
+            },
+            "chromatic_aberration": {
+                "probability": 0.75,
+                "params": { "strength": 1 }
+            },
+            "vignette": {
+                "probability": 0.3,
+                "params": { "low": 0.2, "high": 0.3 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.6,
+                "params": { "num_spots": 60, "max_size": 15, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.75,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.75,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 4 }
+            },
+            "add_noise": {
+                "probability": 0.9,
+                "params": { "min_std": 5, "max_std": 6 }
+            },
+            "over_sharpening": {
+                "probability": 0.7,
+                "params": { "radius": 1.5, "percent": 125, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 80, "max_quality": 85 }
+            }
+        }
+    },
+    "style_academic": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 1 }
+            },
+            "random_tint": {
+                "probability": 0.5,
+                "params": { "intensity": 10 }
+            },
+            "random_contrast": {
+                "probability": 0.3,
+                "params": { "low": 0.9, "high": 1 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.7, "high": 0.75 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.05 }
+            },
+            "chromatic_aberration": {
+                "probability": 0,
+                "params": { "strength": 0 }
+            },
+            "vignette": {
+                "probability": 0.3,
+                "params": { "low": 0.05, "high": 0.15 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.3,
+                "params": { "num_spots": 20, "max_size": 5, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.3,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.1,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 0.75,
+                "params": { "min_std": 2, "max_std": 3 }
+            },
+            "over_sharpening": {
+                "probability": 0.5,
+                "params": { "radius": 1, "percent": 110, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 90, "max_quality": 95 }
+            }
+        }
+    },
+    "style_preppy": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 1 }
+            },
+            "random_tint": {
+                "probability": 0.4,
+                "params": { "intensity": 20 }
+            },
+            "random_contrast": {
+                "probability": 0.5,
+                "params": { "low": 0.9, "high": 1.0 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.85, "high": 0.9 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.05 }
+            },
+            "chromatic_aberration": {
+                "probability": 0,
+                "params": { "strength": 0 }
+            },
+            "vignette": {
+                "probability": 0.1,
+                "params": { "low": 0.05, "high": 0.1 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.1,
+                "params": { "num_spots": 20, "max_size": 10, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.1,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.1,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 0.3,
+                "params": { "min_std": 1, "max_std": 2 }
+            },
+            "over_sharpening": {
+                "probability": 0.5,
+                "params": { "radius": 1.0, "percent": 105, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 95, "max_quality": 100 }
+            }
+        }
+    },
+    "style_athleisure": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 2 }
+            },
+            "random_tint": {
+                "probability": 0.5,
+                "params": { "intensity": 25 }
+            },
+            "random_contrast": {
+                "probability": 0.75,
+                "params": { "low": 0.95, "high": 1.1 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.75, "high": 0.8 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.15 }
+            },
+            "chromatic_aberration": {
+                "probability": 0,
+                "params": { "strength": 0 }
+            },
+            "vignette": {
+                "probability": 0.3,
+                "params": { "low": 0.1, "high": 0.2 }
+            },
+            "flash_effect": {
+                "probability": 0,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.5,
+                "params": { "num_spots": 20, "max_size": 12, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.5,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.5,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 4 }
+            },
+            "add_noise": {
+                "probability": 0.7,
+                "params": { "min_std": 3, "max_std": 4 }
+            },
+            "over_sharpening": {
+                "probability": 0.5,
+                "params": { "radius": 1.0, "percent": 110, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 85, "max_quality": 90 }
+            }
+        }
+    },
+    "style_glam": {
+        "effects": {
+            "random_rotation": {
+                "probability": 1,
+                "params": { "max_angle": 1 }
+            },
+            "random_tint": {
+                "probability": 0.5,
+                "params": { "intensity": 30 }
+            },
+            "random_contrast": {
+                "probability": 0.7,
+                "params": { "low": 0.95, "high": 1.1 }
+            },
+            "random_saturation": {
+                "probability": 1,
+                "params": { "low": 0.85, "high": 0.9 }
+            },
+            "lens_distortion": {
+                "probability": 0,
+                "params": { "strength": 0.05 }
+            },
+            "chromatic_aberration": {
+                "probability": 0,
+                "params": { "strength": 0 }
+            },
+            "vignette": {
+                "probability": 0.5,
+                "params": { "low": 0.15, "high": 0.3 }
+            },
+            "flash_effect": {
+                "probability": 0.7,
+                "params": { "intensity": 0.25, "radius": 2 }
+            },
+            "lens_dust_spots": {
+                "probability": 0.1,
+                "params": { "num_spots": 10, "max_size": 10, "opacity": 0.125 }
+            },
+            "blur": {
+                "probability": 0.3,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "motion_blur": {
+                "probability": 0.1,
+                "params": { "min_kernel_size": 1, "max_kernel_size": 3 }
+            },
+            "add_noise": {
+                "probability": 0.5,
+                "params": { "min_std": 2, "max_std": 3 }
+            },
+            "over_sharpening": {
+                "probability": 0.7,
+                "params": { "radius": 1.0, "percent": 110, "threshold": 5 }
+            },
+            "jpeg_compression_artifacts": {
+                "probability": 1,
+                "params": { "min_quality": 90, "max_quality": 95 }
+            }
+        }
+    }
+}

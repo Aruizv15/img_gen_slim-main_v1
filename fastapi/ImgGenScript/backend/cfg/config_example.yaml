@@ -1,0 +1,163 @@
+# Server and connectivity settings
+comfyui_server_address: "127.0.0.1:8188"
+fastapi_server_address: "127.0.0.1:8000"
+
+# Image processing parameters
+img_max_dimension: 1024
+
+# Restart Comfyui
+max_runs: 1
+restart_timeout: 60
+restart_cooldown: 30
+
+# Connection and error handling parameters
+max_retries: 3
+retries_delay_seconds: 30
+
+# General script execution delays
+interrupt_after_seconds: 1200
+interrupt_wait_seconds: 30
+delay_between_projects: 5
+delay_between_cycles: 5
+
+# Configuration and data files
+donor_info_file: "donor_info.csv"
+
+# Prompt settings
+special_characteristics_weight: 1.1
+
+# Prompt template files
+fullbody_prompt_template: "fullbody_positive_prompt.txt"
+portrait_prompt_template: "portrait_positive_prompt.txt"
+negative_prompt_template: "negative_prompt.txt"
+detailer_positive_prompt_template: "detailer_positive_prompt.txt"
+detailer_negative_prompt_template: "detailer_negative_prompt.txt"
+detailer_wildcard_prompt_template: "detailer_wildcard_prompt.txt"
+hands_positive_prompt_template: "hands_positive_prompt.txt"
+hands_negative_prompt_template: "hands_negative_prompt.txt"
+
+# Detailed settings for each generation type
+portrait:
+  workflow: "portrait.json"
+  checkpoint: "model.safetensors"
+  batch_size: 1
+  controlnet_preprocessor: "None"
+  controlnet_preprocessor_sd_version: "sd15"
+  use_reference_pose: true
+  pose_controlnet_model: "model.safetensors"
+  pose_controlnet_weight: 1.0
+  pose_controlnet_start: 0.0
+  pose_controlnet_end: 1.0
+  k1_steps: 10
+  k1_cfg: 10
+  k1_sampler_name: "euler"
+  k1_scheduler: "simple"
+  ipadapter_lora_name: "model.safetensors"
+  ipadapter_lora_strength_model: 1.0
+  ipadapter_lora_strength_clip: 1.0
+  clip_vision_model: "model.safetensors"
+  insightface_model_name: "model_name"
+  faceid_loader_preset: "FACEID"
+  faceid_loader_lora_strength: 1.0
+  faceid_weight: 1.0
+  faceid_v2_weight: 1.0
+  faceid_weight_type: "linear"
+  faceid_combine_embeds: "concat"
+  faceid_start: 0.0
+  faceid_end: 1.0
+  plus_face_loader_preset: "STANDARD (medium strength)"
+  plus_face_weight: 1.0
+  plus_face_weight_type: "linear"
+  plus_face_combine_embeds: "concat"
+  plus_face_start: 0.0
+  plus_face_end: 1.0
+  k2_steps: 10
+  k2_cfg: 10
+  k2_sampler_name: "euler"
+  k2_scheduler: "simple"
+  k2_denoise: 1.0
+  detailer_bbox_model: "model.pt"
+  detailer_steps: 10
+  detailer_cfg: 10
+  detailer_sampler_name: "euler"
+  detailer_scheduler: "simple"
+  detailer_denoise: 1.0
+  detailer_feather: 5
+  detailer_bbox_threshold: 0.5
+  detailer_bbox_dilation: 10
+  detailer_bbox_crop_factor: 3.0
+  detailer_drop_size: 10
+
+fullbody:
+  workflow: "fullbody.json"
+  checkpoint: "model.safetensors"
+  batch_size: 1
+  k0_steps: 10
+  k0_cfg: 10
+  k0_sampler_name: "euler"
+  k0_scheduler: "simple"
+  dwpreprocessor_bbox_detector: "model.onnx"
+  dwpreprocessor_pose_estimator: "model.pt"
+  use_reference_pose: false
+  pose_controlnet_model: "model.safetensors"
+  pose_controlnet_weight: 1.0
+  pose_controlnet_start: 0.0
+  pose_controlnet_end: 1.0
+  k1_steps: 10
+  k1_cfg: 10
+  k1_sampler_name: "euler"
+  k1_scheduler: "simple"
+  ipadapter_lora_name: "model.safetensors"
+  ipadapter_lora_strength_model: 1.0
+  ipadapter_lora_strength_clip: 1.0
+  clip_vision_model: "model.safetensors"
+  insightface_model_name: "model_name"
+  faceid_loader_preset: "FACEID"
+  faceid_loader_lora_strength: 1.0
+  faceid_weight: 1.0
+  faceid_v2_weight: 1.0
+  faceid_weight_type: "linear"
+  faceid_combine_embeds: "concat"
+  faceid_start: 0.0
+  faceid_end: 1.0
+  plus_face_loader_preset: "STANDARD (medium strength)"
+  plus_face_weight: 1.0
+  plus_face_weight_type: "linear"
+  plus_face_combine_embeds: "concat"
+  plus_face_start: 0.0
+  plus_face_end: 1.0
+  k2_steps: 10
+  k2_cfg: 10
+  k2_sampler_name: "euler"
+  k2_scheduler: "simple"
+  k2_denoise: 1.0
+  detailer_bbox_model: "model.pt"
+  detailer_steps: 10
+  detailer_cfg: 10
+  detailer_sampler_name: "euler"
+  detailer_scheduler: "simple"
+  detailer_denoise: 1.0
+  detailer_feather: 5
+  detailer_bbox_threshold: 0.5
+  detailer_bbox_dilation: 10
+  detailer_bbox_crop_factor: 3.0
+  detailer_drop_size: 10
+  hands_refiner_mask_bbox_padding: 30
+  hands_refiner_mask_type: "based_on_depth"
+  hands_refiner_mask_expand: 5
+  hands_refiner_detect_thr: 0.6
+  hands_refiner_presence_thr: 0.6
+  hands_refiner_controlnet_model: "model.safetensors"
+  hands_refiner_controlnet_weight: 1.0
+  hands_refiner_controlnet_start: 0.0
+  hands_refiner_controlnet_end: 1.0
+  hands_refiner_steps: 10
+  hands_refiner_cfg: 8.0
+  hands_refiner_sampler_name: "euler"
+  hands_refiner_scheduler: "simple"
+  hands_refiner_denoise: 1.0
+
+# Logging
+log_level: "INFO"
+log_format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+generation_verbose: false

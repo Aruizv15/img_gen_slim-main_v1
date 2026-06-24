@@ -1,0 +1,100 @@
+{
+    "hairstyles": [
+        {
+            "value": "Loose",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy", "hair_type_curly", "hair_type_coily"],
+                "hair_length": ["hair_length_short", "hair_length_medium", "hair_length_long"]
+            },
+            "style": ["style_casual", "style_soft", "style_boho", "style_minimalist"]
+        },
+        {
+            "value": "Ponytail",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy", "hair_type_curly", "hair_type_coily"],
+                "hair_length": ["hair_length_medium", "hair_length_long"]
+            },
+            "style": ["style_casual", "style_sporty", "style_preppy", "style_athleisure"]
+        },
+        {
+            "value": "High Ponytail",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy"],
+                "hair_length": ["hair_length_long"]
+            },
+            "style": ["style_chic", "style_street", "style_glam", "style_edgy"]
+        },
+        {
+            "value": "Braid",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy", "hair_type_curly", "hair_type_coily"],
+                "hair_length": ["hair_length_long"]
+            },
+            "style": ["style_boho", "style_soft", "style_casual", "style_vintage"]
+        },
+        {
+            "value": "French Braid",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy"],
+                "hair_length": ["hair_length_long"]
+            },
+            "style": ["style_soft", "style_preppy", "style_academic"]
+        },
+        {
+            "value": "Fishtail Braid",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy"],
+                "hair_length": ["hair_length_long"]
+            },
+            "style": ["style_boho", "style_chic", "style_soft"]
+        },
+        {
+            "value": "Bun",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy", "hair_type_curly", "hair_type_coily"],
+                "hair_length": ["hair_length_medium", "hair_length_long"]
+            },
+            "style": ["style_minimalist", "style_chic", "style_formal", "style_academic"]
+        },
+        {
+            "value": "Messy Bun",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy", "hair_type_curly", "hair_type_coily"],
+                "hair_length": ["hair_length_medium", "hair_length_long"]
+            },
+            "style": ["style_casual", "style_street", "style_boho", "style_soft"]
+        },
+        {
+            "value": "Half-up Half-down",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy", "hair_type_curly", "hair_type_coily"],
+                "hair_length": ["hair_length_medium", "hair_length_long"]
+            },
+            "style": ["style_soft", "style_boho", "style_chic", "style_casual"]
+        },
+        {
+            "value": "Pixie Cut",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy"],
+                "hair_length": ["hair_length_short"]
+            },
+            "style": ["style_edgy", "style_chic", "style_minimalist"]
+        },
+        {
+            "value": "Bob Cut",
+            "tags": {
+                "hair_type": ["hair_type_straight", "hair_type_wavy"],
+                "hair_length": ["hair_length_short", "hair_length_medium"]
+            },
+            "style": ["style_chic", "style_minimalist", "style_formal", "style_vintage"]
+        },
+        {
+            "value": "Afro",
+            "tags": {
+                "hair_type": ["hair_type_coily"],
+                "hair_length": ["hair_length_short", "hair_length_medium", "hair_length_long"]
+            },
+            "style": ["style_street", "style_boho", "style_vintage", "style_edgy"]
+        }
+    ]
+}

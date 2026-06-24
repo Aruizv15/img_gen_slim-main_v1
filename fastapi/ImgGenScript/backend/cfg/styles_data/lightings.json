@@ -1,0 +1,82 @@
+{
+    "lightings": [
+    {
+        "value": "soft light",
+        "tags": {
+            "environment": ["env_indoor", "env_outdoor", "env_natural"],
+            "light_temperature": ["light_temp_neutral", "light_temp_warm"]
+        },
+        "style": [
+            "style_casual", "style_formal", "style_soft", "style_sporty",
+            "style_chic", "style_vintage", "style_minimalist", "style_street",
+            "style_boho", "style_edgy", "style_academic", "style_preppy",
+            "style_athleisure", "style_glam"
+        ]
+    },
+    {
+        "value": "natural light",
+        "tags": {
+            "environment": ["env_outdoor", "env_indoor", "env_natural"],
+            "light_temperature": ["light_temp_neutral"]
+        },
+        "style": [
+            "style_casual", "style_formal", "style_soft", "style_sporty",
+            "style_chic", "style_vintage", "style_minimalist", "style_street",
+            "style_boho", "style_edgy", "style_academic", "style_preppy",
+            "style_athleisure", "style_glam"
+        ]
+    },
+    {
+        "value": "incandescent light",
+        "tags": {
+            "environment": ["env_indoor"],
+            "light_temperature": ["light_temp_warm"]
+        },
+        "style": [
+            "style_casual", "style_formal", "style_soft", "style_sporty",
+            "style_chic", "style_vintage", "style_minimalist", "style_street",
+            "style_boho", "style_edgy", "style_academic", "style_preppy",
+            "style_athleisure", "style_glam"
+        ]
+    },
+    {
+        "value": "fluorescent light",
+        "tags": {
+            "environment": ["env_indoor"],
+            "light_temperature": ["light_temp_cool"]
+        },
+        "style": [
+            "style_casual", "style_formal", "style_soft", "style_sporty",
+            "style_chic", "style_vintage", "style_minimalist", "style_street",
+            "style_boho", "style_edgy", "style_academic", "style_preppy",
+            "style_athleisure", "style_glam"
+        ]
+    },
+    {
+        "value": "overcast light",
+        "tags": {
+            "environment": ["env_outdoor", "env_urban"],
+            "light_temperature": ["light_temp_cool"]
+        },
+        "style": [
+            "style_casual", "style_formal", "style_soft", "style_sporty",
+            "style_chic", "style_vintage", "style_minimalist", "style_street",
+            "style_boho", "style_edgy", "style_academic", "style_preppy",
+            "style_athleisure", "style_glam"
+        ]
+    },
+    {
+        "value": "studio light",
+        "tags": {
+            "environment": ["env_studio", "env_indoor"],
+            "light_temperature": ["light_temp_neutral"]
+        },
+        "style": [
+            "style_casual", "style_formal", "style_soft", "style_sporty",
+            "style_chic", "style_vintage", "style_minimalist", "style_street",
+            "style_boho", "style_edgy", "style_academic", "style_preppy",
+            "style_athleisure", "style_glam"
+        ]
+    }
+]
+}
