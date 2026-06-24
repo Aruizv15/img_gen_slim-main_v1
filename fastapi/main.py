@@ -52,13 +52,7 @@ def download_from_b2(b2_key: str, local_path: str):
     bucket = api.get_bucket_by_name(os.getenv('B2_BUCKET'))
     bucket.download_file_by_name(b2_key).save_to(local_path)
 
-def upload_to_b2(local_path: str, b2_key: str):
-    client = get_b2_client()
-    client.upload_file(local_path, os.getenv('B2_BUCKET'), b2_key)
 
-def download_from_b2(b2_key: str, local_path: str):
-    client = get_b2_client()
-    client.download_file(os.getenv('B2_BUCKET'), b2_key, local_path)
 
 RESTART_TOKEN = str(os.getenv("RESTART_TOKEN"))
 
