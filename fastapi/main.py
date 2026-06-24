@@ -47,8 +47,10 @@ def get_b2_client():
         region_name='us-east-005',
         config=Config(
             signature_version='s3v4',
-            s3={'addressing_style': 'path'},
-            retries={'max_attempts': 3}
+            s3={'addressing_style': 'virtual'},
+            retries={'max_attempts': 3},
+            connect_timeout=30,
+            read_timeout=30
         )
     )
 
