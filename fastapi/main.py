@@ -379,12 +379,16 @@ async def get_current_job():
 @app.get("/debug_b2")
 async def debug_b2():
     try:
-        from b2sdk.v2 import InMemoryAccountInfo, B2Api
-        info = InMemoryAccountInfo()
-        api = B2Api(info)
-        key_id = os.getenv('B2_KEY_ID')
-        app_key = os.getenv('B2_APP_KEY')
-        api.authorize_account("production", key_id, app_key)
-        return {"status": "ok", "key_id": key_id, "bucket": os.getenv('B2_BUCKET')}
+        import boto3
+        from botocore.client import Config
+        client = boto3.client(
+            's3',
+            endpoint_url='https://s3.us-east-005.backblazeb2.com',
+            aws_access_key_id=os.getenv('B2_KEY_ID'),
+            aws_secret_access_key=os.getenv('B2_APP_KEY'),
+            config=Config(signature_version='s3v4', s3={'addressing_style': 'path'})
+        )
+        result = client.list_objects_v2(Bucket=os.getenv('B2_BUCKET'))
+        return {"status": "ok", "key_id": os.getenv('B2_KEY_ID'), "files": result.get('KeyCount', 0)}
     except Exception as e:
         return {"status": "error", "key_id": os.getenv('B2_KEY_ID'), "message": str(e)}
