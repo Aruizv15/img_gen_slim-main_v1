@@ -236,16 +236,10 @@ async def upload_and_save_images_optional(
         if csv:
             content = await csv.read()
             if csv.filename.endswith(('.xlsx', '.xls')):
-                import openpyxl
+                import pandas as pd
                 import io
-                import csv as csv_module
-                wb = openpyxl.load_workbook(io.BytesIO(content))
-                ws = wb.active
-                csv_buffer = io.StringIO()
-                writer = csv_module.writer(csv_buffer)
-                for row in ws.iter_rows(values_only=True):
-                    writer.writerow(row)
-                content = csv_buffer.getvalue().encode('utf-8')
+                df = pd.read_excel(io.BytesIO(content))
+                content = df.to_csv(index=False).encode('utf-8')
             with open(CSV_DATA_PATH, "wb") as f:
                 f.write(content)
             await csv.close()
