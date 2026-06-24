@@ -366,3 +366,16 @@ async def start_job(
 @app.get("/jobs/current")
 async def get_current_job():
     return current_job
+
+@app.get("/debug_b2")
+async def debug_b2():
+    try:
+        from b2sdk.v2 import InMemoryAccountInfo, B2Api
+        info = InMemoryAccountInfo()
+        api = B2Api(info)
+        key_id = os.getenv('B2_KEY_ID')
+        app_key = os.getenv('B2_APP_KEY')
+        api.authorize_account("production", key_id, app_key)
+        return {"status": "ok", "key_id": key_id, "bucket": os.getenv('B2_BUCKET')}
+    except Exception as e:
+        return {"status": "error", "key_id": os.getenv('B2_KEY_ID'), "message": str(e)}
