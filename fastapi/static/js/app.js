@@ -91,16 +91,38 @@ function loadCsv(file) {
   showToast(`CSV cargado: ${file.name}`, 'success');
 
   const reader = new FileReader();
-  reader.onload = (e) => {
-    csvModels = parseCSVContent(e.target.result);
-    matchImagesToModels();
-    renderModelList();
-    updateUploadBadge();
-    if (csvModels.length > 0) {
-      showToast(`${csvModels.length} modelo(s) detectado(s) en el CSV`, 'success');
-    }
-  };
-  reader.readAsText(file);
+  
+  if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      csvModels = XLSX.utils.sheet_to_json(sheet);
+      csvModels = csvModels.map(row => {
+        const normalized = {};
+        Object.keys(row).forEach(k => { normalized[k.trim()] = String(row[k] || '').trim(); });
+        return normalized;
+      });
+      matchImagesToModels();
+      renderModelList();
+      updateUploadBadge();
+      if (csvModels.length > 0) {
+        showToast(`${csvModels.length} modelo(s) detectado(s)`, 'success');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.onload = (e) => {
+      csvModels = parseCSVContent(e.target.result);
+      matchImagesToModels();
+      renderModelList();
+      updateUploadBadge();
+      if (csvModels.length > 0) {
+        showToast(`${csvModels.length} modelo(s) detectado(s)`, 'success');
+      }
+    };
+    reader.readAsText(file);
+  }
   updateUploadBadge();
 }
 
