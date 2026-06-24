@@ -35,24 +35,22 @@ CSV_DATA_PATH  = "/app/shared_data/model_data.csv"
 
 load_dotenv()
 
-import boto3
-from botocore.client import Config
+def get_b2_api():
+    from b2sdk.v2 import InMemoryAccountInfo, B2Api
+    info = InMemoryAccountInfo()
+    api = B2Api(info)
+    api.authorize_account("production", os.getenv('B2_KEY_ID'), os.getenv('B2_APP_KEY'))
+    return api
 
-def get_b2_client():
-    return boto3.client(
-        's3',
-        endpoint_url=os.getenv('B2_ENDPOINT'),
-        aws_access_key_id=os.getenv('B2_KEY_ID'),
-        aws_secret_access_key=os.getenv('B2_APP_KEY'),
-        region_name='us-east-005',
-        config=Config(
-            signature_version='s3v4',
-            s3={'addressing_style': 'virtual'},
-            retries={'max_attempts': 3},
-            connect_timeout=30,
-            read_timeout=30
-        )
-    )
+def upload_to_b2(local_path: str, b2_key: str):
+    api = get_b2_api()
+    bucket = api.get_bucket_by_name(os.getenv('B2_BUCKET'))
+    bucket.upload_local_file(local_file=local_path, file_name=b2_key)
+
+def download_from_b2(b2_key: str, local_path: str):
+    api = get_b2_api()
+    bucket = api.get_bucket_by_name(os.getenv('B2_BUCKET'))
+    bucket.download_file_by_name(b2_key).save_to(local_path)
 
 def upload_to_b2(local_path: str, b2_key: str):
     client = get_b2_client()

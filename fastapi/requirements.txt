@@ -9,3 +9,4 @@ websocket-client == 1.8.0
 runpod
 nest_asyncio
 boto3
+b2sdk
