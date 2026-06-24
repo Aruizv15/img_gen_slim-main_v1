@@ -15,9 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from typing import List, Optional
 from dotenv import load_dotenv
-sys.path.insert(0, "/workspace/ImgGenScript")
-sys.path.insert(0, "/workspace/ImgGenScript/backend")
-from backend.src.batch.orchestrator import run_batch
+# Orchestrator solo disponible en RunPod
 
 current_job = {
     "job_id": None,
@@ -213,6 +211,16 @@ async def upload_and_save_images_optional(
 
         del_all_files(TEMP_IMG_DIR)
 
+        # Subir a Backblaze
+        try:
+            for f in os.listdir(INPUT_IMG_DIR):
+                local = os.path.join(INPUT_IMG_DIR, f)
+                upload_to_b2(local, f"input_images/{f}")
+            if csv:
+                upload_to_b2(CSV_DATA_PATH, "csv/model_data.csv")
+        except Exception as e:
+            print(f"[B2] Error subiendo a Backblaze: {e}")
+
         return {
             "status": "success",
             "message": "Upload process completed.",
@@ -225,13 +233,6 @@ async def upload_and_save_images_optional(
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 
-# Subir a Backblaze
-for file in os.listdir(INPUT_IMG_DIR):
-    local = os.path.join(INPUT_IMG_DIR, file)
-    upload_to_b2(local, f"input_images/{file}")
-
-if csv:
-    upload_to_b2(CSV_DATA_PATH, "csv/model_data.csv")
 
 
 @app.post("/free_vram")
