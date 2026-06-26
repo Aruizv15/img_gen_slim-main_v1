@@ -11,5 +11,8 @@ COPY main.py /app/
 COPY templates/ /app/templates/
 COPY static/ /app/static/
 
+RUN mkdir -p /app/shared_data/input_images /app/shared_data/output_images \
+    /app/shared_data/reference_images /app/shared_data/temp_images
+
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
