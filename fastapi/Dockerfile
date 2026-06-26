@@ -1,8 +1,16 @@
-FROM python:3.10-slim
+FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl git libgl1 libglib2.0-0 && \
     rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir --force-reinstall \
+        torch==2.1.0+cu118 \
+        torchvision==0.16.0+cu118 \
+        torchaudio==2.1.0+cu118 \
+        --index-url https://download.pytorch.org/whl/cu118
+
+RUN python -c "import torch; assert torch.version.cuda.startswith('11.8'), f'CUDA INCORRECTO: {torch.version.cuda}'; print('OK cu118')"
 
 WORKDIR /app
 
@@ -11,11 +19,30 @@ RUN mkdir -p /app/templates /app/static/css /app/static/js \
     /app/shared_data/reference_images /app/shared_data/temp_images \
     /app/workflows
 
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI_app && \
+    cd /workspace/ComfyUI_app && \
+    git checkout tags/v0.3.10
+
+RUN grep -vE "^torch|^torchvision|^torchaudio" \
+        /workspace/ComfyUI_app/requirements.txt > /tmp/comfy_reqs.txt && \
+    pip install --no-cache-dir -r /tmp/comfy_reqs.txt
+
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN grep -vE "^torch|^torchvision|^torchaudio" \
+        /app/requirements.txt > /tmp/app_reqs.txt && \
+    pip install --no-cache-dir -r /tmp/app_reqs.txt
 
 COPY ImgGenScript/ /workspace/ImgGenScript/
-RUN pip install --no-cache-dir -r /workspace/ImgGenScript/backend/requirements.txt
+RUN grep -vE "^torch|^torchvision|^torchaudio" \
+        /workspace/ImgGenScript/backend/requirements.txt > /tmp/imggen_reqs.txt && \
+    pip install --no-cache-dir -r /tmp/imggen_reqs.txt
+
+COPY ImgGen/volumes/custom_nodes/ /workspace/ComfyUI_app/custom_nodes/
+
+COPY download_models.py /tmp/download_models.py
+RUN pip install --no-cache-dir "huggingface_hub>=0.20" && \
+    python /tmp/download_models.py
+
 
 COPY main.py /app/
 COPY handler.py /app/
@@ -23,6 +50,7 @@ COPY test_input.json /app/test_input.json
 COPY templates/ /app/templates/
 COPY static/ /app/static/
 
-EXPOSE 8000
+RUN python -c "import torch; assert torch.version.cuda.startswith('11.8'), f'torch sobreescrito!'; print('OK torch intacto')"
 
+EXPOSE 8000
 CMD ["python", "/app/handler.py"]
