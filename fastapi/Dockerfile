@@ -41,8 +41,8 @@ RUN cd /workspace/ComfyUI_app/custom_nodes && \
     git clone https://github.com/SLAPaper/ComfyUI-Elegant-Resource-Monitor.git && \
     git clone https://github.com/SLAPaper/ComfyUI-FreeMemory.git && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
-    git clone https://github.com/spacepxl/ComfyUI-FaceAnalysis.git && \
-    git clone https://github.com/kijai/comfyui-art-venture.git
+    git clone https://github.com/cubiq/ComfyUI_FaceAnalysis.git && \
+    git clone https://github.com/sipherxyz/comfyui-art-venture.git
     
 COPY download_models.py /tmp/download_models.py
 ARG HF_TOKEN
