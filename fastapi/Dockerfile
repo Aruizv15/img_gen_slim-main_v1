@@ -28,7 +28,22 @@ COPY ImgGenScript/ /workspace/ImgGenScript/
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
         /workspace/ImgGenScript/backend/requirements.txt > /tmp/imggen_reqs.txt && \
     pip install --no-cache-dir -r /tmp/imggen_reqs.txt
-COPY ImgGen/volumes/custom_nodes/ /workspace/ComfyUI_app/custom_nodes/
+    
+RUN cd /workspace/ComfyUI_app/custom_nodes && \
+    git clone https://github.com/crystian/ComfyUI-Crystools.git && \
+    git clone https://github.com/cubiq/ComfyUI_essentials.git && \
+    git clone https://github.com/Fannovel16/comfyui_controlnet_aux.git && \
+    git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Inspire-Pack.git && \
+    git clone https://github.com/RockOfFire/ComfyUI_Comfyroll_CustomNodes.git && \
+    git clone https://github.com/ZHO-ZHO-ZHO/ComfyUI-Easy-Use.git && \
+    git clone https://github.com/SLAPaper/ComfyUI-Elegant-Resource-Monitor.git && \
+    git clone https://github.com/SLAPaper/ComfyUI-FreeMemory.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
+    git clone https://github.com/spacepxl/ComfyUI-FaceAnalysis.git && \
+    git clone https://github.com/kijai/comfyui-art-venture.git
+    
 COPY download_models.py /tmp/download_models.py
 ARG HF_TOKEN
 ENV HF_TOKEN=${HF_TOKEN}
