@@ -1,3 +1,6 @@
+import subprocess
+subprocess.run(["pip", "install", "torchsde", "-q"], check=True)
+
 import runpod
 import os
 import sys
