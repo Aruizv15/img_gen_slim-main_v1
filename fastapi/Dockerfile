@@ -25,7 +25,8 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI_a
 
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
         /workspace/ComfyUI_app/requirements.txt > /tmp/comfy_reqs.txt && \
-    pip install --no-cache-dir -r /tmp/comfy_reqs.txt
+    pip install --no-cache-dir -r /tmp/comfy_reqs.txt && \
+    pip install --no-cache-dir torchsde
 
 COPY requirements.txt /app/
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
@@ -33,13 +34,16 @@ RUN grep -vE "^torch|^torchvision|^torchaudio" \
     pip install --no-cache-dir -r /tmp/app_reqs.txt
 
 COPY ImgGenScript/ /workspace/ImgGenScript/
-RUN grep -vE "^torch|^torchvision|^torchaudio" \
+RUN grep -vE "^torch|^torchvision|^torchaudio" 
         /workspace/ImgGenScript/backend/requirements.txt > /tmp/imggen_reqs.txt && \
     pip install --no-cache-dir -r /tmp/imggen_reqs.txt
 
 COPY ImgGen/volumes/custom_nodes/ /workspace/ComfyUI_app/custom_nodes/
 
 COPY download_models.py /tmp/download_models.py
+ARG HF_TOKEN
+ENV HF_TOKEN=${HF_TOKEN}
+
 RUN pip install --no-cache-dir "huggingface_hub>=0.20" && \
     python /tmp/download_models.py
 
