@@ -30,19 +30,19 @@ RUN grep -vE "^torch|^torchvision|^torchaudio" \
     pip install --no-cache-dir -r /tmp/imggen_reqs.txt
     
 RUN cd /workspace/ComfyUI_app/custom_nodes && \
-    git clone https://github.com/crystian/ComfyUI-Crystools.git && \
-    git clone https://github.com/cubiq/ComfyUI_essentials.git && \
-    git clone https://github.com/Fannovel16/comfyui_controlnet_aux.git && \
-    git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Inspire-Pack.git && \
-    git clone https://github.com/RockOfFire/ComfyUI_Comfyroll_CustomNodes.git && \
-    git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
-    git clone https://github.com/SLAPaper/ComfyUI-Elegant-Resource-Monitor.git && \
-    git clone https://github.com/SLAPaper/ComfyUI-FreeMemory.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
-    git clone https://github.com/cubiq/ComfyUI_FaceAnalysis.git && \
-    git clone https://github.com/sipherxyz/comfyui-art-venture.git
+    git clone https://github.com/crystian/ComfyUI-Crystools.git || true && \
+    git clone https://github.com/cubiq/ComfyUI_essentials.git || true && \
+    git clone https://github.com/Fannovel16/comfyui_controlnet_aux.git || true && \
+    git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git || true && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git || true && \
+    git clone https://github.com/ltdrdata/ComfyUI-Inspire-Pack.git || true && \
+    git clone https://github.com/RockOfFire/ComfyUI_Comfyroll_CustomNodes.git || true && \
+    git clone https://github.com/yolain/ComfyUI-Easy-Use.git || true && \
+    git clone https://github.com/SLAPaper/ComfyUI-Elegant-Resource-Monitor.git || true && \
+    git clone https://github.com/SLAPaper/ComfyUI-FreeMemory.git || true && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git || true && \
+    git clone https://github.com/cubiq/ComfyUI_FaceAnalysis.git || true && \
+    git clone https://github.com/sipherxyz/comfyui-art-venture.git || true
     
 COPY download_models.py /tmp/download_models.py
 ARG HF_TOKEN
