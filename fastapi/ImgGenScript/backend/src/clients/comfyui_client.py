@@ -161,7 +161,7 @@ class ComfyUIClient(BaseAPIClient):
         """
         result = self.queue_prompt(workflow)
         if result["status"] == "error":
-            raise RuntimeError(f"Queue failed: {result['message']}")
+            raise RuntimeError(f"Queue failed: {result['message']} | Detail: {result.get('detail', 'No detail')}")
 
         prompt_id = result["data"]["prompt_id"]
 
