@@ -107,7 +107,7 @@ class Settings(BaseSettings):
     comfyui_server_address: str = Field(default="127.0.0.1:8188")
 
     # --- ComfyUI Container Paths ---
-    comfyui_input_dir: str = Field(default="/app/input")
+    comfyui_input_dir: str = Field(default="/workspace/ComfyUI_app/input")
     comfyui_reference_dir: str = Field(default="/app/reference")
     comfyui_output_dir: str = Field(default="/app/ComfyUI/output")
 
