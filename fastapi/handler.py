@@ -82,9 +82,15 @@ for _i in range(60):
     if _comfyui_process.poll() is not None:
         _comfyui_log.flush()
         raise RuntimeError(f"[COMFYUI] Crasheó: {open('/tmp/comfyui.log').read()[-1000:]}")
-    try:
+ try:
         urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=2)
         print(f"[COMFYUI] Listo en {_i*5}s")
+        # Verificar nodos disponibles en ComfyUI
+        import json
+        resp = urllib.request.urlopen("http://127.0.0.1:8188/object_info", timeout=10)
+        nodes = json.loads(resp.read())
+        custom_nodes = [k for k in nodes.keys() if any(x in k for x in ['easy', 'Inspire', 'AV_', 'IPAdapter', 'FaceDetailer', 'Ultralytic', 'DWPre', 'MeshGraph', 'LoadImagesFromDir'])]
+        print(f"[NODES CHECK] {custom_nodes}")
         break
     except Exception:
         time.sleep(5)
