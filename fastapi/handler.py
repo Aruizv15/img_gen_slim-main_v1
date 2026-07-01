@@ -1,252 +1,245 @@
-import subprocess
-subprocess.run(["pip", "install", "torchsde", "-q"], check=True)
-
-import runpod
 import os
 import sys
-import asyncio
-import hashlib
-import base64
-import httpx
-import nest_asyncio
-import subprocess
 import time
 import shutil
+import subprocess
+import httpx
 
-nest_asyncio.apply()
+# ── Variables de entorno ──────────────────────────────────────────────────────
+COMFYUI_URL   = os.getenv("COMFYUI_URL", "http://127.0.0.1:8188")
+COMFYUI_INPUT = os.getenv("COMFYUI_INPUT_DIR", "/workspace/ComfyUI_app/input")
+B2_KEY_ID     = os.getenv("B2_KEY_ID")
+B2_APP_KEY    = os.getenv("B2_APP_KEY")
+B2_BUCKET     = os.getenv("B2_BUCKET", "batchapp-storage")
+B2_ENDPOINT   = os.getenv("B2_ENDPOINT", "https://s3.us-east-005.backblazeb2.com")
 
-import urllib.request
+IMGGEN_PATH   = "/workspace/ImgGenScript"
+SHARED_INPUT  = "/app/shared_data/input_images"
+SHARED_OUTPUT = "/app/shared_data/output_images"
+SHARED_CSV    = "/app/shared_data/csv"
 
-# Crear directorios requeridos por FastAPI
-for _d in [
-    '/app/shared_data/input_images',
-    '/app/shared_data/output_images',
-    '/app/shared_data/reference_images',
-    '/app/shared_data/temp_images',
-    '/app/static',
-    '/app/templates',
-]:
-    os.makedirs(_d, exist_ok=True)
+sys.path.insert(0, IMGGEN_PATH)
 
-# Verificar ComfyUI
-if not os.path.exists("/workspace/ComfyUI_app/main.py"):
-    print("[ERROR] ComfyUI no encontrado en /workspace/ComfyUI_app/main.py")
-    for root, dirs, _ in os.walk("/workspace", topdown=True):
-        dirs[:] = [d for d in dirs if d not in ['__pycache__']]
-        if root.replace("/workspace", "").count(os.sep) < 3:
-            print(f"[DIR] {root}")
-        break
+# ── Backblaze B2 ──────────────────────────────────────────────────────────────
+def b2_authorize():
+    import base64
+    creds = base64.b64encode(f"{B2_KEY_ID}:{B2_APP_KEY}".encode()).decode()
+    r = httpx.get(
+        "https://api.backblazeb2.com/b2api/v2/b2_authorize_account",
+        headers={"Authorization": f"Basic {creds}"},
+        timeout=30,
+    )
+    r.raise_for_status()
+    d = r.json()
+    return d["authorizationToken"], d["apiUrl"], d["downloadUrl"]
 
-# Arrancar FastAPI y ComfyUI en paralelo
-_fastapi_log = open('/tmp/fastapi.log', 'w')
-_fastapi_process = subprocess.Popen(
-    ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"],
-    stdout=_fastapi_log,
-    stderr=_fastapi_log,
-    cwd="/app"
-)
-print("[FASTAPI] Arrancando...")
+def _get_bucket_id(auth_token, api_url):
+    r = httpx.post(
+        f"{api_url}/b2api/v2/b2_list_buckets",
+        headers={"Authorization": auth_token},
+        json={"accountId": B2_KEY_ID[:12]},
+        timeout=30,
+    )
+    r.raise_for_status()
+    for b in r.json()["buckets"]:
+        if b["bucketName"] == B2_BUCKET:
+            return b["bucketId"]
+    raise RuntimeError(f"Bucket {B2_BUCKET} no encontrado")
 
-_comfyui_log = open('/tmp/comfyui.log', 'w')
-_comfyui_process = subprocess.Popen(
-    [
-        "python", "/workspace/ComfyUI_app/main.py",
-        "--listen", "0.0.0.0",
-        "--port", "8188",
-        "--disable-auto-launch",
-        "--cuda-device", "0",
-    ],
-    stdout=_comfyui_log,
-    stderr=_comfyui_log
-)
-print("[COMFYUI] Arrancando...")
+def b2_list_files(auth_token, api_url, prefix):
+    r = httpx.post(
+        f"{api_url}/b2api/v2/b2_list_file_names",
+        headers={"Authorization": auth_token},
+        json={"bucketId": _get_bucket_id(auth_token, api_url), "prefix": prefix, "maxFileCount": 1000},
+        timeout=30,
+    )
+    r.raise_for_status()
+    return [f["fileName"] for f in r.json()["files"]]
 
-# Esperar FastAPI (máx 60s)
-for _i in range(30):
-    if _fastapi_process.poll() is not None:
-        _fastapi_log.flush()
-        raise RuntimeError(f"[FASTAPI] Crasheó: {open('/tmp/fastapi.log').read()[-1000:]}")
-    try:
-        urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=2)
-        print(f"[FASTAPI] Listo en {_i*2}s")
-        break
-    except Exception:
-        time.sleep(2)
-        if _i % 5 == 0:
-            _fastapi_log.flush()
-            print(f"[FASTAPI LOG] {open('/tmp/fastapi.log').read()[-300:]}")
-else:
-    raise RuntimeError("[FASTAPI] No respondió en 60 segundos")
+def b2_download_file(auth_token, download_url, file_name, local_path):
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    r = httpx.get(
+        f"{download_url}/file/{B2_BUCKET}/{file_name}",
+        headers={"Authorization": auth_token},
+        timeout=120,
+    )
+    r.raise_for_status()
+    with open(local_path, "wb") as f:
+        f.write(r.content)
+    print(f"[B2] Descargado: {file_name}", flush=True)
 
-# Esperar ComfyUI (máx 5 min)
-for _i in range(60):
-    if _comfyui_process.poll() is not None:
-        _comfyui_log.flush()
-        raise RuntimeError(f"[COMFYUI] Crasheó: {open('/tmp/comfyui.log').read()[-1000:]}")
-    try:
-        urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=2)
-        print(f"[COMFYUI] Listo en {_i*5}s")
-        # Verificar nodos disponibles en ComfyUI
-        import json
-        resp = urllib.request.urlopen("http://127.0.0.1:8188/object_info", timeout=10)
-        nodes = json.loads(resp.read())
-        custom_nodes = [k for k in nodes.keys() if any(x in k for x in ['easy', 'Inspire', 'AV_', 'IPAdapter', 'FaceDetailer', 'Ultralytic', 'DWPre', 'MeshGraph', 'LoadImagesFromDir'])]
-        print(f"[NODES CHECK] {custom_nodes}")
-        break
-    except Exception:
-        time.sleep(5)
-        if _i % 6 == 0:
-            _comfyui_log.flush()
-            print(f"[COMFYUI LOG] {open('/tmp/comfyui.log').read()[-500:]}")
-else:
-    raise RuntimeError("[COMFYUI] No respondió en 5 minutos")
+def b2_upload_file(auth_token, api_url, local_path, b2_key):
+    r = httpx.post(
+        f"{api_url}/b2api/v2/b2_get_upload_url",
+        headers={"Authorization": auth_token},
+        json={"bucketId": _get_bucket_id(auth_token, api_url)},
+        timeout=30,
+    )
+    r.raise_for_status()
+    upload_data = r.json()
+    with open(local_path, "rb") as f:
+        content = f.read()
+    import hashlib
+    sha1 = hashlib.sha1(content).hexdigest()
+    r = httpx.post(
+        upload_data["uploadUrl"],
+        headers={
+            "Authorization": upload_data["authorizationToken"],
+            "X-Bz-File-Name": b2_key,
+            "Content-Type": "b2/x-auto",
+            "X-Bz-Content-Sha1": sha1,
+        },
+        content=content,
+        timeout=300,
+    )
+    r.raise_for_status()
+    print(f"[B2] Subido: {b2_key}", flush=True)
 
-async def b2_authorize():
-    key_id = os.getenv('B2_KEY_ID')
-    app_key = os.getenv('B2_APP_KEY')
-    credentials = base64.b64encode(f"{key_id}:{app_key}".encode()).decode()
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            "https://api.backblazeb2.com/b2api/v2/b2_authorize_account",
-            headers={"Authorization": f"Basic {credentials}"}
-        )
-        return r.json()
+# ── ComfyUI ───────────────────────────────────────────────────────────────────
+_comfyui_process = None
 
-async def get_bucket_id(auth):
-    api_url = auth["apiUrl"]
-    auth_token = auth["authorizationToken"]
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{api_url}/b2api/v2/b2_list_buckets",
-            headers={"Authorization": auth_token},
-            params={"accountId": auth["accountId"], "bucketName": os.getenv('B2_BUCKET')}
-        )
-        buckets = r.json().get("buckets", [])
-        return buckets[0]["bucketId"] if buckets else None
+def start_comfyui():
+    global _comfyui_process
+    print("[COMFYUI] Arrancando...", flush=True)
+    log = open("/tmp/comfyui.log", "w")
+    _comfyui_process = subprocess.Popen(
+        [
+            "python", "/workspace/ComfyUI_app/main.py",
+            "--listen", "0.0.0.0",
+            "--port", "8188",
+            "--disable-auto-launch",
+            "--cuda-device", "0",
+        ],
+        stdout=log,
+        stderr=log,
+    )
 
-async def download_inputs_from_b2(vrepro_id):
-    auth = await b2_authorize()
-    api_url = auth["apiUrl"]
-    auth_token = auth["authorizationToken"]
-    download_url = auth["downloadUrl"]
-    bucket = os.getenv('B2_BUCKET')
-
-    input_dir = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
-    os.makedirs(input_dir, exist_ok=True)
-
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{api_url}/b2api/v2/b2_list_file_names",
-            headers={"Authorization": auth_token},
-            params={"bucketId": await get_bucket_id(auth), "prefix": "input_images/"}
-        )
-        files = r.json().get("files", [])
-        for f in files:
-            filename = f["fileName"].split("/")[-1]
-            if filename:
-                dl = await client.get(
-                    f"{download_url}/file/{bucket}/{f['fileName']}",
-                    headers={"Authorization": auth_token}
-                )
-                with open(os.path.join(input_dir, filename), "wb") as out:
-                    out.write(dl.content)
-
-        csv_path = '/workspace/ImgGenScript/files/csv/donor_info.csv'
-        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+def wait_for_comfyui(timeout=300):
+    start = time.time()
+    while time.time() - start < timeout:
         try:
-            dl = await client.get(
-                f"{download_url}/file/{bucket}/csv/model_data.csv",
-                headers={"Authorization": auth_token}
-            )
-            with open(csv_path, "wb") as out:
-                out.write(dl.content)
-        except Exception as e:
-            print(f"[WARN] CSV no descargado: {e}")
+            r = httpx.get(f"{COMFYUI_URL}/system_stats", timeout=5)
+            if r.status_code == 200:
+                print("[COMFYUI] Listo", flush=True)
+                return
+        except Exception:
+            pass
+        time.sleep(3)
+    log = open("/tmp/comfyui.log").read()[-2000:]
+    raise RuntimeError(f"[COMFYUI] No respondió en {timeout}s:\n{log}")
 
-async def upload_outputs_to_b2(vrepro_id):
-    auth = await b2_authorize()
-    api_url = auth["apiUrl"]
-    auth_token = auth["authorizationToken"]
-    bucket_id = await get_bucket_id(auth)
-    output_dir = '/app/shared_data/output_images'
+# ── Preparar archivos ─────────────────────────────────────────────────────────
+def prepare_input_files(vrepro_id, auth_token, api_url, download_url):
+    """
+    Descarga fotos de B2 y las copia al directorio de input de ComfyUI.
+    FIX CLAVE: ComfyUI lee desde COMFYUI_INPUT/{vrepro_id}/
+    El settings.py tenía comfyui_input_dir=/app/input que estaba vacío.
+    """
+    local_input = os.path.join(SHARED_INPUT, vrepro_id)
+    os.makedirs(local_input, exist_ok=True)
 
-    if not os.path.isdir(output_dir):
-        return
+    # Descargar fotos desde B2
+    files = b2_list_files(auth_token, api_url, f"input_images/{vrepro_id}/")
+    for b2_key in files:
+        filename = os.path.basename(b2_key)
+        b2_download_file(auth_token, download_url, b2_key, os.path.join(local_input, filename))
 
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{api_url}/b2api/v2/b2_get_upload_url",
-            headers={"Authorization": auth_token},
-            params={"bucketId": bucket_id}
-        )
-        upload_data = r.json()
+    # Copiar al input de ComfyUI (aquí es donde el Orchestrator las busca)
+    comfyui_dir = os.path.join(COMFYUI_INPUT, vrepro_id)
+    if os.path.exists(comfyui_dir):
+        shutil.rmtree(comfyui_dir)
+    shutil.copytree(local_input, comfyui_dir)
+    print(f"[INPUT] Fotos en ComfyUI: {comfyui_dir}", flush=True)
 
-        for f in os.listdir(output_dir):
-            if f.lower().endswith(('.jpg', '.jpeg', '.png')):
-                local_path = os.path.join(output_dir, f)
-                with open(local_path, "rb") as fp:
-                    content = fp.read()
-                sha1 = hashlib.sha1(content).hexdigest()
-                await client.post(
-                    upload_data["uploadUrl"],
-                    headers={
-                        "Authorization": upload_data["authorizationToken"],
-                        "X-Bz-File-Name": f"output_images/{vrepro_id}/{f}",
-                        "Content-Type": "b2/x-auto",
-                        "Content-Length": str(len(content)),
-                        "X-Bz-Content-Sha1": sha1
-                    },
-                    content=content
-                )
-                print(f"[B2] Subida: output_images/{vrepro_id}/{f}")
+    return comfyui_dir
 
-def handler(job):
-    sys.path.insert(0, "/workspace/ImgGenScript")
-    sys.path.insert(0, "/workspace/ImgGenScript/backend")
-
-    from backend.src.batch.orchestrator import BatchOrchestrator
-
-    job_input = job["input"]
-    vrepro_id = job_input.get("vreproID", "")
-    generation_type = job_input.get("generation_type", "fullbody")
-    max_cycles = job_input.get("max_cycles", 1)
-    
+def prepare_csv(auth_token, download_url):
+    os.makedirs(SHARED_CSV, exist_ok=True)
     try:
-        loop = asyncio.get_event_loop()
-
-        print(f"[B2] Descargando inputs para {vrepro_id}")
-        loop.run_until_complete(download_inputs_from_b2(vrepro_id))
-
-        # Copiar imágenes a la carpeta de input de ComfyUI
-        comfy_input = '/workspace/ComfyUI_app/input'
-        os.makedirs(comfy_input, exist_ok=True)
-        src = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
-        if os.path.isdir(src):
-            for f in os.listdir(src):
-                shutil.copy2(os.path.join(src, f), os.path.join(comfy_input, f))
-            print(f"[COMFYUI INPUT] Copiadas imágenes: {os.listdir(comfy_input)}")
-
-        async def main():
-            orchestrator = BatchOrchestrator(generation_type=generation_type)
-            await orchestrator.run(
-                max_cycles=max_cycles,
-                donor_list=[vrepro_id],
-                use_pose_override=False,
-                use_hands_refiner_override=True,
-                use_amateur_effect_override=False,
-            )
-
-        loop.run_until_complete(main())
-
-        print(f"[B2] Subiendo outputs de {vrepro_id}")
-        loop.run_until_complete(upload_outputs_to_b2(vrepro_id))
-
-        return {"status": "done", "vreproID": vrepro_id}
+        b2_download_file(auth_token, download_url, "csv/model_data.csv",
+                         os.path.join(SHARED_CSV, "model_data.csv"))
     except Exception as e:
-        _comfyui_log.flush()
-        _fastapi_log.flush()
-        print(f"[COMFYUI LOG FINAL]\n{open('/tmp/comfyui.log').read()[-2000:]}")
-        print(f"[FASTAPI LOG FINAL]\n{open('/tmp/fastapi.log').read()[-500:]}")
-        return {"status": "error", "message": str(e)}
+        print(f"[B2] CSV no disponible: {e}", flush=True)
 
+def collect_outputs(vrepro_id):
+    output_dir = os.path.join(SHARED_OUTPUT, vrepro_id)
+    os.makedirs(output_dir, exist_ok=True)
+    comfyui_output = "/workspace/ComfyUI_app/output"
+    images = []
+    if os.path.exists(comfyui_output):
+        for f in os.listdir(comfyui_output):
+            if f.lower().endswith((".png", ".jpg", ".jpeg")):
+                src = os.path.join(comfyui_output, f)
+                dst = os.path.join(output_dir, f)
+                shutil.copy2(src, dst)
+                images.append(dst)
+    return images
+
+def upload_outputs(images, vrepro_id, auth_token, api_url):
+    uploaded = []
+    for local_path in images:
+        b2_key = f"output_images/{vrepro_id}/{os.path.basename(local_path)}"
+        b2_upload_file(auth_token, api_url, local_path, b2_key)
+        uploaded.append(b2_key)
+    return uploaded
+
+# ── Orchestrator ──────────────────────────────────────────────────────────────
+def run_orchestrator(vrepro_id, generation_type):
+    # Apuntar el Orchestrator al directorio correcto de ComfyUI
+    os.environ["COMFYUI_SERVER_ADDRESS"] = "127.0.0.1:8188"
+    os.environ["FASTAPI_SERVER_ADDRESS"] = "127.0.0.1:8000"
+    os.environ["COMFYUI_INPUT_DIR"] = COMFYUI_INPUT
+
+    from backend.src.batch.orchestrator import run_batch
+    print(f"[ORCHESTRATOR] {vrepro_id} tipo={generation_type}", flush=True)
+    run_batch(
+        generation_type=generation_type,
+        max_cycles=1,
+        donor_list=[vrepro_id],
+    )
+    print(f"[ORCHESTRATOR] Completado {vrepro_id}", flush=True)
+
+# ── Handler RunPod ────────────────────────────────────────────────────────────
+def handler(job):
+    job_input       = job.get("input", {})
+    vrepro_id       = job_input.get("vrepro_id")
+    generation_type = job_input.get("generation_type", "fullbody")
+
+    if not vrepro_id:
+        return {"error": "Falta vrepro_id en el input"}
+
+    print(f"[JOB] vrepro_id={vrepro_id} tipo={generation_type}", flush=True)
+
+    # 1. Autorizar B2
+    auth_token, api_url, download_url = b2_authorize()
+
+    # 2. Arrancar ComfyUI
+    start_comfyui()
+    wait_for_comfyui()
+
+    # 3. Preparar archivos (FIX)
+    prepare_input_files(vrepro_id, auth_token, api_url, download_url)
+    prepare_csv(auth_token, download_url)
+
+    # 4. Ejecutar Orchestrator
+    run_orchestrator(vrepro_id, generation_type)
+
+    # 5. Recoger outputs
+    images = collect_outputs(vrepro_id)
+    print(f"[OUTPUT] {len(images)} imágenes", flush=True)
+
+    if not images:
+        return {"error": "No se generaron imágenes", "vrepro_id": vrepro_id}
+
+    # 6. Subir a B2
+    uploaded = upload_outputs(images, vrepro_id, auth_token, api_url)
+
+    return {
+        "status": "ok",
+        "vrepro_id": vrepro_id,
+        "images_generated": len(images),
+        "output_keys": uploaded,
+    }
+
+import runpod
 runpod.serverless.start({"handler": handler})
