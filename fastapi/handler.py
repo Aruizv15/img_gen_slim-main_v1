@@ -11,6 +11,7 @@ import httpx
 import nest_asyncio
 import subprocess
 import time
+import shutil
 
 nest_asyncio.apply()
 
@@ -82,7 +83,7 @@ for _i in range(60):
     if _comfyui_process.poll() is not None:
         _comfyui_log.flush()
         raise RuntimeError(f"[COMFYUI] Crasheó: {open('/tmp/comfyui.log').read()[-1000:]}")
- try:
+    try:
         urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=2)
         print(f"[COMFYUI] Listo en {_i*5}s")
         # Verificar nodos disponibles en ComfyUI
@@ -215,6 +216,15 @@ def handler(job):
 
         print(f"[B2] Descargando inputs para {vrepro_id}")
         loop.run_until_complete(download_inputs_from_b2(vrepro_id))
+
+        # Copiar imágenes a la carpeta de input de ComfyUI
+        comfy_input = '/workspace/ComfyUI_app/input'
+        os.makedirs(comfy_input, exist_ok=True)
+        src = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
+        if os.path.isdir(src):
+            for f in os.listdir(src):
+                shutil.copy2(os.path.join(src, f), os.path.join(comfy_input, f))
+            print(f"[COMFYUI INPUT] Copiadas imágenes: {os.listdir(comfy_input)}")
 
         async def main():
             orchestrator = BatchOrchestrator(generation_type=generation_type)
