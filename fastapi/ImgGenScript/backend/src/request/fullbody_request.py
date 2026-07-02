@@ -175,25 +175,20 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
         ]
         return workflow_args
 
-    def _get_structural_changes(self) -> Dict[str, Any]:
-        """
-        Builds a dictionary of structural modifications to be applied to the ComfyUI workflow.
+   def _get_structural_changes(self) -> Dict[str, Any]:
+    changes = {
+        "remove": [],
+        "reconnect": []
+    }
 
-        Returns:
-            A dictionary containing the keys 'remove' and 'reconnect':
-            {
-                "remove": List[str],
-                "reconnect": List[tuple]
-            }
-        """
-        changes = {
-            "remove": [],
-            "reconnect": []
-        }
+    if not self.workflow_data.use_reference_pose:
+        changes["remove"].extend(["5", "6", "7", "8", "9", "10", "11", "41", "44"])
+        changes["reconnect"].extend([
+            ("3", 0, "12", "positive"),
+            ("4", 0, "12", "negative"),
+            ("2", 0, "12", "latent_image")
+        ])
 
-        if not self.workflow_data.use_reference_pose:
-            changes["remove"].extend(["5", "6", "7", "8", "9", "10", "11", "41", "44"])
-            changes["reconnect"].extend([("3", 0, "12", "positive"), ("4", 0, "12", "negative")])
 
         if not self.workflow_data.use_hands_refiner:
             changes["remove"].extend(["30", "31", "32", "33", "34", "35", "36", "37", "38"])
