@@ -98,7 +98,7 @@ fullbody:
   k0_scheduler: "simple"
   dwpreprocessor_bbox_detector: "model.onnx"
   dwpreprocessor_pose_estimator: "model.pt"
-  use_reference_pose: false
+  use_reference_pose: true
   pose_controlnet_model: "model.safetensors"
   pose_controlnet_weight: 1.0
   pose_controlnet_start: 0.0
