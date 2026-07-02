@@ -18,7 +18,6 @@ nest_asyncio.apply()
 
 import urllib.request
 
-# Crear directorios requeridos por FastAPI
 for _d in [
     '/app/shared_data/input_images',
     '/app/shared_data/output_images',
@@ -29,40 +28,24 @@ for _d in [
 ]:
     os.makedirs(_d, exist_ok=True)
 
-# Verificar ComfyUI
 if not os.path.exists("/workspace/ComfyUI_app/main.py"):
     print("[ERROR] ComfyUI no encontrado en /workspace/ComfyUI_app/main.py")
-    for root, dirs, _ in os.walk("/workspace", topdown=True):
-        dirs[:] = [d for d in dirs if d not in ['__pycache__']]
-        if root.replace("/workspace", "").count(os.sep) < 3:
-            print(f"[DIR] {root}")
-        break
 
-# Arrancar FastAPI y ComfyUI en paralelo
 _fastapi_log = open('/tmp/fastapi.log', 'w')
 _fastapi_process = subprocess.Popen(
     ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"],
-    stdout=_fastapi_log,
-    stderr=_fastapi_log,
-    cwd="/app"
+    stdout=_fastapi_log, stderr=_fastapi_log, cwd="/app"
 )
 print("[FASTAPI] Arrancando...")
 
 _comfyui_log = open('/tmp/comfyui.log', 'w')
 _comfyui_process = subprocess.Popen(
-    [
-        "python", "/workspace/ComfyUI_app/main.py",
-        "--listen", "0.0.0.0",
-        "--port", "8188",
-        "--disable-auto-launch",
-        "--cuda-device", "0",
-    ],
-    stdout=_comfyui_log,
-    stderr=_comfyui_log
+    ["python", "/workspace/ComfyUI_app/main.py", "--listen", "0.0.0.0",
+     "--port", "8188", "--disable-auto-launch", "--cuda-device", "0"],
+    stdout=_comfyui_log, stderr=_comfyui_log
 )
 print("[COMFYUI] Arrancando...")
 
-# Esperar FastAPI (máx 60s)
 for _i in range(30):
     if _fastapi_process.poll() is not None:
         _fastapi_log.flush()
@@ -73,13 +56,9 @@ for _i in range(30):
         break
     except Exception:
         time.sleep(2)
-        if _i % 5 == 0:
-            _fastapi_log.flush()
-            print(f"[FASTAPI LOG] {open('/tmp/fastapi.log').read()[-300:]}")
 else:
     raise RuntimeError("[FASTAPI] No respondió en 60 segundos")
 
-# Esperar ComfyUI (máx 5 min)
 for _i in range(60):
     if _comfyui_process.poll() is not None:
         _comfyui_log.flush()
@@ -87,17 +66,9 @@ for _i in range(60):
     try:
         urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=2)
         print(f"[COMFYUI] Listo en {_i*5}s")
-        # Verificar nodos disponibles en ComfyUI
-        resp = urllib.request.urlopen("http://127.0.0.1:8188/object_info", timeout=10)
-        nodes = json.loads(resp.read())
-        custom_nodes = [k for k in nodes.keys() if any(x in k for x in ['easy', 'Inspire', 'AV_', 'IPAdapter', 'FaceDetailer', 'Ultralytic', 'DWPre', 'MeshGraph', 'LoadImagesFromDir'])]
-        print(f"[NODES CHECK] {custom_nodes}")
         break
     except Exception:
         time.sleep(5)
-        if _i % 6 == 0:
-            _comfyui_log.flush()
-            print(f"[COMFYUI LOG] {open('/tmp/comfyui.log').read()[-500:]}")
 else:
     raise RuntimeError("[COMFYUI] No respondió en 5 minutos")
 
@@ -130,10 +101,8 @@ async def download_inputs_from_b2(vrepro_id):
     auth_token = auth["authorizationToken"]
     download_url = auth["downloadUrl"]
     bucket = os.getenv('B2_BUCKET')
-
     input_dir = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
     os.makedirs(input_dir, exist_ok=True)
-
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"{api_url}/b2api/v2/b2_list_file_names",
@@ -150,7 +119,6 @@ async def download_inputs_from_b2(vrepro_id):
                 )
                 with open(os.path.join(input_dir, filename), "wb") as out:
                     out.write(dl.content)
-
         csv_path = '/workspace/ImgGenScript/files/csv/donor_info.csv'
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
         try:
@@ -170,7 +138,20 @@ async def upload_outputs_to_b2(vrepro_id):
     bucket_id = await get_bucket_id(auth)
     output_dir = '/workspace/ComfyUI_app/output'
 
-    if not os.path.isdir(output_dir):
+    # Listar todos los archivos recursivamente
+    all_files = []
+    for root, dirs, files in os.walk(output_dir):
+        for f in files:
+            if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+                all_files.append(os.path.join(root, f))
+
+    print(f"[B2] Archivos encontrados para subir: {all_files}")
+
+    if not all_files:
+        print(f"[B2] No hay archivos en {output_dir}")
+        # Listar contenido del directorio para debug
+        for root, dirs, files in os.walk(output_dir):
+            print(f"[B2 DIR] {root}: {files}")
         return
 
     async with httpx.AsyncClient() as client:
@@ -181,29 +162,27 @@ async def upload_outputs_to_b2(vrepro_id):
         )
         upload_data = r.json()
 
-        for f in os.listdir(output_dir):
-            if f.lower().endswith(('.jpg', '.jpeg', '.png')):
-                local_path = os.path.join(output_dir, f)
-                with open(local_path, "rb") as fp:
-                    content = fp.read()
-                sha1 = hashlib.sha1(content).hexdigest()
-                await client.post(
-                    upload_data["uploadUrl"],
-                    headers={
-                        "Authorization": upload_data["authorizationToken"],
-                        "X-Bz-File-Name": f"generated_images/{vrepro_id}/{f}",
-                        "Content-Type": "b2/x-auto",
-                        "Content-Length": str(len(content)),
-                        "X-Bz-Content-Sha1": sha1
-                    },
-                    content=content
-                )
-                print(f"[B2] Subida: generated_images/{vrepro_id}/{f}")
+        for local_path in all_files:
+            f = os.path.basename(local_path)
+            with open(local_path, "rb") as fp:
+                content = fp.read()
+            sha1 = hashlib.sha1(content).hexdigest()
+            await client.post(
+                upload_data["uploadUrl"],
+                headers={
+                    "Authorization": upload_data["authorizationToken"],
+                    "X-Bz-File-Name": f"generated_images/{vrepro_id}/{f}",
+                    "Content-Type": "b2/x-auto",
+                    "Content-Length": str(len(content)),
+                    "X-Bz-Content-Sha1": sha1
+                },
+                content=content
+            )
+            print(f"[B2] Subida: generated_images/{vrepro_id}/{f}")
 
 def handler(job):
     sys.path.insert(0, "/workspace/ImgGenScript")
     sys.path.insert(0, "/workspace/ImgGenScript/backend")
-
     from backend.src.batch.orchestrator import BatchOrchestrator
 
     job_input = job["input"]
@@ -218,11 +197,9 @@ def handler(job):
 
     try:
         loop = asyncio.get_event_loop()
-
         print(f"[B2] Descargando inputs para {vrepro_id}")
         loop.run_until_complete(download_inputs_from_b2(vrepro_id))
 
-        # Copiar imágenes a la carpeta de input de ComfyUI
         comfy_input = '/workspace/ComfyUI_app/input'
         os.makedirs(comfy_input, exist_ok=True)
         src = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
