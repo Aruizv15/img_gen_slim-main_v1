@@ -241,6 +241,8 @@ def handler(job):
                 use_amateur_effect_override=False,
             )
 
+        os.makedirs('/workspace/ImgGenScript/backend/logs', exist_ok=True)
+        
         loop.run_until_complete(main())
 
         print(f"[B2] Subiendo outputs de {vrepro_id}")
