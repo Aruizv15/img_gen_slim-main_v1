@@ -46,7 +46,7 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             ("2", "batch_size", self.workflow_data.batch_size),
             ("3", "text", client.built_prompts["positive_prompt"]),
             ("4", "text", client.built_prompts["negative_prompt"]),
-            ("5", "image", self.workflow_data.ref_image),
+            ("5", "image", self.workflow_data.ref_image if self.workflow_data.ref_image else "example.png"),
             ("7", "seed", self.workflow_data.k0_seed),
             ("7", "steps", self.workflow_data.k0_steps),
             ("7", "cfg", self.workflow_data.k0_cfg),
