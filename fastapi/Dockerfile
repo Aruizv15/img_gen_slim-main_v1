@@ -38,8 +38,8 @@ RUN cd /workspace/ComfyUI_app/custom_nodes && \
     git clone https://github.com/ltdrdata/ComfyUI-Inspire-Pack.git || true && \
     git clone https://github.com/RockOfFire/ComfyUI_Comfyroll_CustomNodes.git || true && \
     git clone https://github.com/yolain/ComfyUI-Easy-Use.git || true && \
-    git clone https://github.com/SLAPaper/ComfyUI-Elegant-Resource-Monitor.git || true && \
-    git clone https://github.com/SLAPaper/ComfyUI-FreeMemory.git || true && \
+    git clone https://github.com/ChrisColeTech/ComfyUI-Elegant-Resource-Monitor.git || true && \
+    git clone https://github.com/ShmuelRonen/ComfyUI-FreeMemory.git || true && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git || true && \
     git clone https://github.com/cubiq/ComfyUI_FaceAnalysis.git || true && \
     git clone https://github.com/sipherxyz/comfyui-art-venture.git || true
