@@ -161,3 +161,4 @@ fullbody:
 log_level: "INFO"
 log_format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 generation_verbose: false
+save_workflow: true
