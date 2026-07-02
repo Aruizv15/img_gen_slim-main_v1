@@ -168,7 +168,7 @@ async def upload_outputs_to_b2(vrepro_id):
     api_url = auth["apiUrl"]
     auth_token = auth["authorizationToken"]
     bucket_id = await get_bucket_id(auth)
-    output_dir = '/app/shared_data/output_images'
+    output_dir = '/workspace/ComfyUI_app/output'
 
     if not os.path.isdir(output_dir):
         return
@@ -191,14 +191,14 @@ async def upload_outputs_to_b2(vrepro_id):
                     upload_data["uploadUrl"],
                     headers={
                         "Authorization": upload_data["authorizationToken"],
-                        "X-Bz-File-Name": f"output_images/{vrepro_id}/{f}",
+                        "X-Bz-File-Name": f"generated_images/{vrepro_id}/{f}",
                         "Content-Type": "b2/x-auto",
                         "Content-Length": str(len(content)),
                         "X-Bz-Content-Sha1": sha1
                     },
                     content=content
                 )
-                print(f"[B2] Subida: output_images/{vrepro_id}/{f}")
+                print(f"[B2] Subida: generated_images/{vrepro_id}/{f}")
 
 def handler(job):
     sys.path.insert(0, "/workspace/ImgGenScript")
@@ -241,8 +241,6 @@ def handler(job):
                 use_amateur_effect_override=False,
             )
 
-        os.makedirs('/workspace/ImgGenScript/backend/logs', exist_ok=True)
-        
         loop.run_until_complete(main())
 
         print(f"[B2] Subiendo outputs de {vrepro_id}")
