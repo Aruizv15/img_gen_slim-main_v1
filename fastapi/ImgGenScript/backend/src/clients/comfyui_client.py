@@ -68,6 +68,20 @@ class ComfyUIClient(BaseAPIClient):
 
         return output_images
 
+    def generate_images(
+        self,
+        ws: websocket.WebSocket,
+        workflow: Dict,
+        verbose: bool = False
+    ) -> Dict[str, List[bytes]]:
+        """
+        Generates images using the given workflow via WebSocket.
+        Wrapper around get_images with optional verbose logging.
+        """
+        if verbose:
+            print(f"[ComfyUI] Generating images with workflow nodes: {list(workflow.keys())}")
+        return self.get_images(ws, workflow)
+
     def get_history(self, prompt_id: str) -> Dict:
         """
         Retrieves the generation history for a given prompt ID.
