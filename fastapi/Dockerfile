@@ -53,6 +53,12 @@ RUN for dir in /workspace/ComfyUI_app/custom_nodes/*/; do \
         fi; \
     done
 
+RUN pip install --no-cache-dir --force-reinstall \
+        torch==2.1.0+cu118 \
+        torchvision==0.16.0+cu118 \
+        torchaudio==2.1.0+cu118 \
+        --index-url https://download.pytorch.org/whl/cu118
+
 COPY download_models.py /tmp/download_models.py
 ARG HF_TOKEN
 ENV HF_TOKEN=${HF_TOKEN}
