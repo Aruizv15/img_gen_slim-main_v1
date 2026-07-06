@@ -59,11 +59,7 @@ RUN pip install --no-cache-dir --force-reinstall \
         torchaudio==2.1.0+cu118 \
         --index-url https://download.pytorch.org/whl/cu118
 
-COPY download_models.py /tmp/download_models.py
-ARG HF_TOKEN
-ENV HF_TOKEN=${HF_TOKEN}
-RUN pip install --no-cache-dir "huggingface_hub>=0.20" && \
-    python /tmp/download_models.py
+
 COPY main.py /app/
 COPY handler.py /app/
 COPY test_input.json /app/test_input.json
