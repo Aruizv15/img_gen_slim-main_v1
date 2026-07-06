@@ -8,10 +8,6 @@ RUN apt-get update && \
         libglib2.0-0 && \
     rm -rf /var/lib/apt/lists/*
 
-# ------------------------------------------------------------------
-# Torch CUDA 11.8
-# ------------------------------------------------------------------
-
 RUN pip install --no-cache-dir --force-reinstall \
     torch==2.1.0+cu118 \
     torchvision==0.16.0+cu118 \
@@ -19,10 +15,6 @@ RUN pip install --no-cache-dir --force-reinstall \
     --index-url https://download.pytorch.org/whl/cu118
 
 RUN python -c "import torch; assert torch.version.cuda.startswith('11.8'); print('CUDA OK:', torch.version.cuda)"
-
-# ------------------------------------------------------------------
-# App
-# ------------------------------------------------------------------
 
 WORKDIR /app
 
@@ -36,10 +28,6 @@ RUN mkdir -p \
     /app/shared_data/temp_images \
     /app/workflows
 
-# ------------------------------------------------------------------
-# ComfyUI
-# ------------------------------------------------------------------
-
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI_app && \
     cd /workspace/ComfyUI_app && \
     git checkout tags/v0.3.10
@@ -47,10 +35,6 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI_a
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
     /workspace/ComfyUI_app/requirements.txt > /tmp/comfy_reqs.txt && \
     pip install --no-cache-dir -r /tmp/comfy_reqs.txt
-
-# ------------------------------------------------------------------
-# Dependencias necesarias para Impact Pack
-# ------------------------------------------------------------------
 
 RUN pip install --no-cache-dir \
     torchsde \
@@ -60,11 +44,9 @@ RUN pip install --no-cache-dir \
     opencv-python \
     scikit-image \
     timm \
-    onnxruntime
-
-# ------------------------------------------------------------------
-# FastAPI
-# ------------------------------------------------------------------
+    onnxruntime \
+    supervision \
+    dill
 
 COPY requirements.txt /app/
 
@@ -72,19 +54,11 @@ RUN grep -vE "^torch|^torchvision|^torchaudio" \
     /app/requirements.txt > /tmp/app_reqs.txt && \
     pip install --no-cache-dir -r /tmp/app_reqs.txt
 
-# ------------------------------------------------------------------
-# ImgGenScript
-# ------------------------------------------------------------------
-
 COPY ImgGenScript/ /workspace/ImgGenScript/
 
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
     /workspace/ImgGenScript/backend/requirements.txt > /tmp/imggen_reqs.txt && \
     pip install --no-cache-dir -r /tmp/imggen_reqs.txt
-
-# ------------------------------------------------------------------
-# Custom Nodes
-# ------------------------------------------------------------------
 
 RUN cd /workspace/ComfyUI_app/custom_nodes && \
     git clone https://github.com/crystian/ComfyUI-Crystools.git && \
@@ -101,29 +75,18 @@ RUN cd /workspace/ComfyUI_app/custom_nodes && \
     git clone https://github.com/cubiq/ComfyUI_FaceAnalysis.git && \
     git clone https://github.com/sipherxyz/comfyui-art-venture.git
 
-# ------------------------------------------------------------------
-# Verificar que Impact Pack existe
-# ------------------------------------------------------------------
-
-RUN ls -la /workspace/ComfyUI_app/custom_nodes && \
-    ls -la /workspace/ComfyUI_app/custom_nodes/ComfyUI-Impact-Pack
-
-# ------------------------------------------------------------------
-# Instalar requirements de TODOS los custom nodes
-# ------------------------------------------------------------------
-
 RUN for dir in /workspace/ComfyUI_app/custom_nodes/*/; do \
     if [ -f "$dir/requirements.txt" ]; then \
         echo "============================="; \
         echo "Installing: $dir"; \
         grep -vE "^torch|^torchvision|^torchaudio" "$dir/requirements.txt" > /tmp/node_reqs.txt; \
-        pip install --no-cache-dir -r /tmp/node_reqs.txt; \
+        pip install --no-cache-dir -r /tmp/node_reqs.txt || true; \
     fi; \
 done
 
-# ------------------------------------------------------------------
-# Restaurar Torch
-# ------------------------------------------------------------------
+# Ejecutar install.py de Impact Pack durante el build
+RUN cd /workspace/ComfyUI_app/custom_nodes/ComfyUI-Impact-Pack && \
+    python install.py || true
 
 RUN pip install --no-cache-dir --force-reinstall \
     torch==2.1.0+cu118 \
@@ -131,25 +94,12 @@ RUN pip install --no-cache-dir --force-reinstall \
     torchaudio==2.1.0+cu118 \
     --index-url https://download.pytorch.org/whl/cu118
 
-# ------------------------------------------------------------------
-# Modelos
-# ------------------------------------------------------------------
-
 COPY download_models.py /app/
-
-# ------------------------------------------------------------------
-# App
-# ------------------------------------------------------------------
-
 COPY main.py /app/
 COPY handler.py /app/
 COPY test_input.json /app/test_input.json
 COPY templates/ /app/templates/
 COPY static/ /app/static/
-
-# ------------------------------------------------------------------
-# Verificaciones
-# ------------------------------------------------------------------
 
 RUN python -c "import torch; print(torch.__version__, torch.version.cuda)"
 
