@@ -18,6 +18,7 @@ nest_asyncio.apply()
 
 import urllib.request
 
+# Crear directorios requeridos por FastAPI
 for _d in [
     '/app/shared_data/input_images',
     '/app/shared_data/output_images',
@@ -28,9 +29,23 @@ for _d in [
 ]:
     os.makedirs(_d, exist_ok=True)
 
+# Descargar modelos si no existen
+flag_file = '/workspace/ComfyUI_app/models/.downloaded'
+if not os.path.exists(flag_file):
+    print("[MODELS] Descargando modelos desde HuggingFace...")
+    subprocess.run(["pip", "install", "--no-cache-dir", "huggingface_hub>=0.20", "-q"], check=True)
+    subprocess.run(["python", "/app/download_models.py"], check=True)
+    os.makedirs('/workspace/ComfyUI_app/models', exist_ok=True)
+    open(flag_file, 'w').close()
+    print("[MODELS] Modelos descargados correctamente")
+else:
+    print("[MODELS] Modelos ya descargados, saltando...")
+
+# Verificar ComfyUI
 if not os.path.exists("/workspace/ComfyUI_app/main.py"):
     print("[ERROR] ComfyUI no encontrado en /workspace/ComfyUI_app/main.py")
 
+# Arrancar FastAPI y ComfyUI en paralelo
 _fastapi_log = open('/tmp/fastapi.log', 'w')
 _fastapi_process = subprocess.Popen(
     ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"],
@@ -40,12 +55,14 @@ print("[FASTAPI] Arrancando...")
 
 _comfyui_log = open('/tmp/comfyui.log', 'w')
 _comfyui_process = subprocess.Popen(
-    ["python", "/workspace/ComfyUI_app/main.py", "--listen", "0.0.0.0",
-     "--port", "8188", "--disable-auto-launch", "--cuda-device", "0"],
+    ["python", "/workspace/ComfyUI_app/main.py",
+     "--listen", "0.0.0.0", "--port", "8188",
+     "--disable-auto-launch", "--cuda-device", "0"],
     stdout=_comfyui_log, stderr=_comfyui_log
 )
 print("[COMFYUI] Arrancando...")
 
+# Esperar FastAPI (máx 60s)
 for _i in range(30):
     if _fastapi_process.poll() is not None:
         _fastapi_log.flush()
@@ -59,6 +76,7 @@ for _i in range(30):
 else:
     raise RuntimeError("[FASTAPI] No respondió en 60 segundos")
 
+# Esperar ComfyUI (máx 5 min)
 for _i in range(60):
     if _comfyui_process.poll() is not None:
         _comfyui_log.flush()
@@ -138,7 +156,6 @@ async def upload_outputs_to_b2(vrepro_id):
     bucket_id = await get_bucket_id(auth)
     output_dir = '/workspace/ComfyUI_app/output'
 
-    # Listar todos los archivos recursivamente
     all_files = []
     for root, dirs, files in os.walk(output_dir):
         for f in files:
@@ -149,7 +166,6 @@ async def upload_outputs_to_b2(vrepro_id):
 
     if not all_files:
         print(f"[B2] No hay archivos en {output_dir}")
-        # Listar contenido del directorio para debug
         for root, dirs, files in os.walk(output_dir):
             print(f"[B2 DIR] {root}: {files}")
         return
