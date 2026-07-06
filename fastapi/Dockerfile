@@ -1,136 +1,43 @@
-FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
+name: Build and Push Docker Image
+on:
+  workflow_dispatch:
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: false
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-        git \
-        libgl1 \
-        libglib2.0-0 \
-        build-essential \
-        python3-dev && \
-    rm -rf /var/lib/apt/lists/*
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-# Torch CUDA 11.8
-RUN pip install --no-cache-dir --force-reinstall \
-        torch==2.1.0+cu118 \
-        torchvision==0.16.0+cu118 \
-        torchaudio==2.1.0+cu118 \
-        --index-url https://download.pytorch.org/whl/cu118
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-RUN python -c "import torch; assert torch.version.cuda.startswith('11.8'); print('OK CUDA', torch.version.cuda)"
-
-WORKDIR /app
-
-RUN mkdir -p \
-    /app/templates \
-    /app/static/css \
-    /app/static/js \
-    /app/shared_data/input_images \
-    /app/shared_data/output_images \
-    /app/shared_data/reference_images \
-    /app/shared_data/temp_images \
-    /app/workflows
-
-##############################################################
-# COMFYUI
-##############################################################
-
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI_app && \
-    cd /workspace/ComfyUI_app && \
-    git checkout tags/v0.3.10
-
-RUN grep -vE "^torch|^torchvision|^torchaudio" \
-        /workspace/ComfyUI_app/requirements.txt > /tmp/comfy_reqs.txt && \
-    pip install --no-cache-dir -r /tmp/comfy_reqs.txt && \
-    pip install --no-cache-dir torchsde
-
-##############################################################
-# APP
-##############################################################
-
-COPY requirements.txt /app/
-
-RUN grep -vE "^torch|^torchvision|^torchaudio" \
-        /app/requirements.txt > /tmp/app_reqs.txt && \
-    pip install --no-cache-dir -r /tmp/app_reqs.txt
-
-COPY ImgGenScript/ /workspace/ImgGenScript/
-
-RUN grep -vE "^torch|^torchvision|^torchaudio" \
-        /workspace/ImgGenScript/backend/requirements.txt > /tmp/imggen_reqs.txt && \
-    pip install --no-cache-dir -r /tmp/imggen_reqs.txt
-
-##############################################################
-# CUSTOM NODES
-##############################################################
-
-RUN cd /workspace/ComfyUI_app/custom_nodes && \
-    git clone https://github.com/crystian/ComfyUI-Crystools.git || true && \
-    git clone https://github.com/cubiq/ComfyUI_essentials.git || true && \
-    git clone https://github.com/Fannovel16/comfyui_controlnet_aux.git || true && \
-    git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git || true && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git || true && \
-    git clone https://github.com/ltdrdata/ComfyUI-Inspire-Pack.git || true && \
-    git clone https://github.com/RockOfFire/ComfyUI_Comfyroll_CustomNodes.git || true && \
-    git clone https://github.com/yolain/ComfyUI-Easy-Use.git || true && \
-    git clone https://github.com/ChrisColeTech/ComfyUI-Elegant-Resource-Monitor.git || true && \
-    git clone https://github.com/ShmuelRonen/ComfyUI-FreeMemory.git || true && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git || true && \
-    git clone https://github.com/cubiq/ComfyUI_FaceAnalysis.git || true && \
-    git clone https://github.com/sipherxyz/comfyui-art-venture.git || true
-
-##############################################################
-# INSTALAR DEPENDENCIAS DE TODOS LOS CUSTOM NODES
-##############################################################
-
-RUN find /workspace/ComfyUI_app/custom_nodes -name requirements.txt \
-    -exec pip install --no-cache-dir -r {} \; || true
-
-##############################################################
-# DEPENDENCIAS IMPORTANTES PARA IMPACT PACK
-##############################################################
-
-RUN pip install --no-cache-dir \
-    ultralytics \
-    onnxruntime \
-    segment-anything \
-    opencv-python \
-    insightface \
-    timm \
-    addict \
-    yapf \
-    safetensors \
-    scikit-image \
-    scipy \
-    einops \
-    mediapipe
-
-##############################################################
-# MODELOS
-##############################################################
-
-COPY download_models.py /tmp/download_models.py
-
-ARG HF_TOKEN
-ENV HF_TOKEN=${HF_TOKEN}
-
-RUN pip install --no-cache-dir "huggingface_hub>=0.20" && \
-    python /tmp/download_models.py
-
-##############################################################
-# APP
-##############################################################
-
-COPY main.py /app/
-COPY handler.py /app/
-COPY test_input.json /app/test_input.json
-COPY templates/ /app/templates/
-COPY static/ /app/static/
-
-RUN python -c "import torch; print(torch.__version__, torch.version.cuda)"
-
-EXPOSE 8000
-
-CMD ["python", "/app/handler.py"]
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./fastapi
+          file: ./fastapi/Dockerfile
+          push: true
+          tags: babynova2026/batchapp:latest
+          build-args: |
+            HF_TOKEN=${{ secrets.HF_TOKEN }}
+          cache-from: type=registry,ref=babynova2026/batchapp:buildcache
+          cache-to: type=registry,ref=babynova2026/batchapp:buildcache,mode=max
