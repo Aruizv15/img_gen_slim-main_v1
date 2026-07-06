@@ -59,7 +59,7 @@ RUN pip install --no-cache-dir --force-reinstall \
         torchaudio==2.1.0+cu118 \
         --index-url https://download.pytorch.org/whl/cu118
 
-
+COPY download_models.py /app/
 COPY main.py /app/
 COPY handler.py /app/
 COPY test_input.json /app/test_input.json
