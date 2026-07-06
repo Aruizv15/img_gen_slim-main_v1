@@ -21,6 +21,8 @@ jobs:
           sudo rm -rf /usr/local/.ghcup
           sudo rm -rf /usr/local/share/powershell
           sudo rm -rf /usr/share/java
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/node_modules
           sudo apt-get clean
           sudo docker image prune --all --force
           df -h
