@@ -29,17 +29,28 @@ for _d in [
 ]:
     os.makedirs(_d, exist_ok=True)
 
-# Descargar modelos si no existen
-flag_file = '/workspace/ComfyUI_app/models/.downloaded'
+# Usar Network Volume para modelos persistentes
+volume_models = '/runpod-volume/models'
+comfy_models = '/workspace/ComfyUI_app/models'
+os.makedirs(volume_models, exist_ok=True)
+
+# Crear symlink para que ComfyUI encuentre los modelos
+if not os.path.exists(comfy_models):
+    os.symlink(volume_models, comfy_models)
+    print(f"[MODELS] Symlink creado: {comfy_models} -> {volume_models}")
+else:
+    print(f"[MODELS] Carpeta de modelos ya existe: {comfy_models}")
+
+# Descargar modelos solo si no existen en el volumen
+flag_file = '/runpod-volume/models/.downloaded'
 if not os.path.exists(flag_file):
     print("[MODELS] Descargando modelos desde HuggingFace...")
     subprocess.run(["pip", "install", "--no-cache-dir", "huggingface_hub>=0.20", "-q"], check=True)
     subprocess.run(["python", "/app/download_models.py"], check=True)
-    os.makedirs('/workspace/ComfyUI_app/models', exist_ok=True)
     open(flag_file, 'w').close()
     print("[MODELS] Modelos descargados correctamente")
 else:
-    print("[MODELS] Modelos ya descargados, saltando...")
+    print("[MODELS] Modelos ya en volumen, saltando...")
 
 # Verificar ComfyUI
 if not os.path.exists("/workspace/ComfyUI_app/main.py"):
