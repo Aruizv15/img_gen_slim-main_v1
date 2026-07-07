@@ -49,9 +49,7 @@ else:
 
 # Forzar re-descarga con rutas correctas
 flag_file = '/runpod-volume/models/.downloaded'
-if os.path.exists(flag_file):
-    os.remove(flag_file)
-    print("[MODELS] Flag eliminado, forzando re-descarga con rutas correctas")
+
 
 if not os.path.exists(flag_file):
     print("[MODELS] Descargando modelos desde HuggingFace...")
