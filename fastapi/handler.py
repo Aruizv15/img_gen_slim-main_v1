@@ -13,6 +13,7 @@ import subprocess
 import time
 import shutil
 import json
+import glob
 
 nest_asyncio.apply()
 
@@ -46,16 +47,23 @@ if not os.path.exists(comfy_models):
 else:
     print(f"[MODELS] Carpeta de modelos ya existe: {comfy_models}")
 
-# Descargar modelos solo si no existen en el volumen
+# Forzar re-descarga con rutas correctas
 flag_file = '/runpod-volume/models/.downloaded'
+if os.path.exists(flag_file):
+    os.remove(flag_file)
+    print("[MODELS] Flag eliminado, forzando re-descarga con rutas correctas")
+
 if not os.path.exists(flag_file):
     print("[MODELS] Descargando modelos desde HuggingFace...")
     subprocess.run(["pip", "install", "--no-cache-dir", "huggingface_hub>=0.20", "-q"], check=True)
     subprocess.run(["python", "/app/download_models.py"], check=True)
     open(flag_file, 'w').close()
     print("[MODELS] Modelos descargados correctamente")
-else:
-    print("[MODELS] Modelos ya en volumen, saltando...")
+
+# Debug: verificar modelos
+print(f"[MODELS DEBUG] Checkpoints: {glob.glob('/runpod-volume/models/checkpoints/*')[:5]}")
+print(f"[MODELS DEBUG] Loras: {glob.glob('/runpod-volume/models/loras/*')[:5]}")
+print(f"[MODELS DEBUG] Controlnet: {glob.glob('/runpod-volume/models/controlnet/*')[:5]}")
 
 # Verificar ComfyUI
 if not os.path.exists("/workspace/ComfyUI_app/main.py"):
