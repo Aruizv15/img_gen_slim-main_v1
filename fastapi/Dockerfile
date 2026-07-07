@@ -30,7 +30,7 @@ RUN mkdir -p \
 
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI_app && \
     cd /workspace/ComfyUI_app && \
-    git checkout tags/v0.3.10
+    git checkout tags/v0.3.28
 
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
     /workspace/ComfyUI_app/requirements.txt > /tmp/comfy_reqs.txt && \
