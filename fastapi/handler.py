@@ -34,6 +34,11 @@ volume_models = '/runpod-volume/models'
 comfy_models = '/workspace/ComfyUI_app/models'
 os.makedirs(volume_models, exist_ok=True)
 
+# Preparar directorios para Impact Pack
+os.makedirs('/runpod-volume/models/ultralytics/bbox', exist_ok=True)
+os.makedirs('/runpod-volume/models/ultralytics/segm', exist_ok=True)
+os.makedirs('/runpod-volume/models/sams', exist_ok=True)
+
 # Crear symlink para que ComfyUI encuentre los modelos
 if not os.path.exists(comfy_models):
     os.symlink(volume_models, comfy_models)
@@ -91,13 +96,16 @@ else:
 for _i in range(60):
     if _comfyui_process.poll() is not None:
         _comfyui_log.flush()
-        raise RuntimeError(f"[COMFYUI] Crasheó: {open('/tmp/comfyui.log').read()[-1000:]}")
+        raise RuntimeError(f"[COMFYUI] Crasheó: {open('/tmp/comfyui.log').read()[-3000:]}")
     try:
         urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=2)
         print(f"[COMFYUI] Listo en {_i*5}s")
         break
     except Exception:
         time.sleep(5)
+        if _i % 6 == 0:
+            _comfyui_log.flush()
+            print(f"[COMFYUI LOG] {open('/tmp/comfyui.log').read()[-3000:]}")
 else:
     raise RuntimeError("[COMFYUI] No respondió en 5 minutos")
 
@@ -254,7 +262,7 @@ def handler(job):
     except Exception as e:
         _comfyui_log.flush()
         _fastapi_log.flush()
-        print(f"[COMFYUI LOG FINAL]\n{open('/tmp/comfyui.log').read()[-2000:]}")
+        print(f"[COMFYUI LOG FINAL]\n{open('/tmp/comfyui.log').read()[-3000:]}")
         print(f"[FASTAPI LOG FINAL]\n{open('/tmp/fastapi.log').read()[-500:]}")
         return {"status": "error", "message": str(e)}
 
