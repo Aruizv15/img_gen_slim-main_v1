@@ -66,9 +66,11 @@ RUN cd /workspace/ComfyUI_app/custom_nodes && \
     git clone https://github.com/Fannovel16/comfyui_controlnet_aux.git && \
     git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
+    cd ComfyUI-Impact-Pack && git checkout V8.14 && cd .. && \
     git clone https://github.com/ltdrdata/ComfyUI-Inspire-Pack.git && \
     git clone https://github.com/RockOfFire/ComfyUI_Comfyroll_CustomNodes.git && \
     git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
+    cd ComfyUI-Easy-Use && git checkout 1.3.0 && cd .. && \
     git clone https://github.com/ChrisColeTech/ComfyUI-Elegant-Resource-Monitor.git && \
     git clone https://github.com/ShmuelRonen/ComfyUI-FreeMemory.git && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
@@ -84,10 +86,6 @@ RUN for dir in /workspace/ComfyUI_app/custom_nodes/*/; do \
     fi; \
 done
 
-# Ejecutar install.py de Impact Pack durante el build
-RUN cd /workspace/ComfyUI_app/custom_nodes/ComfyUI-Impact-Pack && \
-    python install.py || true
-
 RUN pip install --no-cache-dir --force-reinstall \
     torch==2.1.0+cu118 \
     torchvision==0.16.0+cu118 \
@@ -102,11 +100,6 @@ COPY templates/ /app/templates/
 COPY static/ /app/static/
 
 RUN python -c "import torch; print(torch.__version__, torch.version.cuda)"
-
-RUN python - <<'PY'
-import os
-print("Impact Pack:", os.path.isdir("/workspace/ComfyUI_app/custom_nodes/ComfyUI-Impact-Pack"))
-PY
 
 EXPOSE 8000
 
