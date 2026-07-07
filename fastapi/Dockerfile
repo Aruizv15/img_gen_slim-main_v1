@@ -30,7 +30,7 @@ RUN mkdir -p \
 
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI_app && \
     cd /workspace/ComfyUI_app && \
-    git checkout tags/v0.3.10
+    git checkout tags/v0.3.28
 
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
     /workspace/ComfyUI_app/requirements.txt > /tmp/comfy_reqs.txt && \
@@ -66,11 +66,9 @@ RUN cd /workspace/ComfyUI_app/custom_nodes && \
     git clone https://github.com/Fannovel16/comfyui_controlnet_aux.git && \
     git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
-    cd ComfyUI-Impact-Pack && git checkout V8.14 && cd .. && \
     git clone https://github.com/ltdrdata/ComfyUI-Inspire-Pack.git && \
     git clone https://github.com/RockOfFire/ComfyUI_Comfyroll_CustomNodes.git && \
     git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
-    cd ComfyUI-Easy-Use && git checkout 1.3.0 && cd .. && \
     git clone https://github.com/ChrisColeTech/ComfyUI-Elegant-Resource-Monitor.git && \
     git clone https://github.com/ShmuelRonen/ComfyUI-FreeMemory.git && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
