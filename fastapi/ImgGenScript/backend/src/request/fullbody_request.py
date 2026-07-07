@@ -143,4 +143,7 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             changes["remove"].extend(["30", "31", "32", "33", "34", "35", "36", "37", "38"])
             changes["reconnect"].extend([("29", 0, "39", "image")])
 
+        # Remover nodos de Easy-Use que no cargan correctamente
+        changes["remove"].extend(["42", "43"])
+
         return changes
