@@ -19,7 +19,6 @@ fullbody:
   checkpoint: "RealVisXL_V5.0_fp16.safetensors"
   batch_size: 1
   use_reference_pose: true
-  k0_seed: 42
   k0_steps: 8
   k0_cfg: 1.5
   k0_sampler_name: "dpmpp_sde"
@@ -30,7 +29,6 @@ fullbody:
   pose_controlnet_weight: 0.7
   pose_controlnet_start: 0.0
   pose_controlnet_end: 0.7
-  k1_seed: 42
   k1_steps: 8
   k1_cfg: 1.5
   k1_sampler_name: "dpmpp_sde"
@@ -54,17 +52,12 @@ fullbody:
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
   plus_face_end: 1.0
-  k2_seed: 42
   k2_steps: 6
   k2_cfg: 1.5
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
   k2_denoise: 0.45
-  detailer_positive_prompt_template: "detailer_positive_prompt.txt"
-  detailer_negative_prompt_template: "detailer_negative_prompt.txt"
-  detailer_wildcard_prompt_template: "detailer_wildcard_prompt.txt"
   detailer_bbox_model: "bbox/face_yolov8m.pt"
-  detailer_seed: 42
   detailer_steps: 20
   detailer_cfg: 7.0
   detailer_sampler_name: "dpmpp_2m"
@@ -75,19 +68,15 @@ fullbody:
   detailer_bbox_dilation: 10
   detailer_bbox_crop_factor: 3.0
   detailer_drop_size: 10
-  use_hands_refiner: true
   hands_refiner_mask_bbox_padding: 20
   hands_refiner_mask_type: "default"
   hands_refiner_mask_expand: 0
   hands_refiner_detect_thr: 0.1
   hands_refiner_presence_thr: 0.1
-  hands_positive_prompt_template: "hands_positive_prompt.txt"
-  hands_negative_prompt_template: "hands_negative_prompt.txt"
   hands_refiner_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
   hands_refiner_controlnet_weight: 0.7
   hands_refiner_controlnet_start: 0.0
   hands_refiner_controlnet_end: 0.7
-  hands_refiner_seed: 42
   hands_refiner_steps: 20
   hands_refiner_cfg: 7.0
   hands_refiner_sampler_name: "dpmpp_2m"
@@ -105,7 +94,6 @@ portrait:
   pose_controlnet_weight: 0.7
   pose_controlnet_start: 0.0
   pose_controlnet_end: 0.7
-  k1_seed: 42
   k1_steps: 8
   k1_cfg: 1.5
   k1_sampler_name: "dpmpp_sde"
@@ -129,17 +117,12 @@ portrait:
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
   plus_face_end: 1.0
-  k2_seed: 42
   k2_steps: 6
   k2_cfg: 1.5
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
   k2_denoise: 0.45
-  detailer_positive_prompt_template: "detailer_positive_prompt.txt"
-  detailer_negative_prompt_template: "detailer_negative_prompt.txt"
-  detailer_wildcard_prompt_template: "detailer_wildcard_prompt.txt"
   detailer_bbox_model: "bbox/face_yolov8m.pt"
-  detailer_seed: 42
   detailer_steps: 20
   detailer_cfg: 7.0
   detailer_sampler_name: "dpmpp_2m"
