@@ -2,18 +2,12 @@
 # ImgGen Backend Configuration
 # ================================================================
 
-# ──────────────────────────────────────────────────────────────────
-# Server
-# ──────────────────────────────────────────────────────────────────
 server:
   fastapi_host: "127.0.0.1"
   fastapi_port: 8000
   comfyui_host: "127.0.0.1"
   comfyui_port: 8188
 
-# ──────────────────────────────────────────────────────────────────
-# Paths
-# ──────────────────────────────────────────────────────────────────
 paths:
   comfyui_input_dir: "/workspace/ComfyUI_app/input"
   comfyui_output_dir: "/workspace/ComfyUI_app/output"
@@ -21,52 +15,36 @@ paths:
   csv_dir: "/workspace/ImgGenScript/files/csv"
   workflow_dir: "backend/cfg/workflow"
 
-# ──────────────────────────────────────────────────────────────────
-# Prompts
-# ──────────────────────────────────────────────────────────────────
 prompts:
   special_characteristics_weight: 1.2
 
-# ──────────────────────────────────────────────────────────────────
-# Generation
-# ──────────────────────────────────────────────────────────────────
 generation:
 
   fullbody:
     use_reference_pose: true
-
-    # KSampler - Reference Pose
     k0_seed: 42
     k0_steps: 8
     k0_cfg: 1.5
     k0_sampler_name: "dpmpp_sde"
     k0_scheduler: "karras"
-
-    # KSampler - Base Image
     k1_seed: 42
     k1_steps: 8
     k1_cfg: 1.5
     k1_sampler_name: "dpmpp_sde"
     k1_scheduler: "karras"
     batch_size: 1
-
-    # KSampler - Initial Image
     k2_seed: 42
     k2_steps: 6
     k2_cfg: 1.5
     k2_sampler_name: "dpmpp_sde"
     k2_scheduler: "karras"
     k2_denoise: 0.45
-
-    # Models
     checkpoint: "RealVisXL_V5.0_fp16.safetensors"
     ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
     ipadapter_lora_strength_model: 0.7
     ipadapter_lora_strength_clip: 1.0
     clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
     insightface_model_name: "buffalo_l"
-
-    # FaceID
     faceid_loader_preset: "FACEID PLUS V2"
     faceid_loader_lora_strength: 0.7
     faceid_weight: 0.7
@@ -75,26 +53,18 @@ generation:
     faceid_combine_embeds: "concat"
     faceid_start: 0.0
     faceid_end: 1.0
-
-    # Plus Face
     plus_face_loader_preset: "FACEID PLUS V2"
     plus_face_weight: 0.5
     plus_face_weight_type: "original"
     plus_face_combine_embeds: "concat"
     plus_face_start: 0.0
     plus_face_end: 1.0
-
-    # ControlNet - Pose
     pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
     pose_controlnet_weight: 0.7
     pose_controlnet_start: 0.0
     pose_controlnet_end: 0.7
-
-    # DWPreprocessor
     dwpreprocessor_bbox_detector: "yolox_l.onnx"
     dwpreprocessor_pose_estimator: "dw-ll_ucoco_384_bs5.torchscript.pt"
-
-    # Face Detailer
     detailer_bbox_model: "bbox/face_yolov8m.pt"
     detailer_seed: 42
     detailer_steps: 20
@@ -107,8 +77,6 @@ generation:
     detailer_bbox_dilation: 10
     detailer_bbox_crop_factor: 3.0
     detailer_drop_size: 10
-
-    # Hands Refiner
     hands_refiner_mask_bbox_padding: 20
     hands_refiner_mask_type: "default"
     hands_refiner_mask_expand: 0
@@ -127,8 +95,6 @@ generation:
 
   portrait:
     use_reference_pose: true
-
-    # KSampler
     k1_seed: 42
     k1_steps: 8
     k1_cfg: 1.5
@@ -136,24 +102,18 @@ generation:
     k1_scheduler: "karras"
     k1_denoise: 0.45
     batch_size: 1
-
-    # KSampler - Initial Image
     k2_seed: 42
     k2_steps: 6
     k2_cfg: 1.5
     k2_sampler_name: "dpmpp_sde"
     k2_scheduler: "karras"
     k2_denoise: 0.45
-
-    # Models
     checkpoint: "RealVisXL_V5.0_fp16.safetensors"
     ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
     ipadapter_lora_strength_model: 0.7
     ipadapter_lora_strength_clip: 1.0
     clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
     insightface_model_name: "buffalo_l"
-
-    # FaceID
     faceid_loader_preset: "FACEID PLUS V2"
     faceid_loader_lora_strength: 0.7
     faceid_weight: 0.7
@@ -162,16 +122,12 @@ generation:
     faceid_combine_embeds: "concat"
     faceid_start: 0.0
     faceid_end: 1.0
-
-    # Plus Face
     plus_face_loader_preset: "FACEID PLUS V2"
     plus_face_weight: 0.5
     plus_face_weight_type: "original"
     plus_face_combine_embeds: "concat"
     plus_face_start: 0.0
     plus_face_end: 1.0
-
-    # Face Detailer
     detailer_bbox_model: "bbox/face_yolov8m.pt"
     detailer_seed: 42
     detailer_steps: 20
@@ -185,9 +141,6 @@ generation:
     detailer_bbox_crop_factor: 3.0
     detailer_drop_size: 10
 
-# ──────────────────────────────────────────────────────────────────
-# Verbose
-# ──────────────────────────────────────────────────────────────────
 verbose:
   images: false
   comfyui: false
