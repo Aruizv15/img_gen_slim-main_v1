@@ -9,14 +9,10 @@ from .workflow.fullbody_workflow_data import FullBodyWorkflowData
 SETTINGS = get_settings()
 
 class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
-    """
-    A concrete implementation of a request to generate full-body images.
-    """
     def _get_positive_prompt_args(self) -> Dict[str, Any]:
         special_char_text = ""
         if self.donor_data.special_characteristics:
             special_char_text = f"({self.donor_data.special_characteristics}:{SETTINGS.special_characteristics_weight}),"
-
         args = {
             "age": self.donor_data.age,
             "eye_color": self.donor_data.eye_color,
@@ -126,10 +122,7 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
         return workflow_args
 
     def _get_structural_changes(self) -> Dict[str, Any]:
-        changes = {
-            "remove": [],
-            "reconnect": []
-        }
+        changes = {"remove": [], "reconnect": []}
 
         if not self.workflow_data.use_reference_pose:
             changes["remove"].extend(["5", "6", "7", "8", "9", "10", "11", "41", "44"])
@@ -143,7 +136,5 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             changes["remove"].extend(["30", "31", "32", "33", "34", "35", "36", "37", "38"])
             changes["reconnect"].extend([("29", 0, "39", "image")])
 
-        # Remover nodos de Easy-Use que no cargan correctamente
         changes["remove"].extend(["42", "43"])
-
         return changes
