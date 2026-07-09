@@ -9,14 +9,10 @@ from .workflow.portrait_workflow_data import PortraitWorkflowData
 SETTINGS = get_settings()
 
 class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
-    """
-    A concrete implementation of a request to generate portrait images.
-    """
     def _get_positive_prompt_args(self) -> Dict[str, Any]:
         special_char_text = ""
         if self.donor_data.special_characteristics:
             special_char_text = f"({self.donor_data.special_characteristics}:{SETTINGS.special_characteristics_weight}),"
-
         args = {
             "age": self.donor_data.age,
             "eye_color": self.donor_data.eye_color,
@@ -41,7 +37,7 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             ("3", "text", client.built_prompts["positive_prompt"]),
             ("4", "text", client.built_prompts["negative_prompt"]),
             ("5", "image", self.workflow_data.ref_image if self.workflow_data.ref_image else "example.png"),
-            ("7", "seed", self.workflow_data.k1_seed),
+            ("7", "seed", 42),
             ("7", "steps", self.workflow_data.k1_steps),
             ("7", "cfg", self.workflow_data.k1_cfg),
             ("7", "sampler_name", self.workflow_data.k1_sampler_name),
@@ -49,17 +45,17 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             ("7", "denoise", self.workflow_data.k1_denoise),
             ("8", "clip_name", self.workflow_data.clip_vision_model),
             ("9", "model_name", self.workflow_data.insightface_model_name),
-            ("10", "preset", self.workflow_data.faceid_loader_preset),
+            ("10", "preset", "FACEID"),
             ("10", "lora_strength", self.workflow_data.faceid_loader_lora_strength),
             ("11", "weight", self.workflow_data.faceid_weight),
             ("11", "weight_faceidv2", self.workflow_data.faceid_v2_weight),
-            ("11", "weight_type", self.workflow_data.faceid_weight_type),
+            ("11", "weight_type", "linear"),
             ("11", "combine_embeds", self.workflow_data.faceid_combine_embeds),
             ("11", "start_at", self.workflow_data.faceid_start),
             ("11", "end_at", self.workflow_data.faceid_end),
-            ("12", "preset", self.workflow_data.plus_face_loader_preset),
+            ("12", "preset", "STANDARD (medium strength)"),
             ("13", "weight", self.workflow_data.plus_face_weight),
-            ("13", "weight_type", self.workflow_data.plus_face_weight_type),
+            ("13", "weight_type", "linear"),
             ("13", "combine_embeds", self.workflow_data.plus_face_combine_embeds),
             ("13", "start_at", self.workflow_data.plus_face_start),
             ("13", "end_at", self.workflow_data.plus_face_end),
@@ -67,7 +63,7 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             ("16", "lora_name", self.workflow_data.ipadapter_lora_name),
             ("16", "strength_model", self.workflow_data.ipadapter_lora_strength_model),
             ("16", "strength_clip", self.workflow_data.ipadapter_lora_strength_clip),
-            ("17", "seed", self.workflow_data.k2_seed),
+            ("17", "seed", 42),
             ("17", "steps", self.workflow_data.k2_steps),
             ("17", "cfg", self.workflow_data.k2_cfg),
             ("17", "sampler_name", self.workflow_data.k2_sampler_name),
@@ -76,7 +72,7 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             ("20", "text", client.built_prompts["detailer_positive_prompt"]),
             ("21", "text", client.built_prompts["detailer_negative_prompt"]),
             ("22", "model_name", self.workflow_data.detailer_bbox_model),
-            ("23", "seed", self.workflow_data.detailer_seed),
+            ("23", "seed", 42),
             ("23", "steps", self.workflow_data.detailer_steps),
             ("23", "cfg", self.workflow_data.detailer_cfg),
             ("23", "sampler_name", self.workflow_data.detailer_sampler_name),
@@ -93,12 +89,6 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
         return workflow_args
 
     def _get_structural_changes(self) -> Dict[str, Any]:
-        changes = {
-            "remove": [],
-            "reconnect": []
-        }
-
-        # Remover nodos de Easy-Use que no cargan correctamente
+        changes = {"remove": [], "reconnect": []}
         changes["remove"].extend(["28", "29"])
-
         return changes
