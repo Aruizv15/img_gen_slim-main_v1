@@ -38,7 +38,7 @@ fullbody:
   ipadapter_lora_strength_clip: 1.0
   clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
   insightface_model_name: "buffalo_l"
-  faceid_loader_preset: "PLUS FACE (portraits)"
+  faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
   faceid_weight: 0.7
   faceid_v2_weight: 0.5
@@ -46,7 +46,7 @@ fullbody:
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
-  plus_face_loader_preset: "PLUS FACE (portraits)"
+  plus_face_loader_preset: "STANDARD (medium strength)"
   plus_face_weight: 0.5
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
@@ -69,7 +69,7 @@ fullbody:
   detailer_bbox_crop_factor: 3.0
   detailer_drop_size: 10
   hands_refiner_mask_bbox_padding: 20
-  hands_refiner_mask_type: "original"
+  hands_refiner_mask_type: "based_on_depth"
   hands_refiner_mask_expand: 0
   hands_refiner_detect_thr: 0.1
   hands_refiner_presence_thr: 0.1
@@ -103,7 +103,7 @@ portrait:
   ipadapter_lora_strength_clip: 1.0
   clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
   insightface_model_name: "buffalo_l"
-  faceid_loader_preset: "PLUS FACE (portraits)"
+  faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
   faceid_weight: 0.7
   faceid_v2_weight: 0.5
@@ -111,7 +111,7 @@ portrait:
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
-  plus_face_loader_preset: "PLUS FACE (portraits)"
+  plus_face_loader_preset: "STANDARD (medium strength)"
   plus_face_weight: 0.5
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
