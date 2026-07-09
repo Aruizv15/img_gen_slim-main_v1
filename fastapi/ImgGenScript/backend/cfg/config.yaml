@@ -40,7 +40,7 @@ fullbody:
   ipadapter_lora_strength_clip: 1.0
   clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
   insightface_model_name: "buffalo_l"
-  faceid_loader_preset: "FACEID PLUS V2"
+  faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
   faceid_weight: 0.7
   faceid_v2_weight: 0.5
@@ -48,7 +48,7 @@ fullbody:
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
-  plus_face_loader_preset: "FACEID PLUS V2"
+  plus_face_loader_preset: "STANDARD (medium strength)"
   plus_face_weight: 0.5
   plus_face_weight_type: "original"
   plus_face_combine_embeds: "concat"
@@ -115,7 +115,7 @@ portrait:
   ipadapter_lora_strength_clip: 1.0
   clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
   insightface_model_name: "buffalo_l"
-  faceid_loader_preset: "FACEID PLUS V2"
+  faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
   faceid_weight: 0.7
   faceid_v2_weight: 0.5
@@ -123,7 +123,7 @@ portrait:
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
-  plus_face_loader_preset: "FACEID PLUS V2"
+  plus_face_loader_preset: "STANDARD (medium strength)"
   plus_face_weight: 0.5
   plus_face_weight_type: "original"
   plus_face_combine_embeds: "concat"
