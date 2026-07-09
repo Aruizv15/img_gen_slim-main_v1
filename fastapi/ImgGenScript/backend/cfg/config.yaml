@@ -15,25 +15,26 @@ prompts:
   special_characteristics_weight: 1.2
 
 fullbody:
+  workflow: "fullbody.json"
+  checkpoint: "RealVisXL_V5.0_fp16.safetensors"
+  batch_size: 1
   use_reference_pose: true
   k0_seed: 42
   k0_steps: 8
   k0_cfg: 1.5
   k0_sampler_name: "dpmpp_sde"
   k0_scheduler: "karras"
+  dwpreprocessor_bbox_detector: "yolox_l.onnx"
+  dwpreprocessor_pose_estimator: "dw-ll_ucoco_384_bs5.torchscript.pt"
+  pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
+  pose_controlnet_weight: 0.7
+  pose_controlnet_start: 0.0
+  pose_controlnet_end: 0.7
   k1_seed: 42
   k1_steps: 8
   k1_cfg: 1.5
   k1_sampler_name: "dpmpp_sde"
   k1_scheduler: "karras"
-  batch_size: 1
-  k2_seed: 42
-  k2_steps: 6
-  k2_cfg: 1.5
-  k2_sampler_name: "dpmpp_sde"
-  k2_scheduler: "karras"
-  k2_denoise: 0.45
-  checkpoint: "RealVisXL_V5.0_fp16.safetensors"
   ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
   ipadapter_lora_strength_model: 0.7
   ipadapter_lora_strength_clip: 1.0
@@ -53,12 +54,15 @@ fullbody:
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
   plus_face_end: 1.0
-  pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  pose_controlnet_weight: 0.7
-  pose_controlnet_start: 0.0
-  pose_controlnet_end: 0.7
-  dwpreprocessor_bbox_detector: "yolox_l.onnx"
-  dwpreprocessor_pose_estimator: "dw-ll_ucoco_384_bs5.torchscript.pt"
+  k2_seed: 42
+  k2_steps: 6
+  k2_cfg: 1.5
+  k2_sampler_name: "dpmpp_sde"
+  k2_scheduler: "karras"
+  k2_denoise: 0.45
+  detailer_positive_prompt_template: "detailer_positive_prompt.txt"
+  detailer_negative_prompt_template: "detailer_negative_prompt.txt"
+  detailer_wildcard_prompt_template: "detailer_wildcard_prompt.txt"
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_seed: 42
   detailer_steps: 20
@@ -71,11 +75,14 @@ fullbody:
   detailer_bbox_dilation: 10
   detailer_bbox_crop_factor: 3.0
   detailer_drop_size: 10
+  use_hands_refiner: true
   hands_refiner_mask_bbox_padding: 20
   hands_refiner_mask_type: "default"
   hands_refiner_mask_expand: 0
   hands_refiner_detect_thr: 0.1
   hands_refiner_presence_thr: 0.1
+  hands_positive_prompt_template: "hands_positive_prompt.txt"
+  hands_negative_prompt_template: "hands_negative_prompt.txt"
   hands_refiner_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
   hands_refiner_controlnet_weight: 0.7
   hands_refiner_controlnet_start: 0.0
@@ -88,21 +95,21 @@ fullbody:
   hands_refiner_denoise: 0.45
 
 portrait:
+  workflow: "portrait.json"
+  checkpoint: "RealVisXL_V5.0_fp16.safetensors"
+  batch_size: 1
   use_reference_pose: true
+  controlnet_preprocessor: "DWPreprocessor"
+  controlnet_preprocessor_sd_version: "sdxl"
+  pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
+  pose_controlnet_weight: 0.7
+  pose_controlnet_start: 0.0
+  pose_controlnet_end: 0.7
   k1_seed: 42
   k1_steps: 8
   k1_cfg: 1.5
   k1_sampler_name: "dpmpp_sde"
   k1_scheduler: "karras"
-  k1_denoise: 0.45
-  batch_size: 1
-  k2_seed: 42
-  k2_steps: 6
-  k2_cfg: 1.5
-  k2_sampler_name: "dpmpp_sde"
-  k2_scheduler: "karras"
-  k2_denoise: 0.45
-  checkpoint: "RealVisXL_V5.0_fp16.safetensors"
   ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
   ipadapter_lora_strength_model: 0.7
   ipadapter_lora_strength_clip: 1.0
@@ -122,6 +129,15 @@ portrait:
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
   plus_face_end: 1.0
+  k2_seed: 42
+  k2_steps: 6
+  k2_cfg: 1.5
+  k2_sampler_name: "dpmpp_sde"
+  k2_scheduler: "karras"
+  k2_denoise: 0.45
+  detailer_positive_prompt_template: "detailer_positive_prompt.txt"
+  detailer_negative_prompt_template: "detailer_negative_prompt.txt"
+  detailer_wildcard_prompt_template: "detailer_wildcard_prompt.txt"
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_seed: 42
   detailer_steps: 20
@@ -134,13 +150,6 @@ portrait:
   detailer_bbox_dilation: 10
   detailer_bbox_crop_factor: 3.0
   detailer_drop_size: 10
-
-verbose:
-  images: false
-  comfyui: false
-  workflow: false
-  generation: false
-  scene: false
 
 generation_verbose: false
 save_workflow: false
