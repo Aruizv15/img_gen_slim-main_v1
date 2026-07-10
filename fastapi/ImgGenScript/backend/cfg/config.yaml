@@ -1,161 +1,138 @@
-import json
-import logging
-import websocket
-from typing import Dict, List, Optional, Tuple
+server:
+  fastapi_host: "127.0.0.1"
+  fastapi_port: 8000
+  comfyui_host: "127.0.0.1"
+  comfyui_port: 8188
 
-from backend.src.clients.base_client import BaseAPIClient
+paths:
+  comfyui_input_dir: "/workspace/ComfyUI_app/input"
+  comfyui_output_dir: "/workspace/ComfyUI_app/output"
+  project_images_dir: "/workspace/ImgGenScript/files/images"
+  csv_dir: "/workspace/ImgGenScript/files/csv"
+  workflow_dir: "backend/cfg/workflow"
 
+prompts:
+  special_characteristics_weight: 1.2
 
-class ComfyUIClient(BaseAPIClient):
-    """
-    Client for interacting with the ComfyUI API.
-    """
+fullbody:
+  workflow: "fullbody.json"
+  checkpoint: "RealVisXL_V5.0_fp16.safetensors"
+  batch_size: 1
+  use_reference_pose: true
+  k0_steps: 8
+  k0_cfg: 1.5
+  k0_sampler_name: "dpmpp_sde"
+  k0_scheduler: "karras"
+  dwpreprocessor_bbox_detector: "yolox_l.onnx"
+  dwpreprocessor_pose_estimator: "dw-ll_ucoco_384_bs5.torchscript.pt"
+  pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
+  pose_controlnet_weight: 0.7
+  pose_controlnet_start: 0.0
+  pose_controlnet_end: 0.7
+  k1_steps: 8
+  k1_cfg: 1.5
+  k1_sampler_name: "dpmpp_sde"
+  k1_scheduler: "karras"
+  ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
+  ipadapter_lora_strength_model: 0.7
+  ipadapter_lora_strength_clip: 1.0
+  clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
+  insightface_model_name: "buffalo_l"
+  faceid_loader_preset: "FACEID"
+  faceid_loader_lora_strength: 0.7
+  faceid_weight: 0.7
+  faceid_v2_weight: 0.5
+  faceid_weight_type: "linear"
+  faceid_combine_embeds: "concat"
+  faceid_start: 0.0
+  faceid_end: 1.0
+  plus_face_loader_preset: "STANDARD (medium strength)"
+  plus_face_weight: 0.5
+  plus_face_weight_type: "linear"
+  plus_face_combine_embeds: "concat"
+  plus_face_start: 0.0
+  plus_face_end: 1.0
+  k2_steps: 6
+  k2_cfg: 1.5
+  k2_sampler_name: "dpmpp_sde"
+  k2_scheduler: "karras"
+  k2_denoise: 0.45
+  detailer_bbox_model: "bbox/face_yolov8m.pt"
+  detailer_steps: 20
+  detailer_cfg: 7.0
+  detailer_sampler_name: "dpmpp_2m"
+  detailer_scheduler: "karras"
+  detailer_denoise: 0.45
+  detailer_feather: 5
+  detailer_bbox_threshold: 0.5
+  detailer_bbox_dilation: 10
+  detailer_bbox_crop_factor: 3.0
+  detailer_drop_size: 10
+  hands_refiner_mask_bbox_padding: 20
+  hands_refiner_mask_type: "based_on_depth"
+  hands_refiner_mask_expand: 0
+  hands_refiner_detect_thr: 0.1
+  hands_refiner_presence_thr: 0.1
+  hands_refiner_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
+  hands_refiner_controlnet_weight: 0.7
+  hands_refiner_controlnet_start: 0.0
+  hands_refiner_controlnet_end: 0.7
+  hands_refiner_steps: 20
+  hands_refiner_cfg: 7.0
+  hands_refiner_sampler_name: "dpmpp_2m"
+  hands_refiner_scheduler: "karras"
+  hands_refiner_denoise: 0.45
 
-    def __init__(
-        self,
-        server_address: str,
-        timeout: Optional[int] = 15,
-        client_id: Optional[str] = None,
-        logger: Optional[logging.Logger] = None
-    ):
-        super().__init__(
-            server_address=server_address,
-            timeout=timeout,
-            client_id=client_id,
-            logger=logger
-        )
+portrait:
+  workflow: "portrait.json"
+  checkpoint: "RealVisXL_V5.0_fp16.safetensors"
+  batch_size: 1
+  use_reference_pose: true
+  controlnet_preprocessor: "DWPreprocessor"
+  controlnet_preprocessor_sd_version: "sdxl"
+  pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
+  pose_controlnet_weight: 0.7
+  pose_controlnet_start: 0.0
+  pose_controlnet_end: 0.7
+  k1_steps: 8
+  k1_cfg: 1.5
+  k1_sampler_name: "dpmpp_sde"
+  k1_scheduler: "karras"
+  ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
+  ipadapter_lora_strength_model: 0.7
+  ipadapter_lora_strength_clip: 1.0
+  clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
+  insightface_model_name: "buffalo_l"
+  faceid_loader_preset: "FACEID"
+  faceid_loader_lora_strength: 0.7
+  faceid_weight: 0.7
+  faceid_v2_weight: 0.5
+  faceid_weight_type: "linear"
+  faceid_combine_embeds: "concat"
+  faceid_start: 0.0
+  faceid_end: 1.0
+  plus_face_loader_preset: "STANDARD (medium strength)"
+  plus_face_weight: 0.5
+  plus_face_weight_type: "linear"
+  plus_face_combine_embeds: "concat"
+  plus_face_start: 0.0
+  plus_face_end: 1.0
+  k2_steps: 6
+  k2_cfg: 1.5
+  k2_sampler_name: "dpmpp_sde"
+  k2_scheduler: "karras"
+  k2_denoise: 0.45
+  detailer_bbox_model: "bbox/face_yolov8m.pt"
+  detailer_steps: 20
+  detailer_cfg: 7.0
+  detailer_sampler_name: "dpmpp_2m"
+  detailer_scheduler: "karras"
+  detailer_denoise: 0.45
+  detailer_feather: 5
+  detailer_bbox_threshold: 0.5
+  detailer_bbox_dilation: 10
+  detailer_bbox_crop_factor: 3.0
+  detailer_drop_size: 10
 
-    def queue_prompt(self, prompt: Dict) -> Dict:
-        payload = {"prompt": prompt, "client_id": self.client_id}
-        print(f"[WORKFLOW NODES] {list(prompt.keys())}")
-        output_nodes = [k for k, v in prompt.items() if v.get('class_type') in ['SaveImage', 'PreviewImage']]
-        print(f"[OUTPUT NODES] {output_nodes}")
-        return self.http.post("/prompt", data=payload)
-
-    def get_images(self, ws: websocket.WebSocket, prompt: Dict) -> Dict[str, List[bytes]]:
-        result = self.queue_prompt(prompt)
-
-        if result.get("status") == "error":
-            raise RuntimeError(f"Queue failed: {result['message']} | Detail: {result.get('detail', 'No detail')} | Data: {result.get('data', {})}")
-
-        prompt_id = result["data"]["prompt_id"]
-        output_images = {}
-        current_node = ""
-
-        while True:
-            out = ws.recv()
-            if isinstance(out, str):
-                message = json.loads(out)
-                if message["type"] == "executing":
-                    data = message["data"]
-                    if data["node"] is None and data["prompt_id"] == prompt_id:
-                        break
-                    else:
-                        current_node = data["node"]
-            else:
-                if current_node not in output_images:
-                    output_images[current_node] = []
-                output_images[current_node].append(out[8:])
-
-        return output_images
-
-    def generate_images(
-        self,
-        workflow: Dict,
-        verbose: bool = False
-    ) -> List[Tuple[str, str, str]]:
-        """
-        Generates images and returns list of (filename, subfolder, type) tuples
-        by querying the history after generation completes.
-        """
-        if verbose:
-            print(f"[ComfyUI] Generating images with workflow nodes: {list(workflow.keys())}")
-
-        # Queue the prompt
-        result = self.queue_prompt(workflow)
-        if result.get("status") == "error":
-            raise RuntimeError(f"Queue failed: {result['message']} | Detail: {result.get('detail', 'No detail')} | Data: {result.get('data', {})}")
-
-        prompt_id = result["data"]["prompt_id"]
-
-        # Wait via WebSocket for completion
-        ws, _, _ = self.open_websocket_connection()
-        try:
-            while True:
-                out = ws.recv()
-                if isinstance(out, str):
-                    message = json.loads(out)
-                    if message["type"] == "executing":
-                        data = message["data"]
-                        if data["node"] is None and data["prompt_id"] == prompt_id:
-                            break
-        finally:
-            ws.close()
-
-        # Get image paths from history
-        history = self.get_history(prompt_id)
-        image_paths = []
-
-        if prompt_id in history:
-            outputs = history[prompt_id].get("outputs", {})
-            for node_id, node_output in outputs.items():
-                if "images" in node_output:
-                    for img in node_output["images"]:
-                        image_paths.append((
-                            img.get("filename", ""),
-                            img.get("subfolder", ""),
-                            img.get("type", "output")
-                        ))
-
-        print(f"[ComfyUI] Generated {len(image_paths)} images")
-        return image_paths
-
-    def download_images_from_paths(
-        self,
-        paths: List[Tuple[str, str, str]],
-        verbose: bool = False
-    ) -> List[Tuple[str, bytes]]:
-        """
-        Downloads images from ComfyUI given a list of (filename, subfolder, type) tuples.
-        """
-        images = []
-        for filename, subfolder, folder_type in paths:
-            if not filename:
-                continue
-            params = {"filename": filename, "subfolder": subfolder, "type": folder_type}
-            result = self.http.get("/view", params=params)
-            if result.get("status") == "success" and result.get("data"):
-                images.append((filename, result["data"]))
-                if verbose:
-                    print(f"[DOWNLOAD] Downloaded: {filename}")
-            else:
-                if verbose:
-                    print(f"[DOWNLOAD] Failed: {filename}")
-        return images
-
-    def get_history(self, prompt_id: str) -> Dict:
-        result = self.http.get(f"/history/{prompt_id}")
-        return result.get("data", {})
-
-    def get_queue(self) -> Dict:
-        result = self.http.get("/queue")
-        return result.get("data", {})
-
-    def interrupt(self) -> None:
-        self.http.post("/interrupt")
-
-    def free_comfyui_memory(
-        self,
-        unload_models: bool = True,
-        free_memory: bool = True,
-        verbose: bool = False
-    ) -> Dict:
-        payload = {"unload_models": unload_models, "free_memory": free_memory}
-        if verbose:
-            print(f"[ComfyUI] Freeing memory: {payload}")
-        return self.http.post("/free", data=payload)
-
-    def open_websocket_connection(self) -> Tuple[websocket.WebSocket, str, str]:
-        ws = websocket.WebSocket()
-        ws.connect(f"ws://{self.server_address}/ws?clientId={self.client_id}")
-        return ws, self.server_address, self.client_id
+generation_verbose: false
+save_workflow: false
