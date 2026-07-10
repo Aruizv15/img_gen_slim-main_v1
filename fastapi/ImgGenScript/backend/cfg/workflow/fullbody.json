@@ -729,88 +729,52 @@
             "title": "Save Image"
         }
     },
-    "41": {
+    "44": {
         "inputs": {
-            "anything": [
+            "images": [
                 "9",
                 0
             ]
         },
-        "class_type": "easy cleanGpuUsed",
+        "class_type": "PreviewImage",
         "_meta": {
-            "title": "Clean VRAM Used"
+            "title": "Image Preview - Pose"
         }
     },
-    "42": {
+    "45": {
         "inputs": {
-            "anything": [
-                "29",
+            "images": [
+                "23",
                 0
             ]
         },
-        "class_type": "easy cleanGpuUsed",
+        "class_type": "PreviewImage",
         "_meta": {
-            "title": "Clean VRAM Used"
+            "title": "Image Preview - Initial Image"
         }
     },
-    "43": {
+    "46": {
         "inputs": {
-        "anything": [
-            "39",
-            0
-        ]
+            "images": [
+                "28",
+                0
+            ]
         },
-        "class_type": "easy cleanGpuUsed",
+        "class_type": "PreviewImage",
         "_meta": {
-        "title": "Clean VRAM Used"
+            "title": "Image Preview - Face Detailer"
         }
     },
-  "44": {
-    "inputs": {
-      "images": [
-        "9",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "Image Preview - Pose"
+    "47": {
+        "inputs": {
+            "images": [
+                "39",
+                0
+            ]
+        },
+        "class_type": "PreviewImage",
+        "_meta": {
+            "title": "Image Preview - Final Image"
+        }
     }
-  },
-  "45": {
-    "inputs": {
-      "images": [
-        "23",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "Image Preview - Initial Image"
-    }
-  },
-  "46": {
-    "inputs": {
-      "images": [
-        "28",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "Image Preview - Face Detailer"
-    }
-  },
-  "47": {
-    "inputs": {
-      "images": [
-        "39",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "Image Preview - Final Image"
-    }
-  }
 }
