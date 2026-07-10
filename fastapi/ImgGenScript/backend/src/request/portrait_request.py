@@ -90,5 +90,4 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
 
     def _get_structural_changes(self) -> Dict[str, Any]:
         changes = {"remove": [], "reconnect": []}
-        changes["remove"].extend(["28", "29"])
         return changes
