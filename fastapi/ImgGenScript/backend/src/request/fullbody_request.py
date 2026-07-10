@@ -125,7 +125,7 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
         changes = {"remove": [], "reconnect": []}
 
         if not self.workflow_data.use_reference_pose:
-            changes["remove"].extend(["5", "6", "7", "8", "9", "10", "11", "41", "44"])
+            changes["remove"].extend(["5", "6", "7", "8", "9", "10", "11", "44"])
             changes["reconnect"].extend([
                 ("3", 0, "12", "positive"),
                 ("4", 0, "12", "negative"),
@@ -136,5 +136,4 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             changes["remove"].extend(["30", "31", "32", "33", "34", "35", "36", "37", "38"])
             changes["reconnect"].extend([("29", 0, "39", "image")])
 
-        changes["remove"].extend(["42", "43"])
         return changes
