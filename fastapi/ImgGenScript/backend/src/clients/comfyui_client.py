@@ -80,8 +80,37 @@ class ComfyUIClient(BaseAPIClient):
             history = self.get_history(prompt_id)
             print(f"[ComfyUI] History keys: {list(history.keys())}")
             if prompt_id in history:
-                outputs = history[prompt_id].get("outputs", {})
+                entry = history[prompt_id]
+
+                # --- Check for real execution errors reported by ComfyUI ---
+                status = entry.get("status", {})
+                status_str = status.get("status_str")
+                messages = status.get("messages", [])
+                error_messages = [m for m in messages if isinstance(m, list) and len(m) > 0 and m[0] == "execution_error"]
+
+                if status_str == "error" or error_messages:
+                    error_details = []
+                    for m in error_messages:
+                        payload = m[1] if len(m) > 1 else {}
+                        node_id = payload.get("node_id")
+                        node_type = payload.get("node_type")
+                        exception_message = payload.get("exception_message")
+                        traceback_lines = payload.get("traceback", [])
+                        error_details.append(
+                            f"Node '{node_id}' ({node_type}): {exception_message}"
+                            + ("\n" + "\n".join(traceback_lines) if traceback_lines else "")
+                        )
+                    detail_str = "\n---\n".join(error_details) if error_details else "No detail provided by ComfyUI."
+                    print(f"[ComfyUI] EXECUTION ERROR for prompt {prompt_id}:\n{detail_str}")
+                    raise RuntimeError(f"ComfyUI execution failed for prompt {prompt_id}:\n{detail_str}")
+
+                outputs = entry.get("outputs", {})
                 print(f"[ComfyUI] Output nodes: {list(outputs.keys())}")
+
+                if not outputs:
+                    # Completed with no error flagged, but also no outputs - dump status for debugging
+                    print(f"[ComfyUI] WARNING: No outputs and no explicit error. Full status: {status}")
+
                 for node_id, node_output in outputs.items():
                     if "images" in node_output:
                         for img in node_output["images"]:
