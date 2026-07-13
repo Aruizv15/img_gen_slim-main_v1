@@ -23,6 +23,8 @@ for _d in [
     '/app/shared_data/temp_images',
     '/app/static',
     '/app/templates',
+    '/workspace/ImgGenScript/files/reference/portrait',
+    '/workspace/ImgGenScript/files/reference/fullbody',
 ]:
     os.makedirs(_d, exist_ok=True)
 
