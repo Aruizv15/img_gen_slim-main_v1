@@ -7,6 +7,7 @@ import docker
 import uuid
 import sys
 import threading
+import asyncio
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -87,6 +88,64 @@ async def upload_to_b2(local_path: str, b2_key: str):
             },
             content=content
         )
+
+
+async def download_generated_from_b2(vrepro_id: str) -> list:
+    """
+    Descarga las imagenes generadas por el worker de RunPod (subidas a
+    Backblaze bajo 'generated_images/{vrepro_id}/') hacia la carpeta local
+    OUTPUT_IMG_DIR, para que /list_images y /images/{filename} puedan
+    servirlas al frontend. Sin este paso, las imagenes quedan solo en B2
+    y el frontend nunca las ve.
+
+    Returns:
+        list[str]: nombres de archivo descargados.
+    """
+    auth = await b2_authorize()
+    api_url = auth["apiUrl"]
+    auth_token = auth["authorizationToken"]
+    bucket = os.getenv('B2_BUCKET')
+
+    downloaded = []
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{api_url}/b2api/v2/b2_list_buckets",
+            headers={"Authorization": auth_token},
+            params={"accountId": auth["accountId"], "bucketName": bucket}
+        )
+        buckets = r.json().get("buckets", [])
+        if not buckets:
+            print(f"[B2] Bucket no encontrado: {bucket}")
+            return downloaded
+        bucket_id = buckets[0]["bucketId"]
+
+        prefix = f"generated_images/{vrepro_id}/"
+        list_r = await client.get(
+            f"{api_url}/b2api/v2/b2_list_file_names",
+            headers={"Authorization": auth_token},
+            params={"bucketId": bucket_id, "prefix": prefix}
+        )
+        files = list_r.json().get("files", [])
+        if not files:
+            print(f"[B2] No se encontraron imagenes generadas para {vrepro_id} en {prefix}")
+            return downloaded
+
+        os.makedirs(OUTPUT_IMG_DIR, exist_ok=True)
+        for f in files:
+            filename = f["fileName"].split("/")[-1]
+            if not filename:
+                continue
+            dl = await client.get(
+                f"{auth['downloadUrl']}/file/{bucket}/{f['fileName']}",
+                headers={"Authorization": auth_token}
+            )
+            local_path = os.path.join(OUTPUT_IMG_DIR, filename)
+            with open(local_path, "wb") as out:
+                out.write(dl.content)
+            downloaded.append(filename)
+            print(f"[B2] Descargada a {local_path}")
+
+    return downloaded
 
 
 RESTART_TOKEN = str(os.getenv("RESTART_TOKEN"))
@@ -389,9 +448,20 @@ async def start_job(
                 
                 if status.get("status") in ["COMPLETED", "FAILED"]:
                     break
-                    
+
                 time.sleep(5)
-            
+
+            # Descargar las imagenes generadas desde Backblaze hacia la
+            # carpeta local, para que el frontend pueda mostrarlas via
+            # /list_images y /images/{filename}
+            if status.get("status") == "COMPLETED":
+                try:
+                    vrepro_id = donors[0] if donors else ""
+                    downloaded = asyncio.run(download_generated_from_b2(vrepro_id))
+                    print(f"[JOBS] Imagenes descargadas para {vrepro_id}: {downloaded}")
+                except Exception as e:
+                    print(f"[JOBS] Error descargando imagenes de B2: {e}")
+
             current_job["status"] = "done"
             current_job["finished_at"] = time.time()
             
