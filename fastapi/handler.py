@@ -213,8 +213,6 @@ def handler(job):
         loop.run_until_complete(download_inputs_from_b2(vrepro_id))
 
         comfy_input = '/workspace/ComfyUI_app/input'
-        if os.path.isdir(comfy_input):
-            shutil.rmtree(comfy_input)
         os.makedirs(comfy_input, exist_ok=True)
         src = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
         if os.path.isdir(src):
@@ -228,7 +226,7 @@ def handler(job):
                 max_cycles=max_cycles,
                 donor_list=[vrepro_id],
                 use_pose_override=False,
-                use_hands_refiner_override=True,
+                use_hands_refiner_override=False,
                 use_amateur_effect_override=False,
             )
 
