@@ -583,11 +583,14 @@ async function startSingleExecution() {
    ============================================================ */
 
 /* Espera hasta que el job actual termine (polling cada 3s) */
-async function waitForJobDone() {
+async function waitForJobDone(generationType) {
+  const url = generationType
+    ? `${API_BASE}/jobs/current?generation_type=${generationType}`
+    : `${API_BASE}/jobs/current`;
   while (true) {
     await new Promise(r => setTimeout(r, 3000));
     try {
-      const res = await fetch(`${API_BASE}/jobs/current`);
+      const res = await fetch(url);
       const job = await res.json();
       if (job.status === 'done' || job.status === 'error' || job.status === 'idle') return job;
     } catch { /* sigue esperando */ }
@@ -751,8 +754,64 @@ async function executeModelsSequentially() {
 }
 
 /* ============================================================
-   EJECUCIÓN — ENTRADA PRINCIPAL
+   EJECUCIÓN — FULLBODY + PORTRAIT AUTOMÁTICO (uno tras otro)
    ============================================================ */
+async function startFullbodyThenPortrait() {
+  if (seqRunning) {
+    showToast('Ya hay una ejecución en curso.', 'error');
+    return;
+  }
+
+  const cyclesFb = document.getElementById('fb-cycles').value;
+  const cyclesPt = document.getElementById('pt-cycles').value;
+  const donors   = document.getElementById('model-list').value;
+  const usePose    = document.getElementById('cb-pose').classList.contains('on');
+  const useHands   = document.getElementById('cb-hands').classList.contains('on');
+  const useAmateur = document.getElementById('cb-amateur').classList.contains('on');
+
+  if (!donors.trim()) {
+    showToast('Escribe al menos un vreproID en "LISTA DE MODELOS".', 'error');
+    return;
+  }
+
+  seqRunning = true;
+
+  const runOne = async (mode, cycles) => {
+    const params = new URLSearchParams({
+      generation_type:    mode,
+      max_cycles:         cycles,
+      donor_list:         donors,
+      use_pose:           usePose,
+      use_hands_refiner:  useHands,
+      use_amateur_effect: useAmateur,
+    });
+
+    const res  = await fetch(`${API_BASE}/jobs?${params}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+
+    showToast(`Iniciando ${mode}: ${data.job_id.slice(0, 8)}`, 'success');
+    const job = await waitForJobDone(mode);
+    if (job.status === 'error') {
+      showToast(`Error en ${mode}: ${job.error || '?'}`, 'error');
+    } else {
+      showToast(`✓ ${mode} completado`, 'success');
+    }
+    await fetchGeneratedImages();
+  };
+
+  try {
+    await runOne('fullbody', cyclesFb);
+    await runOne('portrait', cyclesPt);
+    showToast('Fullbody + Portrait completados.', 'success');
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    seqRunning = false;
+  }
+}
+
+
 async function startExecution() {
   if (seqRunning) {
     showToast('Ya hay una ejecución secuencial en curso.', 'error');
