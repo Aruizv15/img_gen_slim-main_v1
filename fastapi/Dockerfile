@@ -1,5 +1,4 @@
 FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
-
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl \
@@ -7,17 +6,13 @@ RUN apt-get update && \
         libgl1 \
         libglib2.0-0 && \
     rm -rf /var/lib/apt/lists/*
-
 RUN pip install --no-cache-dir --force-reinstall \
     torch==2.1.0+cu118 \
     torchvision==0.16.0+cu118 \
     torchaudio==2.1.0+cu118 \
     --index-url https://download.pytorch.org/whl/cu118
-
 RUN python -c "import torch; assert torch.version.cuda.startswith('11.8'); print('CUDA OK:', torch.version.cuda)"
-
 WORKDIR /app
-
 RUN mkdir -p \
     /app/templates \
     /app/static/css \
@@ -27,15 +22,12 @@ RUN mkdir -p \
     /app/shared_data/reference_images \
     /app/shared_data/temp_images \
     /app/workflows
-
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI_app && \
     cd /workspace/ComfyUI_app && \
     git checkout tags/v0.3.28
-
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
     /workspace/ComfyUI_app/requirements.txt > /tmp/comfy_reqs.txt && \
     pip install --no-cache-dir -r /tmp/comfy_reqs.txt
-
 RUN pip install --no-cache-dir \
     torchsde \
     ultralytics \
@@ -47,19 +39,14 @@ RUN pip install --no-cache-dir \
     onnxruntime \
     supervision \
     dill
-
 COPY requirements.txt /app/
-
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
     /app/requirements.txt > /tmp/app_reqs.txt && \
     pip install --no-cache-dir -r /tmp/app_reqs.txt
-
 COPY ImgGenScript/ /workspace/ImgGenScript/
-
 RUN grep -vE "^torch|^torchvision|^torchaudio" \
     /workspace/ImgGenScript/backend/requirements.txt > /tmp/imggen_reqs.txt && \
     pip install --no-cache-dir -r /tmp/imggen_reqs.txt
-
 RUN cd /workspace/ComfyUI_app/custom_nodes && \
     git clone https://github.com/crystian/ComfyUI-Crystools.git && \
     git clone https://github.com/cubiq/ComfyUI_essentials.git && \
@@ -74,7 +61,6 @@ RUN cd /workspace/ComfyUI_app/custom_nodes && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
     git clone https://github.com/cubiq/ComfyUI_FaceAnalysis.git && \
     git clone https://github.com/sipherxyz/comfyui-art-venture.git
-
 RUN for dir in /workspace/ComfyUI_app/custom_nodes/*/; do \
     if [ -f "$dir/requirements.txt" ]; then \
         echo "============================="; \
@@ -83,22 +69,26 @@ RUN for dir in /workspace/ComfyUI_app/custom_nodes/*/; do \
         pip install --no-cache-dir -r /tmp/node_reqs.txt || true; \
     fi; \
 done
-
 RUN pip install --no-cache-dir --force-reinstall \
     torch==2.1.0+cu118 \
     torchvision==0.16.0+cu118 \
     torchaudio==2.1.0+cu118 \
     --index-url https://download.pytorch.org/whl/cu118
-
 COPY download_models.py /app/
 COPY main.py /app/
 COPY handler.py /app/
 COPY test_input.json /app/test_input.json
 COPY templates/ /app/templates/
 COPY static/ /app/static/
-
 RUN python -c "import torch; print(torch.__version__, torch.version.cuda)"
 
-EXPOSE 8000
+# --- Fix final: forzar NumPy 1.26.4 como ULTIMA instalacion del build ---
+# Varios custom_nodes instalados arriba traen su propio requirements.txt
+# que puede reinstalar numpy>=2, rompiendo la compatibilidad con torch==2.1.0
+# (compilado contra NumPy 1.x). Esta linea se asegura de que numpy quede
+# fijo en la version correcta sin importar que paso antes.
+RUN pip install --no-cache-dir --force-reinstall numpy==1.26.4
+RUN python -c "import numpy, torch; print('NumPy:', numpy.__version__); print('Torch:', torch.__version__); import torch; torch.tensor([1,2,3]).numpy()" 
 
+EXPOSE 8000
 CMD ["python", "/app/handler.py"]
