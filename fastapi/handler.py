@@ -213,6 +213,8 @@ def handler(job):
         loop.run_until_complete(download_inputs_from_b2(vrepro_id))
 
         comfy_input = '/workspace/ComfyUI_app/input'
+        if os.path.isdir(comfy_input):
+            shutil.rmtree(comfy_input)
         os.makedirs(comfy_input, exist_ok=True)
         src = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
         if os.path.isdir(src):
