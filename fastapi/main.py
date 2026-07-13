@@ -21,12 +21,12 @@ from dotenv import load_dotenv
 
 # Orchestrator solo disponible en RunPod
 
-current_job = {
-    "job_id": None,
-    "status": "idle",
-    "started_at": None,
-    "finished_at": None,
-    "error": None
+# Antes: un solo job global (current_job) bloqueaba correr fullbody y
+# portrait al mismo tiempo. Ahora: un job independiente por generation_type,
+# para poder correr ambos en paralelo.
+jobs_by_type = {
+    "fullbody": {"job_id": None, "status": "idle", "started_at": None, "finished_at": None, "error": None},
+    "portrait": {"job_id": None, "status": "idle", "started_at": None, "finished_at": None, "error": None},
 }
 
 INPUT_IMG_DIR  = "/app/shared_data/input_images"
@@ -398,14 +398,17 @@ async def start_job(
     use_hands_refiner: bool = True,
     use_amateur_effect: bool = False,
 ):
-    global current_job
-    if current_job["status"] == "running":
-        raise HTTPException(status_code=409, detail="Ya hay un job en ejecución.")
+    global jobs_by_type
+    if generation_type not in jobs_by_type:
+        raise HTTPException(status_code=400, detail=f"generation_type invalido: {generation_type}")
+
+    if jobs_by_type[generation_type]["status"] == "running":
+        raise HTTPException(status_code=409, detail=f"Ya hay un job de {generation_type} en ejecucion.")
 
     job_id = str(uuid.uuid4())
     donors = [d.strip() for d in donor_list.split(",") if d.strip()]
-    
-    current_job = {
+
+    jobs_by_type[generation_type] = {
         "job_id": job_id,
         "status": "running",
         "started_at": time.time(),
@@ -414,7 +417,7 @@ async def start_job(
     }
 
     def run():
-        global current_job
+        global jobs_by_type
         try:
             import requests as req
             runpod_api_key = os.getenv("RUNPOD_API_KEY")
@@ -462,20 +465,40 @@ async def start_job(
                 except Exception as e:
                     print(f"[JOBS] Error descargando imagenes de B2: {e}")
 
-            current_job["status"] = "done"
-            current_job["finished_at"] = time.time()
-            
+            jobs_by_type[generation_type]["status"] = "done"
+            jobs_by_type[generation_type]["finished_at"] = time.time()
+
         except Exception as e:
-            current_job["status"] = "error"
-            current_job["error"] = str(e)
-            current_job["finished_at"] = time.time()
+            jobs_by_type[generation_type]["status"] = "error"
+            jobs_by_type[generation_type]["error"] = str(e)
+            jobs_by_type[generation_type]["finished_at"] = time.time()
 
     threading.Thread(target=run, daemon=True).start()
-    return {"job_id": job_id, "status": "running", "message": "Batch iniciado en RunPod"}
+    return {"job_id": job_id, "status": "running", "generation_type": generation_type, "message": "Batch iniciado en RunPod"}
 
 @app.get("/jobs/current")
-async def get_current_job():
-    return current_job
+async def get_current_job(generation_type: Optional[str] = None):
+    """
+    Si se pasa generation_type ('fullbody' o 'portrait'), devuelve solo ese job.
+    Si no se pasa (compatibilidad con codigo viejo que no conoce generation_type),
+    devuelve el job que este corriendo ahora mismo; si ninguno esta corriendo,
+    devuelve el que termino mas recientemente. Mantiene el mismo formato de
+    un solo job que se usaba antes de soportar fullbody+portrait en paralelo.
+    """
+    if generation_type:
+        if generation_type not in jobs_by_type:
+            raise HTTPException(status_code=400, detail=f"generation_type invalido: {generation_type}")
+        return jobs_by_type[generation_type]
+
+    running = [j for j in jobs_by_type.values() if j["status"] == "running"]
+    if running:
+        return running[0]
+
+    finished = [j for j in jobs_by_type.values() if j["finished_at"]]
+    if finished:
+        return max(finished, key=lambda j: j["finished_at"])
+
+    return jobs_by_type["fullbody"]
 
 @app.get("/debug_b2")
 async def debug_b2():
