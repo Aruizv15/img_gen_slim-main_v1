@@ -25,7 +25,7 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             "hairstyle_type": self.appearance_data.hairstyle_type,
             "makeup_type": self.appearance_data.makeup_type,
             "expression": self.scene_data.expression,
-            "location": self.scene_data.location,
+            "location": self.scene_data.background,
             "lighting": self.scene_data.lighting,
         }
         return args
