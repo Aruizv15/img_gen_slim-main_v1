@@ -138,7 +138,12 @@ async def download_inputs_from_b2(vrepro_id):
         )
         for f in r.json().get("files", []):
             filename = f["fileName"].split("/")[-1]
-            if filename:
+            # Solo descargar archivos que pertenezcan a ESTE donante.
+            # Sin este filtro, se descargaban las fotos de TODOS los
+            # donantes que hubiera en input_images/, y luego se mezclaban
+            # juntas en el mismo lote de referencia para FaceID,
+            # produciendo caras que no correspondian a la persona correcta.
+            if filename and filename.startswith(vrepro_id):
                 dl = await client.get(
                     f"{auth['downloadUrl']}/file/{bucket}/{f['fileName']}",
                     headers={"Authorization": auth["authorizationToken"]}
