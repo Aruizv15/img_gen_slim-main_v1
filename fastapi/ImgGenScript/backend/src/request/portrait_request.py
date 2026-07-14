@@ -46,7 +46,6 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             ("7", "cfg", self.workflow_data.k1_cfg),
             ("7", "sampler_name", self.workflow_data.k1_sampler_name),
             ("7", "scheduler", self.workflow_data.k1_scheduler),
-            ("7", "denoise", self.workflow_data.k1_denoise),
             ("8", "clip_name", self.workflow_data.clip_vision_model),
             ("9", "model_name", self.workflow_data.insightface_model_name),
             ("10", "preset", "FACEID"),
