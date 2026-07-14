@@ -21,6 +21,7 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             "hair_length": self.donor_data.hair_length,
             "body_complexion": self.donor_data.body_complexion,
             "body_type": self.donor_data.body_type,
+            "bust_type": self.donor_data.bust_type,
             "skin_tone": self.donor_data.skin_tone,
             "special_characteristics": special_char_text,
             "hairstyle_type": self.appearance_data.hairstyle_type,
