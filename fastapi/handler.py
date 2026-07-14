@@ -129,6 +129,11 @@ async def download_inputs_from_b2(vrepro_id):
     auth = await b2_authorize()
     bucket = os.getenv('B2_BUCKET')
     input_dir = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
+    # Limpiar la carpeta antes de descargar: si en una corrida anterior
+    # (antes del filtro por donante) se guardaron ahi fotos de OTRO
+    # donante, seguirian copiandose para siempre si no se borran primero.
+    if os.path.isdir(input_dir):
+        shutil.rmtree(input_dir)
     os.makedirs(input_dir, exist_ok=True)
     async with httpx.AsyncClient() as client:
         r = await client.get(
