@@ -25,6 +25,8 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             "skin_tone": self.donor_data.skin_tone,
             "special_characteristics": special_char_text,
             "hairstyle_type": self.appearance_data.hairstyle_type,
+            "outfit_type": self.appearance_data.outfit_type,
+            "outfit_color": self.appearance_data.outfit_color,
             "makeup_type": self.appearance_data.makeup_type,
             "expression": self.scene_data.expression,
             "location": self.scene_data.background,
