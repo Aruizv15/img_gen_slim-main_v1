@@ -507,7 +507,13 @@ async function downloadApproved() {
   showToast(`Descargando ${approved.length} imagen(es)...`);
   for (const img of approved) {
     try {
-      const res  = await fetch(img.url);
+      // Descarga directo de Backblaze (permanente), no de la carpeta
+      // local del servidor (que se borra en cada reinicio de Render).
+      const downloadUrl = img.vreproID
+        ? `${API_BASE}/download_from_b2/${img.vreproID}/${img.filename}`
+        : img.url; // fallback si por alguna razon no hay vreproID asignado
+      const res  = await fetch(downloadUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       const a    = document.createElement('a');
       a.href     = URL.createObjectURL(blob);
@@ -656,6 +662,15 @@ async function executeModelsSequentially() {
   generatedImgs  = [];
   renderGen();
 
+  // Limpiar las imágenes viejas del servidor antes de empezar, para que
+  // fotos de donantes de ejecuciones anteriores no se mezclen con las
+  // de esta corrida nueva en la galería.
+  try {
+    await fetch(`${API_BASE}/clear_output`, { method: 'POST' });
+  } catch (err) {
+    console.warn('No se pudo limpiar output_images antes de iniciar:', err.message);
+  }
+
   // Subir CSV al servidor primero
   if (csvFile) {
     const fd = new FormData();
@@ -775,6 +790,12 @@ async function startFullbodyThenPortrait() {
   }
 
   seqRunning = true;
+
+  try {
+    await fetch(`${API_BASE}/clear_output`, { method: 'POST' });
+  } catch (err) {
+    console.warn('No se pudo limpiar output_images antes de iniciar:', err.message);
+  }
 
   const runOne = async (mode, cycles) => {
     const params = new URLSearchParams({
