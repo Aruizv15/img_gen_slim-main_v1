@@ -153,6 +153,12 @@ async def download_inputs_from_b2(vrepro_id):
                     f"{auth['downloadUrl']}/file/{bucket}/{f['fileName']}",
                     headers={"Authorization": auth["authorizationToken"]}
                 )
+                # Verificar que la descarga fue exitosa y trae contenido
+                # real de imagen, no un error truncado guardado como si
+                # fuera la foto (causa de "image file is truncated").
+                if dl.status_code != 200 or len(dl.content) < 1024:
+                    print(f"[WARN] Descarga sospechosa de {filename}: status={dl.status_code}, bytes={len(dl.content)}. Se omite.")
+                    continue
                 with open(os.path.join(input_dir, filename), "wb") as out:
                     out.write(dl.content)
         csv_path = '/workspace/ImgGenScript/files/csv/donor_info.csv'
@@ -241,7 +247,7 @@ def handler(job):
                 donor_list=[vrepro_id],
                 use_pose_override=False,
                 use_hands_refiner_override=False,
-                use_amateur_effect_override=False,
+                use_amateur_effect_override=True,
             )
 
         loop.run_until_complete(main())
