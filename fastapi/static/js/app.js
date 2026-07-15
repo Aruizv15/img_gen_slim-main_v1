@@ -63,10 +63,15 @@ async function checkHealth() {
 /* ============================================================
    CSV — PARSING & CARGA
    ============================================================ */
-document.getElementById('csv-input').addEventListener('change', function () {
-  if (this.files[0]) loadCsv(this.files[0]);
-  this.value = '';
-});
+const csvInputEl = document.getElementById('csv-input');
+if (csvInputEl) {
+  csvInputEl.addEventListener('change', function () {
+    if (this.files[0]) loadCsv(this.files[0]);
+    this.value = '';
+  });
+} else {
+  console.warn('[app.js] No se encontro el elemento #csv-input en el HTML.');
+}
 
 function parseCSVContent(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -133,19 +138,28 @@ function openFilePicker() {
   document.getElementById('file-input').click();
 }
 
-document.getElementById('file-input').addEventListener('change', function () {
-  addFiles(this.files);
-  this.value = '';
-});
+const fileInputEl = document.getElementById('file-input');
+if (fileInputEl) {
+  fileInputEl.addEventListener('change', function () {
+    addFiles(this.files);
+    this.value = '';
+  });
+} else {
+  console.warn('[app.js] No se encontro el elemento #file-input en el HTML.');
+}
 
 const dropArea = document.getElementById('drop-area');
-dropArea.addEventListener('dragover',  e => { e.preventDefault(); dropArea.classList.add('dragover'); });
-dropArea.addEventListener('dragleave', ()  => dropArea.classList.remove('dragover'));
-dropArea.addEventListener('drop',      e  => {
-  e.preventDefault();
-  dropArea.classList.remove('dragover');
-  addFiles(e.dataTransfer.files);
-});
+if (dropArea) {
+  dropArea.addEventListener('dragover',  e => { e.preventDefault(); dropArea.classList.add('dragover'); });
+  dropArea.addEventListener('dragleave', ()  => dropArea.classList.remove('dragover'));
+  dropArea.addEventListener('drop',      e  => {
+    e.preventDefault();
+    dropArea.classList.remove('dragover');
+    addFiles(e.dataTransfer.files);
+  });
+} else {
+  console.warn('[app.js] No se encontro el elemento #drop-area en el HTML. La zona de arrastrar-y-soltar no estara disponible, pero el resto de la app sigue funcionando.');
+}
 
 function addFiles(files) {
   Array.from(files).forEach(file => {
@@ -741,6 +755,16 @@ async function executeModelsSequentially() {
     const newImgs = await fetchNewImages();
     modelResults[model.vreproID] = newImgs;
     generatedImgs.push(...newImgs);
+
+    // Evitar duplicados: si el polling automático (que corre en paralelo)
+    // ya habia agregado este mismo archivo justo antes, no queremos que
+    // aparezca dos veces en la galeria.
+    const seen = new Set();
+    generatedImgs = generatedImgs.filter(g => {
+      if (seen.has(g.filename)) return false;
+      seen.add(g.filename);
+      return true;
+    });
 
     activeVreproID = null;
     renderModelList();
