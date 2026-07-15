@@ -225,6 +225,36 @@ app.add_middleware(
 )
 
 
+@app.get("/download_from_b2/{vrepro_id}/{filename}")
+async def download_from_b2(vrepro_id: str, filename: str):
+    """
+    Sirve una imagen generada directamente desde Backblaze, sin depender
+    de la copia local en el disco de Render (que es efimero y se borra
+    en cada reinicio/redeploy del servicio).
+    """
+    try:
+        auth = await b2_authorize()
+        b2_key = f"generated_images/{vrepro_id}/{filename}"
+        async with httpx.AsyncClient() as client:
+            dl = await client.get(
+                f"{auth['downloadUrl']}/file/{os.getenv('B2_BUCKET')}/{b2_key}",
+                headers={"Authorization": auth["authorizationToken"]}
+            )
+        if dl.status_code != 200:
+            raise HTTPException(status_code=404, detail=f"No encontrado en B2: {b2_key}")
+
+        from fastapi.responses import Response
+        return Response(
+            content=dl.content,
+            media_type="image/png",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/", response_class=HTMLResponse)
 async def read_index(request: Request):
     comfyui_port = os.getenv("COMFYUI_PORT", "8188")
