@@ -82,21 +82,24 @@ COPY templates/ /app/templates/
 COPY static/ /app/static/
 RUN python -c "import torch; print(torch.__version__, torch.version.cuda)"
 
-# --- Fix final: forzar NumPy 1.26.4 como ULTIMA instalacion del build ---
-# Varios custom_nodes instalados arriba traen su propio requirements.txt
-# que puede reinstalar numpy>=2, rompiendo la compatibilidad con torch==2.1.0
-# (compilado contra NumPy 1.x). Esta linea se asegura de que numpy quede
-# fijo en la version correcta sin importar que paso antes.
-RUN pip install --no-cache-dir --force-reinstall numpy==1.26.4
-
-# --- Fix adicional: forzar transformers==4.41.2 como ULTIMA instalacion ---
+# --- Fix adicional: forzar transformers==4.41.2 ---
 # Igual que con numpy: algun custom_node reinstala 'transformers' sin fijar
 # version, y las versiones nuevas de transformers exigen torch>=2.4 para
 # reconocer PyTorch como backend disponible. Como aqui usamos torch==2.1.0
 # (por compatibilidad con CUDA 11.8), transformers "deshabilita" PyTorch
 # silenciosamente, rompiendo MeshGraphormer (Hands Refiner) con el error
 # "modeling_bert requires the PyTorch library but it was not found".
+# IMPORTANTE: esto va ANTES del fix de numpy, porque instalar transformers
+# arrastra su propia version de numpy (sin tope superior) como dependencia,
+# lo que rompe el pin de numpy si se hace despues.
 RUN pip install --no-cache-dir --force-reinstall transformers==4.41.2
+
+# --- Fix final: forzar NumPy 1.26.4 como VERDADERA ULTIMA instalacion ---
+# Varios custom_nodes instalados arriba (y ahora tambien transformers)
+# reinstalan numpy>=2, rompiendo la compatibilidad con torch==2.1.0
+# (compilado contra NumPy 1.x). Esta linea tiene que ser la ultima palabra
+# del build para garantizar que nada la sobreescriba despues.
+RUN pip install --no-cache-dir --force-reinstall numpy==1.26.4
 
 RUN python -c "import numpy, torch; print('NumPy:', numpy.__version__); print('Torch:', torch.__version__); import torch; torch.tensor([1,2,3]).numpy()" 
 RUN python -c "from transformers.utils import is_torch_available; assert is_torch_available(), 'transformers no reconoce torch como backend disponible'; print('transformers reconoce PyTorch correctamente')"
