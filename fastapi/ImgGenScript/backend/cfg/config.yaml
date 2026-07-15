@@ -19,69 +19,69 @@ fullbody:
   checkpoint: "RealVisXL_V5.0_fp16.safetensors"
   batch_size: 1
   use_reference_pose: false
-  k0_steps: 8
-  k0_cfg: 1.5
-  k0_sampler_name: "dpmpp_sde"
-  k0_scheduler: "karras"
+  k0_steps: 10
+  k0_cfg: 10
+  k0_sampler_name: "euler"
+  k0_scheduler: "simple"
   dwpreprocessor_bbox_detector: "yolox_l.onnx"
   dwpreprocessor_pose_estimator: "dw-ll_ucoco_384_bs5.torchscript.pt"
   pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  pose_controlnet_weight: 0.7
+  pose_controlnet_weight: 1.0
   pose_controlnet_start: 0.0
-  pose_controlnet_end: 0.7
-  k1_steps: 8
-  k1_cfg: 1.5
-  k1_sampler_name: "dpmpp_sde"
-  k1_scheduler: "karras"
+  pose_controlnet_end: 1.0
+  k1_steps: 10
+  k1_cfg: 10
+  k1_sampler_name: "euler"
+  k1_scheduler: "simple"
   ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
-  ipadapter_lora_strength_model: 0.7
+  ipadapter_lora_strength_model: 1.0
   ipadapter_lora_strength_clip: 1.0
   clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
-  faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.7
-  faceid_v2_weight: 0.5
+  faceid_loader_lora_strength: 1.0
+  faceid_weight: 1.0
+  faceid_v2_weight: 1.0
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.5
+  plus_face_weight: 1.0
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
   plus_face_end: 1.0
-  k2_steps: 6
-  k2_cfg: 1.5
-  k2_sampler_name: "dpmpp_sde"
-  k2_scheduler: "karras"
-  k2_denoise: 0.45
+  k2_steps: 10
+  k2_cfg: 10
+  k2_sampler_name: "euler"
+  k2_scheduler: "simple"
+  k2_denoise: 1.0
   detailer_bbox_model: "bbox/face_yolov8m.pt"
-  detailer_steps: 20
-  detailer_cfg: 7.0
-  detailer_sampler_name: "dpmpp_2m"
-  detailer_scheduler: "karras"
-  detailer_denoise: 0.45
+  detailer_steps: 10
+  detailer_cfg: 10
+  detailer_sampler_name: "euler"
+  detailer_scheduler: "simple"
+  detailer_denoise: 1.0
   detailer_feather: 5
   detailer_bbox_threshold: 0.5
   detailer_bbox_dilation: 10
   detailer_bbox_crop_factor: 3.0
   detailer_drop_size: 10
-  hands_refiner_mask_bbox_padding: 20
+  hands_refiner_mask_bbox_padding: 30
   hands_refiner_mask_type: "based_on_depth"
-  hands_refiner_mask_expand: 0
-  hands_refiner_detect_thr: 0.1
-  hands_refiner_presence_thr: 0.1
+  hands_refiner_mask_expand: 5
+  hands_refiner_detect_thr: 0.6
+  hands_refiner_presence_thr: 0.6
   hands_refiner_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  hands_refiner_controlnet_weight: 0.7
+  hands_refiner_controlnet_weight: 1.0
   hands_refiner_controlnet_start: 0.0
-  hands_refiner_controlnet_end: 0.7
-  hands_refiner_steps: 20
-  hands_refiner_cfg: 7.0
-  hands_refiner_sampler_name: "dpmpp_2m"
-  hands_refiner_scheduler: "karras"
-  hands_refiner_denoise: 0.45
+  hands_refiner_controlnet_end: 1.0
+  hands_refiner_steps: 10
+  hands_refiner_cfg: 8.0
+  hands_refiner_sampler_name: "euler"
+  hands_refiner_scheduler: "simple"
+  hands_refiner_denoise: 1.0
 
 portrait:
   workflow: "portrait.json"
@@ -91,43 +91,43 @@ portrait:
   controlnet_preprocessor: "DWPreprocessor"
   controlnet_preprocessor_sd_version: "sdxl"
   pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  pose_controlnet_weight: 0.7
+  pose_controlnet_weight: 1.0
   pose_controlnet_start: 0.0
-  pose_controlnet_end: 0.7
-  k1_steps: 8
-  k1_cfg: 1.5
-  k1_sampler_name: "dpmpp_sde"
-  k1_scheduler: "karras"
+  pose_controlnet_end: 1.0
+  k1_steps: 10
+  k1_cfg: 10
+  k1_sampler_name: "euler"
+  k1_scheduler: "simple"
   ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
-  ipadapter_lora_strength_model: 0.7
+  ipadapter_lora_strength_model: 1.0
   ipadapter_lora_strength_clip: 1.0
   clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
-  faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.7
-  faceid_v2_weight: 0.5
+  faceid_loader_lora_strength: 1.0
+  faceid_weight: 1.0
+  faceid_v2_weight: 1.0
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.5
+  plus_face_weight: 1.0
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
   plus_face_end: 1.0
-  k2_steps: 6
-  k2_cfg: 1.5
-  k2_sampler_name: "dpmpp_sde"
-  k2_scheduler: "karras"
-  k2_denoise: 0.45
+  k2_steps: 10
+  k2_cfg: 10
+  k2_sampler_name: "euler"
+  k2_scheduler: "simple"
+  k2_denoise: 1.0
   detailer_bbox_model: "bbox/face_yolov8m.pt"
-  detailer_steps: 20
-  detailer_cfg: 7.0
-  detailer_sampler_name: "dpmpp_2m"
-  detailer_scheduler: "karras"
-  detailer_denoise: 0.45
+  detailer_steps: 10
+  detailer_cfg: 10
+  detailer_sampler_name: "euler"
+  detailer_scheduler: "simple"
+  detailer_denoise: 1.0
   detailer_feather: 5
   detailer_bbox_threshold: 0.5
   detailer_bbox_dilation: 10
