@@ -5,7 +5,7 @@ server:
   comfyui_port: 8188
 
 paths:
-  comfyui_input_dir: "/workspace/ComfyUI_app/input"
+  comfyui_input_dir: "/workspace/ComfyUI_app/input
   comfyui_output_dir: "/workspace/ComfyUI_app/output"
   project_images_dir: "/workspace/ImgGenScript/files/images"
   csv_dir: "/workspace/ImgGenScript/files/csv"
@@ -81,7 +81,7 @@ fullbody:
   hands_refiner_cfg: 7.0
   hands_refiner_sampler_name: "dpmpp_2m"
   hands_refiner_scheduler: "karras"
-  hands_refiner_denoise: 0.45
+  hands_refiner_denoise: 0.65
 
 portrait:
   workflow: "portrait.json"
