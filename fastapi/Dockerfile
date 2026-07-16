@@ -4,7 +4,8 @@ RUN apt-get update && \
         curl \
         git \
         libgl1 \
-        libglib2.0-0 && \
+        libglib2.0-0 \
+        libgles2 && \
     rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir --force-reinstall \
     torch==2.1.0+cu118 \
