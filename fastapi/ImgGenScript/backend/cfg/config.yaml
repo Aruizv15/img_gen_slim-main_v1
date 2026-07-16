@@ -5,7 +5,7 @@ server:
   comfyui_port: 8188
 
 paths:
-  comfyui_input_dir: "/workspace/ComfyUI_app/input
+  comfyui_input_dir: "/workspace/ComfyUI_app/input"
   comfyui_output_dir: "/workspace/ComfyUI_app/output"
   project_images_dir: "/workspace/ImgGenScript/files/images"
   csv_dir: "/workspace/ImgGenScript/files/csv"
