@@ -256,7 +256,7 @@ def handler(job):
                 max_cycles=max_cycles,
                 donor_list=[vrepro_id],
                 use_pose_override=False,
-                use_hands_refiner_override=True,
+                use_hands_refiner_override=False,
                 use_amateur_effect_override=False,
             )
 
