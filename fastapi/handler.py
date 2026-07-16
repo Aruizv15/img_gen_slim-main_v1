@@ -247,7 +247,7 @@ def handler(job):
                 donor_list=[vrepro_id],
                 use_pose_override=False,
                 use_hands_refiner_override=True,
-                use_amateur_effect_override=True,
+                use_amateur_effect_override=false,
             )
 
         loop.run_until_complete(main())
