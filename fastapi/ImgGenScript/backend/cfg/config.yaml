@@ -70,18 +70,18 @@ fullbody:
   detailer_drop_size: 10
   hands_refiner_mask_bbox_padding: 20
   hands_refiner_mask_type: "based_on_depth"
-  hands_refiner_mask_expand: 5
+  hands_refiner_mask_expand: 0
   hands_refiner_detect_thr: 0.1
   hands_refiner_presence_thr: 0.1
   hands_refiner_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  hands_refiner_controlnet_weight: 0.85
+  hands_refiner_controlnet_weight: 0.7
   hands_refiner_controlnet_start: 0.0
   hands_refiner_controlnet_end: 0.7
   hands_refiner_steps: 20
   hands_refiner_cfg: 7.0
   hands_refiner_sampler_name: "dpmpp_2m"
   hands_refiner_scheduler: "karras"
-  hands_refiner_denoise: 0.52
+  hands_refiner_denoise: 0.45
 
 portrait:
   workflow: "portrait.json"
