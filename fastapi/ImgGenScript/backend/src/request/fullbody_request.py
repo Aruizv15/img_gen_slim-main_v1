@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+import random
 
 from src.config.settings import get_settings
 from backend.src.generator.image_generator import ImageGenerator
@@ -37,13 +38,17 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
         return args
 
     def _get_node_values_to_set(self, client: ImageGenerator) -> List[tuple]:
+        # Seed aleatorio nuevo por cada generacion (antes estaba fijo en 42
+        # en todos los nodos, lo que hacia que varios ciclos para el mismo
+        # donante produjeran resultados practicamente identicos).
+        seed = random.randint(0, 2**32 - 1)
         workflow_args = [
             ("1", "ckpt_name", self.workflow_data.checkpoint),
             ("2", "batch_size", self.workflow_data.batch_size),
             ("3", "text", client.built_prompts["positive_prompt"]),
             ("4", "text", client.built_prompts["negative_prompt"]),
             ("5", "image", self.workflow_data.ref_image if self.workflow_data.ref_image else "example.png"),
-            ("7", "seed", 42),
+            ("7", "seed", seed),
             ("7", "steps", self.workflow_data.k0_steps),
             ("7", "cfg", self.workflow_data.k0_cfg),
             ("7", "sampler_name", self.workflow_data.k0_sampler_name),
@@ -54,7 +59,7 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             ("11", "strength", self.workflow_data.pose_controlnet_weight),
             ("11", "start_percent", self.workflow_data.pose_controlnet_start),
             ("11", "end_percent", self.workflow_data.pose_controlnet_end),
-            ("12", "seed", 42),
+            ("12", "seed", seed),
             ("12", "steps", self.workflow_data.k1_steps),
             ("12", "cfg", self.workflow_data.k1_cfg),
             ("12", "sampler_name", self.workflow_data.k1_sampler_name),
@@ -79,7 +84,7 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             ("21", "combine_embeds", self.workflow_data.plus_face_combine_embeds),
             ("21", "start_at", self.workflow_data.plus_face_start),
             ("21", "end_at", self.workflow_data.plus_face_end),
-            ("22", "seed", 42),
+            ("22", "seed", seed),
             ("22", "steps", self.workflow_data.k2_steps),
             ("22", "cfg", self.workflow_data.k2_cfg),
             ("22", "sampler_name", self.workflow_data.k2_sampler_name),
@@ -88,7 +93,7 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             ("25", "text", client.built_prompts["detailer_positive_prompt"]),
             ("26", "text", client.built_prompts["detailer_negative_prompt"]),
             ("27", "model_name", self.workflow_data.detailer_bbox_model),
-            ("28", "seed", 42),
+            ("28", "seed", seed),
             ("28", "steps", self.workflow_data.detailer_steps),
             ("28", "cfg", self.workflow_data.detailer_cfg),
             ("28", "sampler_name", self.workflow_data.detailer_sampler_name),
@@ -111,7 +116,7 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             ("36", "strength", self.workflow_data.hands_refiner_controlnet_weight),
             ("36", "start_percent", self.workflow_data.hands_refiner_controlnet_start),
             ("36", "end_percent", self.workflow_data.hands_refiner_controlnet_end),
-            ("37", "seed", 42),
+            ("37", "seed", seed),
             ("37", "steps", self.workflow_data.hands_refiner_steps),
             ("37", "cfg", self.workflow_data.hands_refiner_cfg),
             ("37", "sampler_name", self.workflow_data.hands_refiner_sampler_name),
