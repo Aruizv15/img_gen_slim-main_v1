@@ -234,6 +234,16 @@ def handler(job):
         if os.path.isdir(comfy_input):
             shutil.rmtree(comfy_input)
         os.makedirs(comfy_input, exist_ok=True)
+
+        # Limpiar tambien la carpeta de salida antes de generar. Sin esto,
+        # ComfyUI acumula las imagenes de TODAS las corridas anteriores en
+        # el mismo worker, y upload_outputs_to_b2 las sube TODAS bajo la
+        # carpeta del donante actual (mezclando fotos de donantes distintos
+        # en Backblaze).
+        comfy_output = '/workspace/ComfyUI_app/output'
+        if os.path.isdir(comfy_output):
+            shutil.rmtree(comfy_output)
+        os.makedirs(comfy_output, exist_ok=True)
         src = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
         if os.path.isdir(src):
             for f in os.listdir(src):
@@ -247,7 +257,7 @@ def handler(job):
                 donor_list=[vrepro_id],
                 use_pose_override=False,
                 use_hands_refiner_override=True,
-                use_amateur_effect_override=false,
+                use_amateur_effect_override=False,
             )
 
         loop.run_until_complete(main())
@@ -255,8 +265,11 @@ def handler(job):
 
         return {"status": "done", "vreproID": vrepro_id}
     except Exception as e:
+        import traceback
         _comfyui_log.flush()
         _fastapi_log.flush()
+        print(f"[HANDLER] EXCEPCION: {e}")
+        print(f"[HANDLER] TRACEBACK COMPLETO:\n{traceback.format_exc()}")
         print(f"[COMFYUI LOG FINAL]\n{open('/tmp/comfyui.log').read()[-3000:]}")
         return {"status": "error", "message": str(e)}
 
