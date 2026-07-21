@@ -278,13 +278,64 @@ def list_generated_images():
     return {"images": images}
 
 
+async def delete_all_generated_from_b2():
+    """
+    Borra PERMANENTEMENTE todas las imagenes generadas de Backblaze
+    (carpeta 'generated_images/'). Sin esto, las fotos viejas de un donante
+    se quedan en B2 para siempre y reaparecen mezcladas cada vez que se
+    genera una imagen nueva para ese mismo donante.
+    """
+    auth = await b2_authorize()
+    bucket = os.getenv('B2_BUCKET')
+    deleted = []
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{auth['apiUrl']}/b2api/v2/b2_list_buckets",
+            headers={"Authorization": auth["authorizationToken"]},
+            params={"accountId": auth["accountId"], "bucketName": bucket}
+        )
+        buckets = r.json().get("buckets", [])
+        if not buckets:
+            return deleted
+        bucket_id = buckets[0]["bucketId"]
+
+        start_filename = None
+        while True:
+            params = {"bucketId": bucket_id, "prefix": "generated_images/", "maxFileCount": 1000}
+            if start_filename:
+                params["startFileName"] = start_filename
+            list_r = await client.get(
+                f"{auth['apiUrl']}/b2api/v2/b2_list_file_versions",
+                headers={"Authorization": auth["authorizationToken"]},
+                params=params
+            )
+            data = list_r.json()
+            files = data.get("files", [])
+            for f in files:
+                await client.post(
+                    f"{auth['apiUrl']}/b2api/v2/b2_delete_file_version",
+                    headers={"Authorization": auth["authorizationToken"]},
+                    json={"fileName": f["fileName"], "fileId": f["fileId"]}
+                )
+                deleted.append(f["fileName"])
+            start_filename = data.get("nextFileName")
+            if not start_filename:
+                break
+    return deleted
+
+
 @app.post("/clear_images")
 async def clear_images():
     try:
         for dir_path in [INPUT_IMG_DIR, OUTPUT_IMG_DIR, REF_IMG_DIR]:
             for file in os.listdir(dir_path):
                 os.remove(os.path.join(dir_path, file))
-        return {"status": "success", "message": "All images cleared."}
+        try:
+            deleted_b2 = await delete_all_generated_from_b2()
+            print(f"[B2] Eliminados permanentemente {len(deleted_b2)} archivos de generated_images/")
+        except Exception as e:
+            print(f"[B2] Error eliminando de B2: {e}")
+        return {"status": "success", "message": "All images cleared (local y Backblaze)."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
