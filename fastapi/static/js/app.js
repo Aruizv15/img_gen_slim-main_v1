@@ -2,7 +2,7 @@
    BatchApp Frontend — app.js
    ============================================================ */
 
-const API_BASE = window.API_BASE || 'https://genrimage.onrender.com';
+const API_BASE = window.API_BASE || 'https://batchapp-frontend.onrender.com';
 const IMGS_PER_PAGE = 4;
 const POLL_INTERVAL = 5000;
 
@@ -11,7 +11,7 @@ let uploadedFiles  = [];   // { name, url, file }
 let csvFile        = null; // File object del CSV/Excel
 let generatedImgs  = [];   // [{ filename, url, state, vreproID }]
 let currentPage    = 0;
-let selectedIdx    = null;
+let selectedIndices = new Set();
 let pollTimer      = null;
 
 /* ── Estado multi-modelo (CSV) ── */
@@ -425,8 +425,12 @@ function renderGen() {
   for (let i = start; i < end; i++) {
     const { filename, url, state, vreproID } = generatedImgs[i];
     const slot = document.createElement('div');
-    slot.className = 'gslot ' + state + (selectedIdx === i ? ' selected' : '');
-    slot.onclick   = () => { selectedIdx = (selectedIdx === i ? null : i); renderGen(); };
+    slot.className = 'gslot ' + state + (selectedIndices.has(i) ? ' selected' : '');
+    slot.onclick   = () => {
+      if (selectedIndices.has(i)) selectedIndices.delete(i);
+      else selectedIndices.add(i);
+      renderGen();
+    };
 
     const img = document.createElement('img');
     img.src  = url;
@@ -479,7 +483,7 @@ function renderGen() {
   for (let p = 0; p < tp; p++) {
     const d = document.createElement('div');
     d.className = 'pdot' + (p === currentPage ? ' active' : '');
-    d.onclick   = () => { currentPage = p; selectedIdx = null; renderGen(); };
+    d.onclick   = () => { currentPage = p; renderGen(); };
     dots.appendChild(d);
   }
 }
@@ -487,23 +491,27 @@ function renderGen() {
 function changePage(dir) {
   const np = currentPage + dir;
   const tp = totalPages();
-  if (np >= 0 && np < tp) { currentPage = np; selectedIdx = null; renderGen(); }
+  if (np >= 0 && np < tp) { currentPage = np; renderGen(); }
 }
 
 function approveSelected() {
-  if (selectedIdx === null) { showToast('Selecciona una imagen primero.', 'error'); return; }
-  generatedImgs[selectedIdx].state = 'approved';
-  selectedIdx = null;
+  if (selectedIndices.size === 0) { showToast('Selecciona al menos una imagen primero.', 'error'); return; }
+  selectedIndices.forEach(idx => { generatedImgs[idx].state = 'approved'; });
+  const count = selectedIndices.size;
+  selectedIndices.clear();
   renderGen();
   updateApprCount();
+  showToast(`${count} imagen(es) aprobada(s).`, 'success');
 }
 
 function discardSelected() {
-  if (selectedIdx === null) { showToast('Selecciona una imagen primero.', 'error'); return; }
-  generatedImgs[selectedIdx].state = 'discarded';
-  selectedIdx = null;
+  if (selectedIndices.size === 0) { showToast('Selecciona al menos una imagen primero.', 'error'); return; }
+  selectedIndices.forEach(idx => { generatedImgs[idx].state = 'discarded'; });
+  const count = selectedIndices.size;
+  selectedIndices.clear();
   renderGen();
   updateApprCount();
+  showToast(`${count} imagen(es) descartada(s).`, 'success');
 }
 
 function updateApprCount() {
@@ -553,7 +561,7 @@ async function clearServerImages() {
 
     // Limpiar estado local
     generatedImgs  = [];
-    selectedIdx    = null;
+    selectedIndices = new Set();
     currentPage    = 0;
     vreproMap      = {};
     assignedFiles  = new Set();
@@ -771,16 +779,10 @@ async function executeModelsSequentially() {
     renderGen();
     updateApprCount();
 
-    showToast(`✓ ${model.vreproID}: ${newImgs.length} imagen(es) lista(s). Revisa y descarga.`, 'success');
+    showToast(`✓ ${model.vreproID}: ${newImgs.length} imagen(es) lista(s).`, 'success');
 
-    // Si hay más modelos: pausar y esperar que el usuario continúe
-    if (i < queue.length - 1 && !seqCancelled) {
-      updateSeqProgress(i + 1, queue.length, model.vreproID, 'waiting', queue[i + 1].vreproID);
-      await waitForUserContinue();
-      if (seqCancelled) break;
-    } else if (i === queue.length - 1) {
-      updateSeqProgress(i + 1, queue.length, model.vreproID, 'done');
-    }
+    // Continua automaticamente al siguiente modelo, sin pausa manual.
+    updateSeqProgress(i + 1, queue.length, model.vreproID, i === queue.length - 1 ? 'done' : 'processing');
   }
 
   seqRunning     = false;
