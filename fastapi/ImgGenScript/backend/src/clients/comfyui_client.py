@@ -154,6 +154,19 @@ class ComfyUIClient(BaseAPIClient):
     def interrupt(self) -> None:
         self.http.post("/interrupt")
 
+    def interrupt_generation(self, verbose: bool = False) -> None:
+        """
+        Alias de interrupt(). base_request.py llama a interrupt_generation()
+        cuando una generacion excede el tiempo limite (interrupt_after_seconds),
+        pero ese metodo nunca existio en esta clase -- solo interrupt().
+        Sin este alias, al intentar cancelar una generacion larga, el intento
+        de cancelacion mismo fallaba con AttributeError, dejando el proyecto
+        en '0 imagenes generadas' en vez de simplemente reintentar.
+        """
+        if verbose:
+            print("[ComfyUI] Interrumpiendo generacion por timeout...")
+        self.interrupt()
+
     def free_comfyui_memory(self, unload_models=True, free_memory=True, verbose=False) -> Dict:
         payload = {"unload_models": unload_models, "free_memory": free_memory}
         if verbose:
