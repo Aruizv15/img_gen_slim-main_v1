@@ -176,6 +176,8 @@ async def download_inputs_from_b2(vrepro_id):
 async def upload_outputs_to_b2(vrepro_id):
     auth = await b2_authorize()
     bucket_id = await get_bucket_id(auth)
+    if bucket_id is None:
+        raise RuntimeError(f"No se encontró el bucket {os.getenv('B2_BUCKET')}")
     output_dir = '/workspace/ComfyUI_app/output'
     all_files = []
     for root, dirs, files in os.walk(output_dir):
@@ -198,7 +200,7 @@ async def upload_outputs_to_b2(vrepro_id):
             with open(local_path, "rb") as fp:
                 content = fp.read()
             sha1 = hashlib.sha1(content).hexdigest()
-            await client.post(
+            response = await client.post(
                 upload_data["uploadUrl"],
                 headers={
                     "Authorization": upload_data["authorizationToken"],
@@ -209,7 +211,15 @@ async def upload_outputs_to_b2(vrepro_id):
                 },
                 content=content
             )
-            print(f"[B2] Subida: generated_images/{vrepro_id}/{f}")
+
+            print(f"[B2] Upload status: {response.status_code}")
+            try:
+                print(f"[B2] Response: {response.json()}")
+            except Exception:
+                print(f"[B2] Response: {response.text}")
+
+            response.raise_for_status()
+            print(f"[B2] Subida exitosa: generated_images/{vrepro_id}/{f}")
 
 def handler(job):
     sys.path.insert(0, "/workspace/ImgGenScript")
