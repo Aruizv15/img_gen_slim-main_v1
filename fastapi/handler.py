@@ -186,30 +186,57 @@ async def upload_outputs_to_b2(vrepro_id):
     if not all_files:
         print(f"[B2] No hay archivos en {output_dir}")
         return
+
+    failed_files = []
     async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{auth['apiUrl']}/b2api/v2/b2_get_upload_url",
-            headers={"Authorization": auth["authorizationToken"]},
-            params={"bucketId": bucket_id}
-        )
-        upload_data = r.json()
         for local_path in all_files:
             f = os.path.basename(local_path)
             with open(local_path, "rb") as fp:
                 content = fp.read()
             sha1 = hashlib.sha1(content).hexdigest()
-            await client.post(
-                upload_data["uploadUrl"],
-                headers={
-                    "Authorization": upload_data["authorizationToken"],
-                    "X-Bz-File-Name": f"generated_images/{vrepro_id}/{f}",
-                    "Content-Type": "b2/x-auto",
-                    "Content-Length": str(len(content)),
-                    "X-Bz-Content-Sha1": sha1
-                },
-                content=content
-            )
-            print(f"[B2] Subida: generated_images/{vrepro_id}/{f}")
+
+            # Se pide una upload_url NUEVA para cada archivo (en vez de
+            # reutilizar una sola para todos): las upload_url de B2 pueden
+            # invalidarse despues de un solo uso o tras cierto tiempo, y
+            # reutilizarla podia causar fallos silenciosos en subidas
+            # posteriores dentro del mismo lote.
+            success = False
+            for intento in range(3):
+                try:
+                    r = await client.get(
+                        f"{auth['apiUrl']}/b2api/v2/b2_get_upload_url",
+                        headers={"Authorization": auth["authorizationToken"]},
+                        params={"bucketId": bucket_id}
+                    )
+                    upload_data = r.json()
+                    resp = await client.post(
+                        upload_data["uploadUrl"],
+                        headers={
+                            "Authorization": upload_data["authorizationToken"],
+                            "X-Bz-File-Name": f"generated_images/{vrepro_id}/{f}",
+                            "Content-Type": "b2/x-auto",
+                            "Content-Length": str(len(content)),
+                            "X-Bz-Content-Sha1": sha1
+                        },
+                        content=content
+                    )
+                    if resp.status_code == 200:
+                        print(f"[B2] Subida OK: generated_images/{vrepro_id}/{f}")
+                        success = True
+                        break
+                    else:
+                        print(f"[B2] Intento {intento+1}/3 fallo para {f}: status={resp.status_code}, body={resp.text[:300]}")
+                except Exception as e:
+                    print(f"[B2] Intento {intento+1}/3 excepcion para {f}: {e}")
+
+            if not success:
+                print(f"[B2] ERROR DEFINITIVO: no se pudo subir {f} tras 3 intentos")
+                failed_files.append(f)
+
+    if failed_files:
+        print(f"[B2] RESUMEN: {len(failed_files)} archivo(s) fallaron: {failed_files}")
+    else:
+        print(f"[B2] RESUMEN: todos los archivos ({len(all_files)}) se subieron correctamente")
 
 def handler(job):
     sys.path.insert(0, "/workspace/ImgGenScript")
