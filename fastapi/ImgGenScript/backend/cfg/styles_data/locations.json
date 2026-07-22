@@ -3,494 +3,1128 @@
         {
             "value": "on a staircase in Latin America",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_casual", "style_chic", "style_boho", "style_vintage", "style_street"]
+            "style": [
+                "style_casual",
+                "style_chic",
+                "style_boho",
+                "style_vintage",
+                "style_street"
+            ]
         },
         {
             "value": "between tall colonial arches in Latin America",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_vintage", "style_boho", "style_chic", "style_formal", "style_soft"]
+            "style": [
+                "style_vintage",
+                "style_boho",
+                "style_chic",
+                "style_formal",
+                "style_soft"
+            ]
         },
         {
             "value": "beside a brightly painted colonial wooden door in Latin America",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_vintage", "style_boho", "style_casual", "style_street", "style_soft"]
+            "style": [
+                "style_vintage",
+                "style_boho",
+                "style_casual",
+                "style_street",
+                "style_soft"
+            ]
         },
         {
             "value": "in a traditional living room in Latin America",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_indoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor"
+                ]
             },
-            "style": ["style_casual", "style_soft", "style_boho", "style_academic"]
+            "style": [
+                "style_casual",
+                "style_soft",
+                "style_boho",
+                "style_academic"
+            ]
         },
         {
             "value": "in a traditional apartment in Latin America",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_indoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor"
+                ]
             },
-            "style": ["style_casual", "style_soft", "style_boho", "style_minimalist", "style_chic"]
+            "style": [
+                "style_casual",
+                "style_soft",
+                "style_boho",
+                "style_minimalist",
+                "style_chic"
+            ]
         },
         {
             "value": "in front of a wall of a matching plain color, with a subtle texture",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_indoor", "env_studio"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_studio"
+                ]
             },
-            "style": ["style_minimalist", "style_chic", "style_formal", "style_edgy", "style_glam"]
+            "style": [
+                "style_minimalist",
+                "style_chic",
+                "style_formal",
+                "style_edgy",
+                "style_glam"
+            ]
         },
         {
             "value": "in front of a wall of a in a complementary plain color, with a subtle texture",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_indoor", "env_studio"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_studio"
+                ]
             },
-            "style": ["style_minimalist", "style_chic", "style_formal", "style_edgy", "style_glam"]
+            "style": [
+                "style_minimalist",
+                "style_chic",
+                "style_formal",
+                "style_edgy",
+                "style_glam"
+            ]
         },
         {
             "value": "in front of a wall of a in a contrast plain color, with a subtle texture",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_indoor", "env_studio"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_studio"
+                ]
             },
-            "style": ["style_minimalist", "style_chic", "style_formal", "style_edgy", "style_glam"]
+            "style": [
+                "style_minimalist",
+                "style_chic",
+                "style_formal",
+                "style_edgy",
+                "style_glam"
+            ]
         },
         {
             "value": "in front of a textured cement wall, with visible natural imperfections",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_urban", "env_outdoor", "env_indoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor",
+                    "env_indoor"
+                ]
             },
-            "style": ["style_street", "style_edgy", "style_casual", "style_minimalist"]
+            "style": [
+                "style_street",
+                "style_edgy",
+                "style_casual",
+                "style_minimalist"
+            ]
         },
         {
             "value": "in a professional photo studio, clean uncluttered setup, no equipment visible, seamless white paper backdrop",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_studio"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_studio"
+                ]
             },
-            "style": ["style_formal", "style_chic", "style_minimalist", "style_glam", "style_edgy"]
+            "style": [
+                "style_formal",
+                "style_chic",
+                "style_minimalist",
+                "style_glam",
+                "style_edgy"
+            ]
         },
         {
             "value": "in a gym with concrete walls in Latin America",
             "tags": {
-                "temperature": ["temp_neutral", "temp_cold"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_sporty", "style_athleisure"]
+            "style": [
+                "style_sporty",
+                "style_athleisure"
+            ]
         },
         {
             "value": "on a hiking trail in a public park in Latin America",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor", "env_natural"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_natural"
+                ]
             },
-            "style": ["style_sporty", "style_athleisure", "style_casual"]
+            "style": [
+                "style_sporty",
+                "style_athleisure",
+                "style_casual"
+            ]
         },
         {
             "value": "on a wooden deck surrounded by tropical plants in Latin America",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor", "env_natural"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_natural"
+                ]
             },
-            "style": ["style_sporty", "style_athleisure", "style_soft", "style_boho"]
+            "style": [
+                "style_sporty",
+                "style_athleisure",
+                "style_soft",
+                "style_boho"
+            ]
         },
         {
             "value": "in a university library with wood shelves in Latin America",
             "tags": {
-                "temperature": ["temp_cold", "temp_neutral"],
-                "environment": ["env_indoor"]
+                "temperature": [
+                    "temp_cold",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor"
+                ]
             },
-            "style": ["style_academic", "style_preppy", "style_vintage"]
+            "style": [
+                "style_academic",
+                "style_preppy",
+                "style_vintage"
+            ]
         },
         {
             "value": "in a traditional café with wooden tables in a Latin American city",
             "tags": {
-                "temperature": ["temp_cold", "temp_neutral"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_cold",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_academic", "style_casual", "style_vintage", "style_soft"]
+            "style": [
+                "style_academic",
+                "style_casual",
+                "style_vintage",
+                "style_soft"
+            ]
         },
         {
             "value": "at a traditional latin american rooftop",
             "tags": {
-                "temperature": ["temp_neutral", "temp_cold"],
-                "environment": ["env_outdoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_vintage", "style_edgy", "style_casual"]
+            "style": [
+                "style_vintage",
+                "style_edgy",
+                "style_casual"
+            ]
         },
         {
             "value": "at a stall in an artisanal market in a Latin American town",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor", "env_urban"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_boho", "style_casual", "style_vintage", "style_street"]
+            "style": [
+                "style_boho",
+                "style_casual",
+                "style_vintage",
+                "style_street"
+            ]
         },
         {
             "value": "in a hacienda courtyard with a central fountain and terracotta pots",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_boho", "style_vintage", "style_soft", "style_chic"]
+            "style": [
+                "style_boho",
+                "style_vintage",
+                "style_soft",
+                "style_chic"
+            ]
         },
         {
             "value": "on a balcony with wrought iron railings overlooking a latin american street",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor", "env_urban"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_soft", "style_vintage", "style_chic", "style_casual"]
+            "style": [
+                "style_soft",
+                "style_vintage",
+                "style_chic",
+                "style_casual"
+            ]
         },
         {
             "value": "in an industrial-style warehouse with exposed brick and metal beams",
             "tags": {
-                "temperature": ["temp_neutral", "temp_cold"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_edgy", "style_street", "style_minimalist"]
+            "style": [
+                "style_edgy",
+                "style_street",
+                "style_minimalist"
+            ]
         },
         {
             "value": "sitting on the colorful steps of La Candelaria neighborhood in Bogotá, old colonial houses behind",
-            "tags": { 
-                "temperature": ["temp_neutral", "temp_cold"], 
-                "environment": ["env_urban", "env_outdoor"]
-                },
-            "style": ["style_casual", "style_boho", "style_vintage", "style_street"]
+            "tags": {
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
+            },
+            "style": [
+                "style_casual",
+                "style_boho",
+                "style_vintage",
+                "style_street"
+            ]
         },
         {
             "value": "leaning against a graffiti-covered wall in Comuna 13, Medellín, colorful murals and escalators in soft blur background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
-                },
-            "style": ["style_street", "style_edgy", "style_casual", "style_boho"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
+            },
+            "style": [
+                "style_street",
+                "style_edgy",
+                "style_casual",
+                "style_boho"
+            ]
         },
         {
             "value": "on a balcony with typical Colombian wooden railings and geranium pots, old town Cartagena in the background",
             "tags": {
-                "temperature": ["temp_hot"],
-                "environment": ["env_urban", "env_outdoor"]
-                },
-            "style": ["style_boho", "style_chic", "style_soft", "style_vintage"]
+                "temperature": [
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
+            },
+            "style": [
+                "style_boho",
+                "style_chic",
+                "style_soft",
+                "style_vintage"
+            ]
         },
         {
             "value": "inside a traditional jeep Willys on a coffee region road, green mountains and coffee plants visible through the open door, Zona Cafetera Colombia",
             "tags": {
-                "temperature": ["temp_neutral", "temp_hot"],
-                "environment": ["env_outdoor", "env_natural"]
-                },
-            "style": ["style_casual", "style_boho", "style_adventure"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_natural"
+                ]
+            },
+            "style": [
+                "style_casual",
+                "style_boho",
+                "style_adventure"
+            ]
         },
         {
             "value": "at a small arepa street stand at dusk, warm light from the grill, plastic stools and Coca-Cola parasol, typical Colombian barrio",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_casual", "style_street"]
+            "style": [
+                "style_casual",
+                "style_street"
+            ]
         },
         {
             "value": "in a modern apartment in El Poblado Medellín with big window showing city lights at night, minimal decor, plants",
             "tags": {
-                "temperature": ["temp_neutral", "temp_cold"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_chic", "style_minimalist", "style_soft"] 
+            "style": [
+                "style_chic",
+                "style_minimalist",
+                "style_soft"
+            ]
         },
         {
             "value": "on a typical living room in Colombia, wooden floor, old sofa, family photos on the wall",
             "tags": {
-                "temperature": ["temp_neutral", "temp_hot"],
-                "environment": ["env_indoor"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_indoor"
+                ]
             },
-            "style": ["style_casual", "style_soft"]
+            "style": [
+                "style_casual",
+                "style_soft"
+            ]
         },
         {
             "value": "on the terrace of a finca in the coffee axis, hammock and wooden railing, misty green mountains in the background",
             "tags": {
-                "temperature": ["temp_neutral", "temp_hot"],
-                "environment": ["env_outdoor", "env_natural"]
-                },
-            "style": ["style_boho", "style_soft", "style_casual"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_natural"
+                ]
+            },
+            "style": [
+                "style_boho",
+                "style_soft",
+                "style_casual"
+            ]
         },
         {
             "value": "inside a chiva bus (colorful traditional bus) on a rural road in Colombia, wooden benches and open sides",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor", "env_natural"]
-                },
-            "style": ["style_casual", "style_boho", "style_fun"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_natural"
+                ]
+            },
+            "style": [
+                "style_casual",
+                "style_boho",
+                "style_fun"
+            ]
         },
         {
             "value": "at Parque de los Periodistas in Bogotá at golden hour, old buildings and street vendors softly blurred behind",
             "tags": {
-                "temperature": ["temp_neutral", "temp_cold"],
-                "environment": ["env_urban", "env_outdoor"]
-                },
-            "style": ["style_casual", "style_vintage", "style_boho"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
+            },
+            "style": [
+                "style_casual",
+                "style_vintage",
+                "style_boho"
+            ]
         },
         {
             "value": "in a small gym in a barrio popular, concrete walls, old fans, reggaeton posters",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_sporty", "style_athleisure"]
+            "style": [
+                "style_sporty",
+                "style_athleisure"
+            ]
         },
         {
             "value": "on the Malecón in Barranquilla during sunset, Caribbean sea and skyline behind",
             "tags": {
-                "temperature": ["temp_hot"],
-                "environment": ["env_urban", "env_outdoor"]
-                },
-            "style": ["style_casual", "style_chic", "style_soft"]
+                "temperature": [
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
+            },
+            "style": [
+                "style_casual",
+                "style_chic",
+                "style_soft"
+            ]
         },
         {
             "value": "sitting on plastic chairs outside a tiendita de barrio in Colombia",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_casual", "style_real", "style_everyday"]
+            "style": [
+                "style_casual",
+                "style_real",
+                "style_everyday"
+            ]
         },
         {
             "value": "in a coworking café in Chapinero Bogotá, brick walls, laptops, hanging plants, natural light",
-            "tags": { "temperature": ["temp_neutral", "temp_cold"], "environment": ["env_indoor", "env_urban"], "style": ["style_chic", "style_casual", "style_minimalist"] }
+            "tags": {
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
+            },
+            "style": [
+                "style_chic",
+                "style_casual",
+                "style_minimalist"
+            ]
         },
         {
             "value": "at the entrance of a typical Colombian university campus, palm trees and security booth in background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_casual", "style_preppy", "style_academic"]
+            "style": [
+                "style_casual",
+                "style_preppy",
+                "style_academic"
+            ]
         },
         {
             "value": "in a small town in Valle del Cauca, sugar cane fields behind",
             "tags": {
-                "temperature": ["temp_hot"],
-                "environment": ["env_outdoor", "env_natural"]
+                "temperature": [
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_natural"
+                ]
             },
-            "style": ["style_casual", "style_real"]
+            "style": [
+                "style_casual",
+                "style_real"
+            ]
         },
         {
             "value": "inside a modern Bogotá apartment with visible Carrera 7 traffic through big window at night",
             "tags": {
-                "temperature": ["temp_cold", "temp_neutral"],
-                "environment": ["env_indoor", "env_urban"]
-                },
-            "style": ["style_chic", "style_minimalist"]
+                "temperature": [
+                    "temp_cold",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
+            },
+            "style": [
+                "style_chic",
+                "style_minimalist"
+            ]
         },
         {
             "value": "at Plaza de Mercado Paloquemao in Bogotá, flowers and fruits in soft background blur",
             "tags": {
-                "temperature": ["temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_casual", "style_boho", "style_colorful"]
+            "style": [
+                "style_casual",
+                "style_boho",
+                "style_colorful"
+            ]
         },
         {
             "value": "on the rooftop of a building in Getsemaní Cartagena, colorful facades and Caribbean sky",
             "tags": {
-                "temperature": ["temp_hot"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_boho", "style_chic", "style_vintage"]
+            "style": [
+                "style_boho",
+                "style_chic",
+                "style_vintage"
+            ]
         },
         {
             "value": "in a salsa bar in Cali at night, dim neon lights, people dancing blurred in background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_indoor", "env_urban"]
-                },
-                "style": ["style_chic", "style_sexy", "style_night"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
+            },
+            "style": [
+                "style_chic",
+                "style_sexy",
+                "style_night"
+            ]
         },
         {
             "value": "leaning on the railing of the Metro in Medellín, barrio houses on the hills in soft background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_real", "style_boho"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_real",
+                "style_boho"
+            ]
         },
         {
             "value": "sitting on a plastic chair in the patio of a typical casa de familia in Cali",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor", "env_suburban"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_suburban"
+                ]
             },
-            "style": ["style_casual", "style_real", "style_everyday"]
+            "style": [
+                "style_casual",
+                "style_real",
+                "style_everyday"
+            ]
         },
         {
             "value": "at the entrance of a small neighborhood gym in Envigado or Sabaneta, roll-up door half open",
             "tags": {
-                "temperature": ["temp_neutral", "temp_hot"],
-                "environment": ["env_urban", "env_indoor"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_indoor"
+                ]
             },
-            "style": ["style_sporty", "style_athleisure", "style_casual"]
+            "style": [
+                "style_sporty",
+                "style_athleisure",
+                "style_casual"
+            ]
         },
         {
             "value": "on the terrace of a rooftop bar in Laureles Medellín at blue hour, string lights and city view",
             "tags": {
-                "temperature": ["temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_chic", "style_night", "style_soft"]
+            "style": [
+                "style_chic",
+                "style_night",
+                "style_soft"
+            ]
         },
         {
             "value": "inside a Transmilenio bus in Bogotá, red seats, people blurred",
             "tags": {
-                "temperature": ["temp_cold", "temp_neutral"],
-                "environment": ["env_urban", "env_indoor"]
+                "temperature": [
+                    "temp_cold",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_indoor"
+                ]
             },
-            "style": ["style_casual", "style_real", "style_everyday"]
+            "style": [
+                "style_casual",
+                "style_real",
+                "style_everyday"
+            ]
         },
         {
             "value": "in a small beauty salon in a barrio popular, plastic chairs, posters of hairstyles",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_chic", "style_glam", "style_casual"]
+            "style": [
+                "style_chic",
+                "style_glam",
+                "style_casual"
+            ]
         },
         {
             "value": "on the yellow brick road of Guatapé with the colorful zócalos houses behind",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor", "env_tourist"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_tourist"
+                ]
             },
-            "style": ["style_boho", "style_chic", "style_colorful"]
+            "style": [
+                "style_boho",
+                "style_chic",
+                "style_colorful"
+            ]
         },
         {
             "value": "sitting on the steps of a church in Plaza de Bolívar Popayán, white colonial buildings around",
             "tags": {
-                "temperature": ["temp_neutral", "temp_hot"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_soft", "style_vintage", "style_chic"]
+            "style": [
+                "style_soft",
+                "style_vintage",
+                "style_chic"
+            ]
         },
         {
             "value": "in a modern coworking space in Provenza Medellín, concrete walls, neon signs, hanging plants",
             "tags": {
-                "temperature": ["temp_neutral"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_chic", "style_minimalist", "style_trendy"]
+            "style": [
+                "style_chic",
+                "style_minimalist",
+                "style_trendy"
+            ]
         },
         {
             "value": "on a ciclovía Sunday morning in Bogotá, cyclists blurred, Usaquén background",
             "tags": {
-                "temperature": ["temp_neutral", "temp_cold"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_sporty", "style_athleisure", "style_casual"]
+            "style": [
+                "style_sporty",
+                "style_athleisure",
+                "style_casual"
+            ]
         },
         {
             "value": "inside a typical panadería colombiana at 7 am, glass display with pandebono and buñuelos",
             "tags": {
-                "temperature": ["temp_neutral", "temp_hot"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_casual", "style_real", "style_everyday"]
+            "style": [
+                "style_casual",
+                "style_real",
+                "style_everyday"
+            ]
         },
         {
             "value": "on the beach of Bocagrande Cartagena at sunset, high-rise buildings behind",
             "tags": {
-                "temperature": ["temp_hot"],
-                "environment": ["env_outdoor", "env_beach"]
+                "temperature": [
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_beach"
+                ]
             },
-            "style": ["style_chic", "style_beach", "style_soft"]
+            "style": [
+                "style_chic",
+                "style_beach",
+                "style_soft"
+            ]
         },
         {
             "value": "on the stairs of a typical house in north Bogotá, modern minimalist facade",
             "tags": {
-                "temperature": ["temp_cold", "temp_neutral"],
-                "environment": ["env_suburban", "env_outdoor"]
+                "temperature": [
+                    "temp_cold",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_suburban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_chic", "style_minimalist", "style_soft"]
+            "style": [
+                "style_chic",
+                "style_minimalist",
+                "style_soft"
+            ]
         },
         {
             "value": "at a small empanada stand at night, plastic tables",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_casual", "style_real", "style_night"]
+            "style": [
+                "style_casual",
+                "style_real",
+                "style_night"
+            ]
         },
         {
             "value": "inside a modern juice bar in El Poblado, chalkboard menu, cold-pressed bottles",
             "tags": {
-                "temperature": ["temp_neutral"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_chic", "style_healthy", "style_minimalist"]
+            "style": [
+                "style_chic",
+                "style_healthy",
+                "style_minimalist"
+            ]
         },
         {
             "value": "on the terrace of a finca near Salento, wax palms and green mountains in the distance",
             "tags": {
-                "temperature": ["temp_neutral", "temp_hot"],
-                "environment": ["env_outdoor", "env_natural"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_natural"
+                ]
             },
-            "style": ["style_boho", "style_soft", "style_nature"]
+            "style": [
+                "style_boho",
+                "style_soft",
+                "style_nature"
+            ]
         },
         {
             "value": "in the food court of a small centro comercial in Pereira or Manizales, typical Colombian fast food signs",
             "tags": {
-                "temperature": ["temp_neutral"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_casual", "style_everyday"]
+            "style": [
+                "style_casual",
+                "style_everyday"
+            ]
         },
         {
             "value": "at the gate of a private university in Barranquilla, palm trees and modern buildings",
             "tags": {
-                "temperature": ["temp_hot"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_preppy", "style_chic", "style_casual"]
+            "style": [
+                "style_preppy",
+                "style_chic",
+                "style_casual"
+            ]
         },
         {
             "value": "in a small clothing store in San Victorino Bogotá, racks of fast fashion, fluorescent lights",
             "tags": {
-                "temperature": ["temp_neutral"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_trendy"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_trendy"
+            ]
         },
         {
             "value": "on a moto parked in front of a typical barrio store with Poker and Águila signs",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_casual", "style_real", "style_edgy"]
+            "style": [
+                "style_casual",
+                "style_real",
+                "style_edgy"
+            ]
         },
         {
             "value": "inside an Uber at night in Bogotá, rain on windows, city lights blurred",
             "tags": {
-                "temperature": ["temp_cold", "temp_neutral"],
-                "environment": ["env_urban", "env_indoor"]
+                "temperature": [
+                    "temp_cold",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_indoor"
+                ]
             },
-            "style": ["style_soft", "style_night", "style_real"]
+            "style": [
+                "style_soft",
+                "style_night",
+                "style_real"
+            ]
         },
         {
             "value": "at the viewpoint Mirador de la Cruz in Cali, city and mountains behind at golden hour",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_chic", "style_soft", "style_romantic"]
+            "style": [
+                "style_chic",
+                "style_soft",
+                "style_romantic"
+            ]
         }
     ]
 }
