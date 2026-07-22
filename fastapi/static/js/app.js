@@ -2,7 +2,7 @@
    BatchApp Frontend — app.js
    ============================================================ */
 
-const API_BASE = window.API_BASE || 'https://genrimage.onrender.com';
+const API_BASE = window.API_BASE || 'https://batchapp-frontend.onrender.com';
 const IMGS_PER_PAGE = 4;
 const POLL_INTERVAL = 5000;
 
@@ -526,7 +526,16 @@ async function downloadApproved() {
   const approved = generatedImgs.filter(g => g.state === 'approved');
   if (approved.length === 0) { showToast('No hay imágenes aprobadas aún.', 'error'); return; }
 
-  showToast(`Descargando ${approved.length} imagen(es)...`);
+  if (typeof JSZip === 'undefined') {
+    showToast('Falta cargar JSZip en index.html. Ver instrucciones.', 'error');
+    console.error('JSZip no esta disponible. Agrega <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script> en index.html antes de app.js.');
+    return;
+  }
+
+  showToast(`Empaquetando ${approved.length} imagen(es)...`);
+  const zip = new JSZip();
+  const failed = [];
+
   for (const img of approved) {
     try {
       // Descarga directo de Backblaze (permanente), no de la carpeta
@@ -537,17 +546,25 @@ async function downloadApproved() {
       const res  = await fetch(downloadUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
-      const a    = document.createElement('a');
-      a.href     = URL.createObjectURL(blob);
-      a.download = img.filename;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      await new Promise(r => setTimeout(r, 300));
-    } catch {
-      console.warn('No se pudo descargar:', img.filename);
+      zip.file(img.filename, blob);
+    } catch (err) {
+      console.warn('No se pudo agregar al ZIP:', img.filename, err.message);
+      failed.push(img.filename);
     }
   }
-  showToast(`${approved.length} imagen(es) descargada(s).`, 'success');
+
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(zipBlob);
+  a.download = `imagenes_aprobadas_${Date.now()}.zip`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  if (failed.length > 0) {
+    showToast(`ZIP descargado, pero ${failed.length} imagen(es) fallaron: ${failed.join(', ')}`, 'error');
+  } else {
+    showToast(`${approved.length} imagen(es) descargada(s) en un ZIP.`, 'success');
+  }
 }
 
 /* ============================================================
