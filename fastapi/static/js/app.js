@@ -351,6 +351,15 @@ async function uploadModelImages(vreproID) {
 /* ============================================================
    PANEL DERECHO — IMÁGENES GENERADAS
    ============================================================ */
+/* Extrae el vreproID del nombre de archivo (patron: "{vreproID}_00001_.png").
+   Sirve como respaldo confiable cuando vreproMap no lo tiene (por ejemplo,
+   despues de recargar la pagina, o con imagenes de sesiones anteriores
+   detectadas por el polling automatico). */
+function extractVreproID(filename) {
+  const match = filename.match(/^(.+?)_\d+_\.\w+$/);
+  return match ? match[1] : null;
+}
+
 async function fetchGeneratedImages() {
   try {
     const res  = await fetch(`${API_BASE}/list_images`);
@@ -367,7 +376,7 @@ async function fetchGeneratedImages() {
       filename: fn,
       url:      `${API_BASE}/images/${fn}`,
       state:    stateMap[fn] || 'pending',
-      vreproID: vreproMap[fn] || null,
+      vreproID: vreproMap[fn] || extractVreproID(fn),
     }));
 
     document.getElementById('gen-badge').textContent = generatedImgs.length + ' generadas';
@@ -400,7 +409,7 @@ async function fetchNewImages() {
     filename: fn,
     url:      `${API_BASE}/images/${fn}`,
     state:    'pending',
-    vreproID: activeVreproID,
+    vreproID: activeVreproID || extractVreproID(fn),
   }));
 }
 
