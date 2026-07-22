@@ -40,7 +40,7 @@ fullbody:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.55
+  faceid_weight: 0.45
   faceid_v2_weight: 0.5
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
@@ -105,7 +105,7 @@ portrait:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.55
+  faceid_weight: 0.45
   faceid_v2_weight: 0.5
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
@@ -134,5 +134,6 @@ portrait:
   detailer_bbox_crop_factor: 3.0
   detailer_drop_size: 10
 
+interrupt_after_seconds: 900
 generation_verbose: false
 save_workflow: false
