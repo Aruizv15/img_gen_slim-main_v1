@@ -598,7 +598,7 @@ async function downloadApproved() {
    LIMPIAR SERVIDOR
    ============================================================ */
 async function clearServerImages() {
-  if (!confirm('¿Eliminar todas las imágenes del servidor? Esta acción no se puede deshacer.')) return;
+  if (!confirm('¿Limpiar la vista local de imágenes? Esto NO borra nada de Backblaze (tus imágenes generadas siguen guardadas ahí para siempre).')) return;
   try {
     const res = await fetch(`${API_BASE}/clear_images`, { method: 'POST' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
