@@ -546,20 +546,38 @@ async function downloadApproved() {
   const failed = [];
 
   for (const img of approved) {
-    try {
-      // Descarga directo de Backblaze (permanente), no de la carpeta
-      // local del servidor (que se borra en cada reinicio de Render).
-      const downloadUrl = img.vreproID
-        ? `${API_BASE}/download_from_b2/${img.vreproID}/${img.filename}`
-        : img.url; // fallback si por alguna razon no hay vreproID asignado
-      const res  = await fetch(downloadUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      zip.file(img.filename, blob);
-    } catch (err) {
-      console.warn('No se pudo agregar al ZIP:', img.filename, err.message);
+    let success = false;
+    for (let intento = 1; intento <= 3 && !success; intento++) {
+      try {
+        // Descarga directo de Backblaze (permanente), no de la carpeta
+        // local del servidor (que se borra en cada reinicio de Render).
+        const downloadUrl = img.vreproID
+          ? `${API_BASE}/download_from_b2/${img.vreproID}/${img.filename}`
+          : img.url; // fallback si por alguna razon no hay vreproID asignado
+        const res  = await fetch(downloadUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        console.log(`[ZIP] ${img.filename} (intento ${intento}): ${blob.size} bytes, tipo: ${blob.type}`);
+        if (blob.size === 0) {
+          throw new Error('El archivo descargado esta vacio (0 bytes)');
+        }
+        zip.file(img.filename, blob);
+        success = true;
+      } catch (err) {
+        console.warn(`Intento ${intento}/3 fallo para ${img.filename}:`, err.message);
+        if (intento < 3) {
+          // Pausa antes de reintentar, dando tiempo a que Backblaze
+          // se recupere si el fallo fue por demasiadas peticiones seguidas.
+          await new Promise(r => setTimeout(r, 800));
+        }
+      }
+    }
+    if (!success) {
       failed.push(img.filename);
     }
+    // Pausa pequeña entre cada imagen (incluso si tuvo exito), para no
+    // saturar a Backblaze con peticiones demasiado rapidas seguidas.
+    await new Promise(r => setTimeout(r, 250));
   }
 
   const zipBlob = await zip.generateAsync({ type: 'blob' });
