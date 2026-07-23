@@ -225,6 +225,35 @@ app.add_middleware(
 )
 
 
+@app.get("/view_from_b2/{vrepro_id}/{filename}")
+async def view_from_b2(vrepro_id: str, filename: str):
+    """
+    Sirve una imagen generada directamente desde Backblaze para MOSTRARLA
+    en el navegador (galeria), sin forzar descarga. Separado de
+    /download_from_b2 porque ese endpoint usa Content-Disposition:
+    attachment, lo cual hace que el navegador se niegue a renderizar la
+    imagen inline dentro de un <img>, mostrando el icono de imagen rota
+    en vez de la miniatura.
+    """
+    try:
+        auth = await b2_authorize()
+        b2_key = f"generated_images/{vrepro_id}/{filename}"
+        async with httpx.AsyncClient() as client:
+            dl = await client.get(
+                f"{auth['downloadUrl']}/file/{os.getenv('B2_BUCKET')}/{b2_key}",
+                headers={"Authorization": auth["authorizationToken"]}
+            )
+        if dl.status_code != 200:
+            raise HTTPException(status_code=404, detail=f"No encontrado en B2: {b2_key}")
+
+        from fastapi.responses import Response
+        return Response(content=dl.content, media_type="image/png")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/download_from_b2/{vrepro_id}/{filename}")
 async def download_from_b2(vrepro_id: str, filename: str):
     """
@@ -276,6 +305,58 @@ def list_generated_images():
         if f.lower().endswith(('.png', '.jpg', '.jpeg'))
     ]
     return {"images": images}
+
+
+@app.get("/list_images_b2")
+async def list_generated_images_b2():
+    """
+    Lista TODAS las imagenes generadas directamente desde Backblaze
+    (generated_images/), en vez de la carpeta local del servidor.
+
+    La carpeta local (/list_images) puede desincronizarse de Backblaze:
+    fotos viejas se quedan ahi de sesiones anteriores, o fotos nuevas
+    no siempre llegan a descargarse. Este endpoint evita ese problema
+    por completo, consultando Backblaze -la fuente de verdad real- cada vez.
+
+    Devuelve: {"images": [{"filename": ..., "vreproID": ...}, ...]}
+    """
+    try:
+        auth = await b2_authorize()
+        bucket = os.getenv('B2_BUCKET')
+        images = []
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                f"{auth['apiUrl']}/b2api/v2/b2_list_buckets",
+                headers={"Authorization": auth["authorizationToken"]},
+                params={"accountId": auth["accountId"], "bucketName": bucket}
+            )
+            buckets = r.json().get("buckets", [])
+            if not buckets:
+                return {"images": []}
+            bucket_id = buckets[0]["bucketId"]
+
+            start_filename = None
+            while True:
+                params = {"bucketId": bucket_id, "prefix": "generated_images/", "maxFileCount": 1000}
+                if start_filename:
+                    params["startFileName"] = start_filename
+                list_r = await client.get(
+                    f"{auth['apiUrl']}/b2api/v2/b2_list_file_names",
+                    headers={"Authorization": auth["authorizationToken"]},
+                    params=params
+                )
+                data = list_r.json()
+                for f in data.get("files", []):
+                    # fileName tiene forma: generated_images/{vreproID}/{filename}
+                    parts = f["fileName"].split("/")
+                    if len(parts) == 3:
+                        images.append({"filename": parts[2], "vreproID": parts[1]})
+                start_filename = data.get("nextFileName")
+                if not start_filename:
+                    break
+        return {"images": images}
+    except Exception as e:
+        return {"images": [], "error": str(e)}
 
 
 async def delete_all_generated_from_b2():
