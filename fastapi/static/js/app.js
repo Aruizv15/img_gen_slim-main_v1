@@ -2,7 +2,7 @@
    BatchApp Frontend — app.js
    ============================================================ */
 
-const API_BASE = window.API_BASE || 'https://genrimage.onrender.com/';
+const API_BASE = window.API_BASE || 'https://genrimage.onrender.com';
 const IMGS_PER_PAGE = 4;
 const POLL_INTERVAL = 5000;
 
