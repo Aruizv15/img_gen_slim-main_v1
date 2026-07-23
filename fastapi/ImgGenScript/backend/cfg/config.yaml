@@ -56,7 +56,7 @@ fullbody:
   k2_cfg: 2.0
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
-  k2_denoise: 0.35
+  k2_denoise: 0.45
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_steps: 20
   detailer_cfg: 7.0
@@ -121,7 +121,7 @@ portrait:
   k2_cfg: 2.0
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
-  k2_denoise: 0.35
+  k2_denoise: 0.45
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_steps: 20
   detailer_cfg: 7.0
