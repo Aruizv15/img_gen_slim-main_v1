@@ -2,7 +2,7 @@
    BatchApp Frontend — app.js
    ============================================================ */
 
-const API_BASE = window.API_BASE || 'https://genrimage.onrender.com';
+const API_BASE = window.API_BASE || 'https://batchapp-frontend.onrender.com';
 const IMGS_PER_PAGE = 4;
 const POLL_INTERVAL = 5000;
 
@@ -362,21 +362,21 @@ function extractVreproID(filename) {
 
 async function fetchGeneratedImages() {
   try {
-    const res  = await fetch(`${API_BASE}/list_images`);
+    const res  = await fetch(`${API_BASE}/list_images_b2`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    const filenames = Array.isArray(data) ? data : (data.images || []);
+    const items = data.images || [];
 
-    // Preservar estados y vreproID existentes
+    // Preservar estados existentes
     const stateMap = {};
     generatedImgs.forEach(g => { stateMap[g.filename] = g.state; });
 
-    generatedImgs = filenames.map(fn => ({
-      filename: fn,
-      url:      `${API_BASE}/images/${fn}`,
-      state:    stateMap[fn] || 'pending',
-      vreproID: vreproMap[fn] || extractVreproID(fn),
+    generatedImgs = items.map(({ filename, vreproID }) => ({
+      filename,
+      url:      `${API_BASE}/view_from_b2/${vreproID}/${filename}`,
+      state:    stateMap[filename] || 'pending',
+      vreproID: vreproID || extractVreproID(filename),
     }));
 
     document.getElementById('gen-badge').textContent = generatedImgs.length + ' generadas';
