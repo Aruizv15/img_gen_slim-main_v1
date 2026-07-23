@@ -279,16 +279,27 @@ def handler(job):
 
         async def main():
             orchestrator = BatchOrchestrator(generation_type=generation_type)
-            await orchestrator.run(
-                max_cycles=max_cycles,
-                donor_list=[vrepro_id],
-                use_pose_override=False,
-                use_hands_refiner_override=True,
-                use_amateur_effect_override=True,
-            )
+            for ciclo in range(1, max_cycles + 1):
+                await orchestrator.run(
+                    max_cycles=1,
+                    donor_list=[vrepro_id],
+                    use_pose_override=False,
+                    use_hands_refiner_override=True,
+                    use_amateur_effect_override=True,
+                )
+                # Subir a Backblaze despues de CADA ciclo individual, no
+                # solo al final de todos. Si el worker muere a mitad de
+                # un ciclo posterior (por el Execution Timeout de RunPod),
+                # las imagenes de los ciclos que SI terminaron bien ya
+                # estan a salvo en Backblaze en vez de perderse por completo.
+                await upload_outputs_to_b2(vrepro_id)
+                # Limpiar la carpeta de salida antes del siguiente ciclo,
+                # para no volver a subir las mismas imagenes otra vez.
+                if os.path.isdir(comfy_output):
+                    shutil.rmtree(comfy_output)
+                os.makedirs(comfy_output, exist_ok=True)
 
         loop.run_until_complete(main())
-        loop.run_until_complete(upload_outputs_to_b2(vrepro_id))
 
         return {"status": "done", "vreproID": vrepro_id}
     except Exception as e:
