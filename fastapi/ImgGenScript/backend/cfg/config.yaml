@@ -52,11 +52,11 @@ fullbody:
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
   plus_face_end: 1.0
-  k2_steps: 6
+  k2_steps: 10
   k2_cfg: 2.0
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
-  k2_denoise: 0.45
+  k2_denoise: 0.35
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_steps: 20
   detailer_cfg: 7.0
@@ -70,18 +70,18 @@ fullbody:
   detailer_drop_size: 10
   hands_refiner_mask_bbox_padding: 20
   hands_refiner_mask_type: "based_on_depth"
-  hands_refiner_mask_expand: 0
-  hands_refiner_detect_thr: 0.1
-  hands_refiner_presence_thr: 0.1
+  hands_refiner_mask_expand: 10
+  hands_refiner_detect_thr: 0.25
+  hands_refiner_presence_thr: 0.25
   hands_refiner_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  hands_refiner_controlnet_weight: 0.85
+  hands_refiner_controlnet_weight: 0.60
   hands_refiner_controlnet_start: 0.0
-  hands_refiner_controlnet_end: 0.7
-  hands_refiner_steps: 20
-  hands_refiner_cfg: 7.0
+  hands_refiner_controlnet_end: 0.6
+  hands_refiner_steps: 28
+  hands_refiner_cfg: 6.5
   hands_refiner_sampler_name: "dpmpp_2m"
   hands_refiner_scheduler: "karras"
-  hands_refiner_denoise: 0.6
+  hands_refiner_denoise: 0.42
 
 portrait:
   workflow: "portrait.json"
@@ -117,11 +117,11 @@ portrait:
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
   plus_face_end: 1.0
-  k2_steps: 6
+  k2_steps: 10
   k2_cfg: 2.0
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
-  k2_denoise: 0.45
+  k2_denoise: 0.35
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_steps: 20
   detailer_cfg: 7.0
