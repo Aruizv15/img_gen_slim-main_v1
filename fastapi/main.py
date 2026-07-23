@@ -407,16 +407,31 @@ async def delete_all_generated_from_b2():
 
 @app.post("/clear_images")
 async def clear_images():
+    """
+    Limpia SOLO la copia local temporal del servidor. Ya NO borra nada
+    de Backblaze -- eso causaba perdida accidental de imagenes generadas,
+    ya que este boton se activaba sin que quedara claro que el borrado
+    de Backblaze era permanente e irreversible.
+    """
     try:
         for dir_path in [INPUT_IMG_DIR, OUTPUT_IMG_DIR, REF_IMG_DIR]:
             for file in os.listdir(dir_path):
                 os.remove(os.path.join(dir_path, file))
-        try:
-            deleted_b2 = await delete_all_generated_from_b2()
-            print(f"[B2] Eliminados permanentemente {len(deleted_b2)} archivos de generated_images/")
-        except Exception as e:
-            print(f"[B2] Error eliminando de B2: {e}")
-        return {"status": "success", "message": "All images cleared (local y Backblaze)."}
+        return {"status": "success", "message": "Copia local limpiada (Backblaze no se toco)."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/clear_images_b2_permanent")
+async def clear_images_b2_permanent():
+    """
+    Borra PERMANENTEMENTE todas las imagenes generadas de Backblaze.
+    IRREVERSIBLE. Separado a proposito de /clear_images para que nunca
+    se dispare por accidente.
+    """
+    try:
+        deleted_b2 = await delete_all_generated_from_b2()
+        return {"status": "success", "message": f"Eliminados permanentemente {len(deleted_b2)} archivo(s) de Backblaze.", "deleted": deleted_b2}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
