@@ -372,16 +372,24 @@ async function fetchGeneratedImages() {
       ? items.filter(it => currentSessionDonors.has(it.vreproID))
       : items;
 
-    // Preservar estados existentes
+    // Preservar estados existentes.
+    // IMPORTANTE: la clave debe incluir vreproID además de filename, porque
+    // ComfyUI reutiliza los mismos nombres (_00001_.png, etc.) para donantes
+    // distintos. Si se indexa solo por filename, aprobar la foto de un
+    // donante puede "contagiar" el estado approved a la foto de otro
+    // donante que por casualidad tenga el mismo nombre de archivo.
     const stateMap = {};
-    generatedImgs.forEach(g => { stateMap[g.filename] = g.state; });
+    generatedImgs.forEach(g => { stateMap[`${g.vreproID}::${g.filename}`] = g.state; });
 
-    generatedImgs = itemsFiltrados.map(({ filename, vreproID }) => ({
-      filename,
-      url:      `${API_BASE}/view_from_b2/${vreproID}/${filename}`,
-      state:    stateMap[filename] || 'pending',
-      vreproID: vreproID || extractVreproID(filename),
-    }));
+    generatedImgs = itemsFiltrados.map(({ filename, vreproID }) => {
+      const vid = vreproID || extractVreproID(filename);
+      return {
+        filename,
+        url:      `${API_BASE}/view_from_b2/${vid}/${filename}`,
+        state:    stateMap[`${vid}::${filename}`] || 'pending',
+        vreproID: vid,
+      };
+    });
 
     document.getElementById('gen-badge').textContent = generatedImgs.length + ' generadas';
     document.getElementById('total-count').textContent = generatedImgs.length;
@@ -565,7 +573,16 @@ async function downloadApproved() {
         if (blob.size === 0) {
           throw new Error('El archivo descargado esta vacio (0 bytes)');
         }
-        zip.file(img.filename, blob);
+        // IMPORTANTE: ComfyUI reutiliza los mismos nombres de archivo
+        // (_00001_.png, etc.) para donantes distintos. Si dos donantes
+        // aprobados comparten el mismo filename y se agregan al ZIP con
+        // zip.file(img.filename, blob), el ZIP queda con dos entradas de
+        // igual nombre y, al descomprimir, una pisa a la otra: la persona
+        // termina con la foto de un donante equivocado sin ningún error
+        // visible. Se namespacea cada entrada dentro de una carpeta por
+        // vreproID para garantizar nombres únicos dentro del ZIP.
+        const zipPath = img.vreproID ? `${img.vreproID}/${img.filename}` : img.filename;
+        zip.file(zipPath, blob);
         success = true;
       } catch (err) {
         console.warn(`Intento ${intento}/3 fallo para ${img.filename}:`, err.message);
@@ -821,10 +838,15 @@ async function executeModelsSequentially() {
     // Evitar duplicados: si el polling automático (que corre en paralelo)
     // ya habia agregado este mismo archivo justo antes, no queremos que
     // aparezca dos veces en la galeria.
+    // Clave compuesta vreproID+filename: dos donantes distintos pueden
+    // compartir el mismo filename (ComfyUI reutiliza _00001_.png, etc.),
+    // así que deduplicar solo por filename podía descartar por error la
+    // foto de un donante creyendo que era duplicada de otro.
     const seen = new Set();
     generatedImgs = generatedImgs.filter(g => {
-      if (seen.has(g.filename)) return false;
-      seen.add(g.filename);
+      const key = `${g.vreproID}::${g.filename}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
 
@@ -986,3 +1008,4 @@ checkHealth();
 setInterval(checkHealth, 30000);
 fetchGeneratedImages();
 startPolling();
+         
