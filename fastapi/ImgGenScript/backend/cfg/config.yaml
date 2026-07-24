@@ -58,7 +58,7 @@ fullbody:
   k2_scheduler: "karras"
   k2_denoise: 0.45
   detailer_bbox_model: "bbox/face_yolov8m.pt"
-  detailer_steps: 20
+  detailer_steps: 26
   detailer_cfg: 7.0
   detailer_sampler_name: "dpmpp_2m"
   detailer_scheduler: "karras"
