@@ -68,9 +68,22 @@ fullbody:
   detailer_bbox_dilation: 10
   detailer_bbox_crop_factor: 3.0
   detailer_drop_size: 10
-  hands_refiner_mask_bbox_padding: 35
-  hands_refiner_mask_type: "based_on_depth"
-  hands_refiner_mask_expand: 10
+  # --- HANDS REFINER ---
+  # CAMBIO (fix calidad facial): mask_bbox_padding 35 -> 15.
+  # Con 35px de padding + 10px de expand (45px en total), la mascara de
+  # manos invadia mandibula/cuello en poses con manos cerca de la cara.
+  hands_refiner_mask_bbox_padding: 15
+  # CAMBIO CRITICO (fix calidad facial): "based_on_depth" -> "tight_bboxes".
+  # based_on_depth construye la mascara umbralizando el mapa de profundidad
+  # GLOBAL: todo lo que este a profundidad similar a las manos entra en la
+  # mascara. En poses de brazos cruzados / mano cerca de la cara, la CARA
+  # completa caia dentro de la mascara y el KSampler de manos la
+  # regeneraba SIN FaceID (el nodo 37 usa el modelo base), destruyendo el
+  # trabajo del FaceDetailer. tight_bboxes limita la mascara a las cajas
+  # de manos detectadas.
+  hands_refiner_mask_type: "tight_bboxes"
+  # CAMBIO (fix calidad facial): mask_expand 10 -> 4 (mismo motivo que padding).
+  hands_refiner_mask_expand: 4
   hands_refiner_detect_thr: 0.25
   hands_refiner_presence_thr: 0.25
   hands_refiner_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
