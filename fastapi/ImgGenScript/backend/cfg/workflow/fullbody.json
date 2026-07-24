@@ -492,7 +492,7 @@
             "tiled_encode": false,
             "tiled_decode": false,
             "image": [
-                "24",
+                "38",
                 0
             ],
             "model": [
@@ -542,7 +542,7 @@
     "30": {
         "inputs": {
             "pixels": [
-                "29",
+                "24",
                 0
             ],
             "vae": [
@@ -581,7 +581,7 @@
             "detect_thr": 0.6,
             "presence_thr": 0.6,
             "image": [
-                "29",
+                "24",
                 0
             ]
         },
@@ -707,7 +707,7 @@
             "upscale_method": "lanczos",
             "scale_by": 0.5,
             "image": [
-                "38",
+                "29",
                 0
             ]
         },
