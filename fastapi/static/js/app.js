@@ -2,7 +2,7 @@
    BatchApp Frontend — app.js
    ============================================================ */
 
-const API_BASE = window.API_BASE || 'https://genrimage.onrender.com';
+const API_BASE = window.API_BASE || 'https://batchapp-frontend.onrender.com';
 const IMGS_PER_PAGE = 4;
 const POLL_INTERVAL = 5000;
 
@@ -12,6 +12,7 @@ let csvFile        = null; // File object del CSV/Excel
 let generatedImgs  = [];   // [{ filename, url, state, vreproID }]
 let currentPage    = 0;
 let selectedIndices = new Set();
+let currentSessionDonors = null; // null = mostrar todo el historial; Set = filtrar solo estos donantes
 let pollTimer      = null;
 
 /* ── Estado multi-modelo (CSV) ── */
@@ -367,12 +368,15 @@ async function fetchGeneratedImages() {
     const data = await res.json();
 
     const items = data.images || [];
+    const itemsFiltrados = currentSessionDonors
+      ? items.filter(it => currentSessionDonors.has(it.vreproID))
+      : items;
 
     // Preservar estados existentes
     const stateMap = {};
     generatedImgs.forEach(g => { stateMap[g.filename] = g.state; });
 
-    generatedImgs = items.map(({ filename, vreproID }) => ({
+    generatedImgs = itemsFiltrados.map(({ filename, vreproID }) => ({
       filename,
       url:      `${API_BASE}/view_from_b2/${vreproID}/${filename}`,
       state:    stateMap[filename] || 'pending',
@@ -610,6 +614,7 @@ async function clearServerImages() {
     vreproMap      = {};
     assignedFiles  = new Set();
     modelResults   = {};
+    currentSessionDonors = null; // volver a mostrar todo el historial
 
     renderGen();
     renderModelList();
@@ -757,6 +762,11 @@ async function executeModelsSequentially() {
     seqRunning = false;
     return;
   }
+
+  // Filtrar la galeria para mostrar SOLO los donantes de esta corrida,
+  // sin borrar nada de Backblaze (el historial completo sigue ahi,
+  // simplemente no se muestra mezclado con la corrida actual).
+  currentSessionDonors = new Set(queue.map(m => m.vreproID));
 
   showToast(`Iniciando ejecución secuencial: ${queue.length} modelo(s)`, 'success');
 
