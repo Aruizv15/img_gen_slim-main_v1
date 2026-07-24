@@ -187,10 +187,23 @@ async def upload_outputs_to_b2(vrepro_id):
         print(f"[B2] No hay archivos en {output_dir}")
         return
 
+    # Sufijo unico por lote de subida. ComfyUI reinicia su contador de
+    # nombres (_00001_) cada vez que la carpeta de salida se limpia, asi
+    # que dos ciclos/jobs distintos pueden producir archivos con EL MISMO
+    # nombre. Subirlos a la misma ruta de B2 sobrescribe el anterior
+    # silenciosamente (asi se "perdian" 5 de 6 fotos: todas eran _00001_
+    # y cada subida pisaba a la anterior). Con este sufijo de fecha-hora
+    # cada subida va a una ruta unica, sin importar como se llame el
+    # archivo localmente. El nombre sigue empezando con el vreproID, asi
+    # que extractVreproID() del frontend sigue funcionando igual.
+    batch_ts = time.strftime('%Y%m%d-%H%M%S')
+
     failed_files = []
     async with httpx.AsyncClient() as client:
-        for local_path in all_files:
+        for idx, local_path in enumerate(all_files):
             f = os.path.basename(local_path)
+            stem, ext = os.path.splitext(f)
+            remote_name = f"generated_images/{vrepro_id}/{stem}{batch_ts}-{idx:02d}{ext}"
             with open(local_path, "rb") as fp:
                 content = fp.read()
             sha1 = hashlib.sha1(content).hexdigest()
@@ -213,7 +226,7 @@ async def upload_outputs_to_b2(vrepro_id):
                         upload_data["uploadUrl"],
                         headers={
                             "Authorization": upload_data["authorizationToken"],
-                            "X-Bz-File-Name": f"generated_images/{vrepro_id}/{f}",
+                            "X-Bz-File-Name": remote_name,
                             "Content-Type": "b2/x-auto",
                             "Content-Length": str(len(content)),
                             "X-Bz-Content-Sha1": sha1
@@ -221,7 +234,7 @@ async def upload_outputs_to_b2(vrepro_id):
                         content=content
                     )
                     if resp.status_code == 200:
-                        print(f"[B2] Subida OK: generated_images/{vrepro_id}/{f}")
+                        print(f"[B2] Subida OK: {remote_name}")
                         success = True
                         break
                     else:
@@ -248,7 +261,19 @@ def handler(job):
     generation_type = job_input.get("generation_type", "fullbody")
     max_cycles = job_input.get("max_cycles", 1)
 
-    print(f"[HANDLER] vreproID={vrepro_id}, generation_type={generation_type}")
+    # Leer los checkboxes de la interfaz desde el input del job.
+    # ANTES estaban hardcodeados (pose=False, hands=True, amateur=True),
+    # asi que lo que el usuario marcara en la UI se ignoraba por completo
+    # (p.ej. Amateur Effect salia SIEMPRE activado aunque estuviera
+    # desmarcado). Los defaults replican el comportamiento anterior por
+    # si main.py todavia no envia estos campos.
+    use_pose = bool(job_input.get("use_pose", False))
+    use_hands_refiner = bool(job_input.get("use_hands_refiner", True))
+    use_amateur_effect = bool(job_input.get("use_amateur_effect", True))
+
+    print(f"[HANDLER] vreproID={vrepro_id}, generation_type={generation_type}, "
+          f"cycles={max_cycles}, pose={use_pose}, hands={use_hands_refiner}, "
+          f"amateur={use_amateur_effect}")
 
     if not vrepro_id:
         return {"status": "error", "message": "vreproID es requerido"}
@@ -282,9 +307,9 @@ def handler(job):
             await orchestrator.run(
                 max_cycles=max_cycles,
                 donor_list=[vrepro_id],
-                use_pose_override=False,
-                use_hands_refiner_override=True,
-                use_amateur_effect_override=True,
+                use_pose_override=use_pose,
+                use_hands_refiner_override=use_hands_refiner,
+                use_amateur_effect_override=use_amateur_effect,
             )
 
         loop.run_until_complete(main())
