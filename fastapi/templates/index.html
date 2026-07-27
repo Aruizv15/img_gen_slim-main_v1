@@ -10,22 +10,22 @@
 <body>
 
 <!-- Pantalla de login -->
-<div id="login-screen" style="position:fixed;inset:0;background:#0b0b0f;display:flex;align-items:center;justify-content:center;z-index:9999;">
-  <form id="login-form" style="background:#16161c;border:1px solid #2a2a33;border-radius:12px;padding:32px;width:320px;display:flex;flex-direction:column;gap:14px;">
+<div id="login-screen" style="position:fixed;inset:0;background:linear-gradient(180deg,#0b0d14,#141824);display:flex;align-items:center;justify-content:center;z-index:9999;">
+  <form id="login-form" style="background:#171820;border:1px solid #2d2f3d;border-radius:18px;padding:42px;width:420px;display:flex;flex-direction:column;gap:18px;box-shadow:0 20px 60px rgba(0,0,0,.45);">
     <div style="text-align:center;margin-bottom:6px;">
-      <img src="/static/Progenyc_LogoColor_Transparente.png" style="width:150px;height:150px;margin:0 auto 10px;display:block;" />
-      <div style="font-size:12px;color:#888;">Inicia sesión para continuar</div>
+      <img src="/static/Progenyc_LogoColor_Transparente.png" style="width:260px;height:auto;margin:0 auto 25px;display:block;" />
+      <div style="font-size:26px;font-weight:700;color:#fff;">Bienvenido</div><div style="font-size:15px;color:#9ca3af;margin-top:6px;">Inicia sesión para acceder al sistema</div>
     </div>
     <input id="login-username" type="text" placeholder="Usuario" autocomplete="username"
-      style="padding:10px 12px;border-radius:8px;border:1px solid #333;background:#0f0f14;color:#eee;font-size:14px;" required />
+      style="padding:14px 16px;border-radius:10px;border:1px solid #353545;background:#101117;color:#fff;font-size:15px;outline:none;" required />
     <input id="login-password" type="password" placeholder="Contraseña" autocomplete="current-password"
-      style="padding:10px 12px;border-radius:8px;border:1px solid #333;background:#0f0f14;color:#eee;font-size:14px;" required />
+      style="padding:14px 16px;border-radius:10px;border:1px solid #353545;background:#101117;color:#fff;font-size:15px;outline:none;" required />
     <button type="submit" id="login-submit"
-      style="padding:10px 12px;border-radius:8px;border:none;background:#4f6bff;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+      style="height:50px;border:none;border-radius:10px;background:linear-gradient(90deg,#4f6bff,#6b5cff);color:#fff;font-size:16px;font-weight:600;cursor:pointer;transition:.2s;">
       Entrar
     </button>
     <div id="login-error" style="color:#ff6b6b;font-size:12px;text-align:center;min-height:16px;"></div>
-  </form>
+  <div style="margin-top:12px;text-align:center;font-size:11px;color:#666;line-height:1.6;">© 2026 Progenyc Life Science<br>Version 2.1</div></form>
 </div>
 
 <div class="app" id="main-app" style="display:none;">
