@@ -5,7 +5,7 @@
    checkExistingSession() -> initApp() (definida en app.js) al final.
    ============================================================ */
 
-const API_BASE = window.API_BASE || 'https://batchapp-frontend.onrender.com';
+const API_BASE = window.API_BASE || 'https://genrimage.onrender.com';
 
 let sessionToken = localStorage.getItem('batchapp_token') || null;
 
