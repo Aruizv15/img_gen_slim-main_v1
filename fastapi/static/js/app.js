@@ -1,8 +1,8 @@
 /* ============================================================
    BatchApp Frontend — app.js
+   Nota: API_BASE, authFetch, y todo el manejo de login/sesion
+   viven en auth.js (debe cargarse ANTES que este archivo).
    ============================================================ */
-
-const API_BASE = window.API_BASE || 'https://genrimage.onrender.com';
 const IMGS_PER_PAGE = 4;
 const POLL_INTERVAL = 5000;
 
@@ -300,7 +300,7 @@ async function uploadToServer() {
     fill.style.width = '40%';
     text.textContent = 'Subiendo al servidor...';
 
-    const res = await fetch(`${API_BASE}/upload_images`, { method: 'POST', body: formData });
+    const res = await authFetch(`${API_BASE}/upload_images`, { method: 'POST', body: formData });
 
     fill.style.width = '90%';
     if (!res.ok) {
@@ -345,7 +345,7 @@ async function uploadModelImages(vreproID) {
     formData.append('images', renamed);
   });
 
-  const res = await fetch(`${API_BASE}/upload_images`, { method: 'POST', body: formData });
+  const res = await authFetch(`${API_BASE}/upload_images`, { method: 'POST', body: formData });
   if (!res.ok) throw new Error(`Error subiendo imágenes de ${vreproID}`);
 }
 
@@ -363,7 +363,7 @@ function extractVreproID(filename) {
 
 async function fetchGeneratedImages() {
   try {
-    const res  = await fetch(`${API_BASE}/list_images_b2`);
+    const res  = await authFetch(`${API_BASE}/list_images_b2`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
@@ -372,24 +372,16 @@ async function fetchGeneratedImages() {
       ? items.filter(it => currentSessionDonors.has(it.vreproID))
       : items;
 
-    // Preservar estados existentes.
-    // IMPORTANTE: la clave debe incluir vreproID además de filename, porque
-    // ComfyUI reutiliza los mismos nombres (_00001_.png, etc.) para donantes
-    // distintos. Si se indexa solo por filename, aprobar la foto de un
-    // donante puede "contagiar" el estado approved a la foto de otro
-    // donante que por casualidad tenga el mismo nombre de archivo.
+    // Preservar estados existentes
     const stateMap = {};
-    generatedImgs.forEach(g => { stateMap[`${g.vreproID}::${g.filename}`] = g.state; });
+    generatedImgs.forEach(g => { stateMap[g.filename] = g.state; });
 
-    generatedImgs = itemsFiltrados.map(({ filename, vreproID }) => {
-      const vid = vreproID || extractVreproID(filename);
-      return {
-        filename,
-        url:      `${API_BASE}/view_from_b2/${vid}/${filename}`,
-        state:    stateMap[`${vid}::${filename}`] || 'pending',
-        vreproID: vid,
-      };
-    });
+    generatedImgs = itemsFiltrados.map(({ filename, vreproID }) => ({
+      filename,
+      url:      `${API_BASE}/view_from_b2/${vreproID}/${filename}`,
+      state:    stateMap[filename] || 'pending',
+      vreproID: vreproID || extractVreproID(filename),
+    }));
 
     document.getElementById('gen-badge').textContent = generatedImgs.length + ' generadas';
     document.getElementById('total-count').textContent = generatedImgs.length;
@@ -407,7 +399,7 @@ async function fetchGeneratedImages() {
 
 /* Devuelve sólo los filenames nuevos desde la última vez que se llamó (para ejecución secuencial) */
 async function fetchNewImages() {
-  const res       = await fetch(`${API_BASE}/list_images`);
+  const res       = await authFetch(`${API_BASE}/list_images`);
   const data      = await res.json();
   const filenames = Array.isArray(data) ? data : (data.images || []);
   const newFns    = filenames.filter(fn => !assignedFiles.has(fn));
@@ -573,16 +565,7 @@ async function downloadApproved() {
         if (blob.size === 0) {
           throw new Error('El archivo descargado esta vacio (0 bytes)');
         }
-        // IMPORTANTE: ComfyUI reutiliza los mismos nombres de archivo
-        // (_00001_.png, etc.) para donantes distintos. Si dos donantes
-        // aprobados comparten el mismo filename y se agregan al ZIP con
-        // zip.file(img.filename, blob), el ZIP queda con dos entradas de
-        // igual nombre y, al descomprimir, una pisa a la otra: la persona
-        // termina con la foto de un donante equivocado sin ningún error
-        // visible. Se namespacea cada entrada dentro de una carpeta por
-        // vreproID para garantizar nombres únicos dentro del ZIP.
-        const zipPath = img.vreproID ? `${img.vreproID}/${img.filename}` : img.filename;
-        zip.file(zipPath, blob);
+        zip.file(img.filename, blob);
         success = true;
       } catch (err) {
         console.warn(`Intento ${intento}/3 fallo para ${img.filename}:`, err.message);
@@ -621,7 +604,7 @@ async function downloadApproved() {
 async function clearServerImages() {
   if (!confirm('¿Limpiar la vista local de imágenes? Esto NO borra nada de Backblaze (tus imágenes generadas siguen guardadas ahí para siempre).')) return;
   try {
-    const res = await fetch(`${API_BASE}/clear_images`, { method: 'POST' });
+    const res = await authFetch(`${API_BASE}/clear_images`, { method: 'POST' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     // Limpiar estado local
@@ -664,7 +647,7 @@ async function startSingleExecution() {
     use_amateur_effect: useAmateur,
   });
 
-  const res  = await fetch(`${API_BASE}/jobs?${params}`, { method: 'POST' });
+  const res  = await authFetch(`${API_BASE}/jobs?${params}`, { method: 'POST' });
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
 
@@ -754,7 +737,7 @@ async function executeModelsSequentially() {
   // fotos de donantes de ejecuciones anteriores no se mezclen con las
   // de esta corrida nueva en la galería.
   try {
-    await fetch(`${API_BASE}/clear_output`, { method: 'POST' });
+    await authFetch(`${API_BASE}/clear_output`, { method: 'POST' });
   } catch (err) {
     console.warn('No se pudo limpiar output_images antes de iniciar:', err.message);
   }
@@ -763,7 +746,7 @@ async function executeModelsSequentially() {
   if (csvFile) {
     const fd = new FormData();
     fd.append('csv', csvFile);
-    await fetch(`${API_BASE}/upload_images`, { method: 'POST', body: fd });
+    await authFetch(`${API_BASE}/upload_images`, { method: 'POST', body: fd });
   }
 
   const mode    = document.querySelector('.mode-btn.active').textContent.trim().toLowerCase();
@@ -813,7 +796,7 @@ async function executeModelsSequentially() {
       use_amateur_effect: useAmateur,
     });
 
-    const jobRes = await fetch(`${API_BASE}/jobs?${params}`, { method: 'POST' });
+    const jobRes = await authFetch(`${API_BASE}/jobs?${params}`, { method: 'POST' });
     if (!jobRes.ok) {
       const err = await jobRes.json().catch(() => ({}));
       showToast(`Error iniciando job para ${model.vreproID}: ${err.detail || '?'}`, 'error');
@@ -838,15 +821,10 @@ async function executeModelsSequentially() {
     // Evitar duplicados: si el polling automático (que corre en paralelo)
     // ya habia agregado este mismo archivo justo antes, no queremos que
     // aparezca dos veces en la galeria.
-    // Clave compuesta vreproID+filename: dos donantes distintos pueden
-    // compartir el mismo filename (ComfyUI reutiliza _00001_.png, etc.),
-    // así que deduplicar solo por filename podía descartar por error la
-    // foto de un donante creyendo que era duplicada de otro.
     const seen = new Set();
     generatedImgs = generatedImgs.filter(g => {
-      const key = `${g.vreproID}::${g.filename}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
+      if (seen.has(g.filename)) return false;
+      seen.add(g.filename);
       return true;
     });
 
@@ -894,7 +872,7 @@ async function startFullbodyThenPortrait() {
   seqRunning = true;
 
   try {
-    await fetch(`${API_BASE}/clear_output`, { method: 'POST' });
+    await authFetch(`${API_BASE}/clear_output`, { method: 'POST' });
   } catch (err) {
     console.warn('No se pudo limpiar output_images antes de iniciar:', err.message);
   }
@@ -909,7 +887,7 @@ async function startFullbodyThenPortrait() {
       use_amateur_effect: useAmateur,
     });
 
-    const res  = await fetch(`${API_BASE}/jobs?${params}`, { method: 'POST' });
+    const res  = await authFetch(`${API_BASE}/jobs?${params}`, { method: 'POST' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
 
@@ -967,7 +945,7 @@ async function stopExecution() {
   hideSeqProgress();
 
   try {
-    await fetch(`${API_BASE}/interrupt`, { method: 'POST' });
+    await authFetch(`${API_BASE}/interrupt`, { method: 'POST' });
     showToast('Ejecución interrumpida.', 'success');
   } catch (err) {
     showToast('Error al detener: ' + err.message, 'error');
@@ -1003,9 +981,12 @@ function toggleCb(el) {
 
 /* ============================================================
    INIT
+   Nota: esta funcion la llama checkExistingSession() desde auth.js,
+   una vez confirmada la sesion -- no se dispara sola aqui.
    ============================================================ */
-checkHealth();
-setInterval(checkHealth, 30000);
-fetchGeneratedImages();
-startPolling();
-         
+function initApp() {
+  checkHealth();
+  setInterval(checkHealth, 30000);
+  fetchGeneratedImages();
+  startPolling();
+}
