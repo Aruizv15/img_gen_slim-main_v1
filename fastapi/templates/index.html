@@ -9,10 +9,30 @@
 </head>
 <body>
 
+<!-- Pantalla de login -->
+<div id="login-screen" style="position:fixed;inset:0;background:#0b0b0f;display:flex;align-items:center;justify-content:center;z-index:9999;">
+  <form id="login-form" style="background:#16161c;border:1px solid #2a2a33;border-radius:12px;padding:32px;width:320px;display:flex;flex-direction:column;gap:14px;">
+    <div style="text-align:center;margin-bottom:6px;">
+      <div style="font-size:18px;font-weight:600;color:#eee;">BatchApp</div>
+      <div style="font-size:12px;color:#888;">Inicia sesión para continuar</div>
+    </div>
+    <input id="login-username" type="text" placeholder="Usuario" autocomplete="username"
+      style="padding:10px 12px;border-radius:8px;border:1px solid #333;background:#0f0f14;color:#eee;font-size:14px;" required />
+    <input id="login-password" type="password" placeholder="Contraseña" autocomplete="current-password"
+      style="padding:10px 12px;border-radius:8px;border:1px solid #333;background:#0f0f14;color:#eee;font-size:14px;" required />
+    <button type="submit" id="login-submit"
+      style="padding:10px 12px;border-radius:8px;border:none;background:#4f6bff;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+      Entrar
+    </button>
+    <div id="login-error" style="color:#ff6b6b;font-size:12px;text-align:center;min-height:16px;"></div>
+  </form>
+</div>
+
+<div class="app" id="main-app" style="display:none;">
+
 <input type="file" id="file-input" multiple accept="image/*" />
 <input type="file" id="csv-input" accept=".csv,.xlsx,.xls" />
 
-<div class="app">
 
   <!-- Topbar -->
   <div class="topbar">
@@ -21,6 +41,9 @@
       <span class="status-dot" id="status-dot"></span>
       <span class="status-text" id="status-text">Verificando...</span>
       <span class="version-badge">v2.1</span>
+      <button onclick="logout()" style="margin-left:12px;background:none;border:1px solid #333;color:#aaa;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">
+        Cerrar sesión
+      </button>
     </div>
   </div>
 
@@ -183,6 +206,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
+<script src="/static/js/auth.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>
