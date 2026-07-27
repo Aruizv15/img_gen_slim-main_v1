@@ -611,6 +611,14 @@ async def start_job(
                         "vreproID": donors[0] if donors else "",
                         "generation_type": generation_type,
                         "max_cycles": max_cycles,
+                        # Reenviar los checkboxes de la UI al worker.
+                        # ANTES estos tres flags llegaban hasta aqui desde
+                        # el frontend pero NO se incluian en el payload, asi
+                        # que el handler nunca los recibia y aplicaba sus
+                        # defaults (con amateur_effect=True siempre activo).
+                        "use_pose": use_pose,
+                        "use_hands_refiner": use_hands_refiner,
+                        "use_amateur_effect": use_amateur_effect,
                     }
                 }
             )
