@@ -415,3 +415,20 @@ body {
   border-radius: 3px;
   pointer-events: none;
 }
+
+/* ── Movimiento suave del logo del login ── */
+
+#login-logo {
+  animation: floatLogo 3s ease-in-out infinite;
+}
+
+
+@keyframes floatLogo {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
