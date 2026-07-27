@@ -378,7 +378,10 @@ async function fetchGeneratedImages() {
 
     generatedImgs = itemsFiltrados.map(({ filename, vreproID }) => ({
       filename,
-      url:      `${API_BASE}/view_from_b2/${vreproID}/${filename}`,
+      // <img src> no puede enviar la cabecera Authorization, asi que el
+      // token va como query param. view_from_b2 acepta ambas formas
+      // (ver require_login_flexible en auth.py) justo por este motivo.
+      url:      `${API_BASE}/view_from_b2/${vreproID}/${filename}?token=${encodeURIComponent(sessionToken || '')}`,
       state:    stateMap[filename] || 'pending',
       vreproID: vreproID || extractVreproID(filename),
     }));
@@ -558,7 +561,7 @@ async function downloadApproved() {
         const downloadUrl = img.vreproID
           ? `${API_BASE}/download_from_b2/${img.vreproID}/${img.filename}`
           : img.url; // fallback si por alguna razon no hay vreproID asignado
-        const res  = await fetch(downloadUrl);
+        const res  = await authFetch(downloadUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const blob = await res.blob();
         console.log(`[ZIP] ${img.filename} (intento ${intento}): ${blob.size} bytes, tipo: ${blob.type}`);
@@ -667,10 +670,14 @@ async function waitForJobDone(generationType) {
   while (true) {
     await new Promise(r => setTimeout(r, 3000));
     try {
-      const res = await fetch(url);
+      const res = await authFetch(url);
       const job = await res.json();
       if (job.status === 'done' || job.status === 'error' || job.status === 'idle') return job;
-    } catch { /* sigue esperando */ }
+    } catch (err) {
+      // authFetch ya dispara logout() si la sesion expiro (401). Para
+      // cualquier otro error (red, etc.) seguimos esperando como antes.
+      if (err.message === 'No autenticado') return { status: 'error' };
+    }
   }
 }
 
