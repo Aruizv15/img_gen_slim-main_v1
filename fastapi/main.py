@@ -167,6 +167,14 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     return credentials.credentials
 
 
+# ============================================================
+# LOGIN — modulo separado (ver auth.py)
+# ============================================================
+from auth import auth_router, require_login, require_login_flexible
+
+app.include_router(auth_router)
+
+
 def del_all_files(path: str) -> None:
     folder = pathlib.Path(path)
     if not folder.is_dir():
@@ -226,7 +234,7 @@ app.add_middleware(
 
 
 @app.get("/view_from_b2/{vrepro_id}/{filename}")
-async def view_from_b2(vrepro_id: str, filename: str):
+async def view_from_b2(vrepro_id: str, filename: str, session: dict = Depends(require_login_flexible)):
     """
     Sirve una imagen generada directamente desde Backblaze para MOSTRARLA
     en el navegador (galeria), sin forzar descarga. Separado de
@@ -255,7 +263,7 @@ async def view_from_b2(vrepro_id: str, filename: str):
 
 
 @app.get("/download_from_b2/{vrepro_id}/{filename}")
-async def download_from_b2(vrepro_id: str, filename: str):
+async def download_from_b2(vrepro_id: str, filename: str, session: dict = Depends(require_login)):
     """
     Sirve una imagen generada directamente desde Backblaze, sin depender
     de la copia local en el disco de Render (que es efimero y se borra
@@ -299,7 +307,7 @@ async def health_check():
 
 
 @app.get("/list_images")
-def list_generated_images():
+def list_generated_images(session: dict = Depends(require_login)):
     images = [
         f for f in os.listdir(OUTPUT_IMG_DIR)
         if f.lower().endswith(('.png', '.jpg', '.jpeg'))
@@ -308,7 +316,7 @@ def list_generated_images():
 
 
 @app.get("/list_images_b2")
-async def list_generated_images_b2():
+async def list_generated_images_b2(session: dict = Depends(require_login)):
     """
     Lista TODAS las imagenes generadas directamente desde Backblaze
     (generated_images/), en vez de la carpeta local del servidor.
@@ -406,7 +414,7 @@ async def delete_all_generated_from_b2():
 
 
 @app.post("/clear_images")
-async def clear_images():
+async def clear_images(session: dict = Depends(require_login)):
     """
     Limpia SOLO la copia local temporal del servidor. Ya NO borra nada
     de Backblaze -- eso causaba perdida accidental de imagenes generadas,
@@ -423,7 +431,7 @@ async def clear_images():
 
 
 @app.post("/clear_images_b2_permanent")
-async def clear_images_b2_permanent():
+async def clear_images_b2_permanent(session: dict = Depends(require_login)):
     """
     Borra PERMANENTEMENTE todas las imagenes generadas de Backblaze.
     IRREVERSIBLE. Separado a proposito de /clear_images para que nunca
@@ -437,7 +445,7 @@ async def clear_images_b2_permanent():
 
 
 @app.post("/clear_output")
-async def clear_output():
+async def clear_output(session: dict = Depends(require_login)):
     """Clears only the output_images directory (used between sequential model runs)."""
     try:
         del_all_files(OUTPUT_IMG_DIR)
@@ -451,6 +459,7 @@ async def upload_and_save_images_optional(
     images: Optional[List[UploadFile]] = File(default=[]),
     reference: Optional[UploadFile] = File(None),
     csv: Optional[UploadFile] = File(None),
+    session: dict = Depends(require_login),
 ):
     """
     Accepts model input images, an optional pose reference image, and/or a CSV file
@@ -513,7 +522,7 @@ async def upload_and_save_images_optional(
 
 
 @app.post("/free_vram")
-async def free_memory():
+async def free_memory(session: dict = Depends(require_login)):
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post("http://comfyui:8288/free_vram")
@@ -529,7 +538,7 @@ async def free_memory():
 
 
 @app.get("/comfyui_status")
-async def comfyui_status():
+async def comfyui_status(session: dict = Depends(require_login)):
     if not DOCKER_AVAILABLE:
         return {"status": "error", "message": "Docker not available"}
     try:
@@ -574,6 +583,7 @@ async def start_job(
     use_pose: bool = False,
     use_hands_refiner: bool = True,
     use_amateur_effect: bool = False,
+    session: dict = Depends(require_login),
 ):
     global jobs_by_type
     if generation_type not in jobs_by_type:
@@ -611,14 +621,6 @@ async def start_job(
                         "vreproID": donors[0] if donors else "",
                         "generation_type": generation_type,
                         "max_cycles": max_cycles,
-                        # Reenviar los checkboxes de la UI al worker.
-                        # ANTES estos tres flags llegaban hasta aqui desde
-                        # el frontend pero NO se incluian en el payload, asi
-                        # que el handler nunca los recibia y aplicaba sus
-                        # defaults (con amateur_effect=True siempre activo).
-                        "use_pose": use_pose,
-                        "use_hands_refiner": use_hands_refiner,
-                        "use_amateur_effect": use_amateur_effect,
                     }
                 }
             )
@@ -662,7 +664,7 @@ async def start_job(
     return {"job_id": job_id, "status": "running", "generation_type": generation_type, "message": "Batch iniciado en RunPod"}
 
 @app.get("/jobs/current")
-async def get_current_job(generation_type: Optional[str] = None):
+async def get_current_job(generation_type: Optional[str] = None, session: dict = Depends(require_login)):
     """
     Si se pasa generation_type ('fullbody' o 'portrait'), devuelve solo ese job.
     Si no se pasa (compatibilidad con codigo viejo que no conoce generation_type),
@@ -686,7 +688,7 @@ async def get_current_job(generation_type: Optional[str] = None):
     return jobs_by_type["fullbody"]
 
 @app.get("/debug_b2")
-async def debug_b2():
+async def debug_b2(session: dict = Depends(require_login)):
     try:
         auth = await b2_authorize()
         return {"status": "ok", "auth_response": auth}
