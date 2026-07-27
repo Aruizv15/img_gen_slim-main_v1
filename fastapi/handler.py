@@ -16,6 +16,14 @@ import shutil
 nest_asyncio.apply()
 import urllib.request
 
+print("=" * 60)
+print("[HANDLER BUILD] v3-subida-por-ciclo-2026-07-27")
+print("[HANDLER BUILD] Si NO ves '[HANDLER] Ciclo X/N generado y")
+print("[HANDLER BUILD] subido a B2' entre cada ciclo mas abajo, este")
+print("[HANDLER BUILD] worker esta corriendo una imagen VIEJA. Termina")
+print("[HANDLER BUILD] este worker y verifica el build activo en RunPod.")
+print("=" * 60)
+
 for _d in [
     '/app/shared_data/input_images',
     '/app/shared_data/output_images',
@@ -303,17 +311,39 @@ def handler(job):
             print(f"[COMFYUI INPUT] Copiadas: {os.listdir(comfy_input)}")
 
         async def main():
-            orchestrator = BatchOrchestrator(generation_type=generation_type)
-            await orchestrator.run(
-                max_cycles=max_cycles,
-                donor_list=[vrepro_id],
-                use_pose_override=use_pose,
-                use_hands_refiner_override=use_hands_refiner,
-                use_amateur_effect_override=use_amateur_effect,
-            )
+            # SUBIDA POR CICLO: se ejecuta cada ciclo por separado y se sube
+            # su resultado a B2 inmediatamente, en vez de generar todos los
+            # ciclos y subir una sola vez al final. Ventajas:
+            #   1. Las fotos aparecen en la galeria en tiempo real, ciclo a
+            #      ciclo, en vez de todas juntas al final.
+            #   2. Si el worker muere (Execution Timeout, crash, etc.) a
+            #      mitad de la corrida, los ciclos ya completados estan a
+            #      salvo en B2; solo se pierde el ciclo en curso.
+            # Esta es la misma estructura del bucle antiguo, que era correcta
+            # salvo por un defecto: ComfyUI nombraba todos los ciclos igual
+            # (_00001_) y las subidas se pisaban entre si en B2. Ese defecto
+            # ya no existe porque upload_outputs_to_b2 agrega un sufijo unico
+            # de fecha-hora a cada subida.
+            for _ciclo in range(max_cycles):
+                orchestrator = BatchOrchestrator(generation_type=generation_type)
+                await orchestrator.run(
+                    max_cycles=1,
+                    donor_list=[vrepro_id],
+                    use_pose_override=use_pose,
+                    use_hands_refiner_override=use_hands_refiner,
+                    use_amateur_effect_override=use_amateur_effect,
+                )
+                await upload_outputs_to_b2(vrepro_id)
+                # Vaciar la carpeta de salida despues de subir: si no, el
+                # siguiente ciclo volveria a encontrar (y re-subir con otro
+                # sufijo) las fotos de los ciclos anteriores, duplicandolas
+                # en B2 y en la galeria.
+                if os.path.isdir(comfy_output):
+                    shutil.rmtree(comfy_output)
+                os.makedirs(comfy_output, exist_ok=True)
+                print(f"[HANDLER] Ciclo {_ciclo + 1}/{max_cycles} generado y subido a B2")
 
         loop.run_until_complete(main())
-        loop.run_until_complete(upload_outputs_to_b2(vrepro_id))
 
         return {"status": "done", "vreproID": vrepro_id}
     except Exception as e:
