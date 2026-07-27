@@ -18,6 +18,11 @@ from fastapi.templating import Jinja2Templates
 from typing import List, Optional
 from dotenv import load_dotenv
 
+# ============================================================
+# LOGIN — modulo separado (ver auth.py)
+# ============================================================
+from auth import auth_router, require_login, require_login_flexible
+
 
 # Orchestrator solo disponible en RunPod
 
@@ -91,16 +96,6 @@ async def upload_to_b2(local_path: str, b2_key: str):
 
 
 async def download_generated_from_b2(vrepro_id: str) -> list:
-    """
-    Descarga las imagenes generadas por el worker de RunPod (subidas a
-    Backblaze bajo 'generated_images/{vrepro_id}/') hacia la carpeta local
-    OUTPUT_IMG_DIR, para que /list_images y /images/{filename} puedan
-    servirlas al frontend. Sin este paso, las imagenes quedan solo en B2
-    y el frontend nunca las ve.
-
-    Returns:
-        list[str]: nombres de archivo descargados.
-    """
     auth = await b2_authorize()
     api_url = auth["apiUrl"]
     auth_token = auth["authorizationToken"]
@@ -211,6 +206,8 @@ async def save_reference_image(path: str, file: UploadFile) -> str:
 
 
 app = FastAPI()
+# El login se registra aqui, justo despues de crear 'app'.
+app.include_router(auth_router)
 templates = Jinja2Templates(directory="/app/templates")
 
 app.mount("/static", StaticFiles(directory="/app/static"), name="static")
@@ -227,14 +224,6 @@ app.add_middleware(
 
 @app.get("/view_from_b2/{vrepro_id}/{filename}")
 async def view_from_b2(vrepro_id: str, filename: str):
-    """
-    Sirve una imagen generada directamente desde Backblaze para MOSTRARLA
-    en el navegador (galeria), sin forzar descarga. Separado de
-    /download_from_b2 porque ese endpoint usa Content-Disposition:
-    attachment, lo cual hace que el navegador se niegue a renderizar la
-    imagen inline dentro de un <img>, mostrando el icono de imagen rota
-    en vez de la miniatura.
-    """
     try:
         auth = await b2_authorize()
         b2_key = f"generated_images/{vrepro_id}/{filename}"
@@ -256,11 +245,6 @@ async def view_from_b2(vrepro_id: str, filename: str):
 
 @app.get("/download_from_b2/{vrepro_id}/{filename}")
 async def download_from_b2(vrepro_id: str, filename: str):
-    """
-    Sirve una imagen generada directamente desde Backblaze, sin depender
-    de la copia local en el disco de Render (que es efimero y se borra
-    en cada reinicio/redeploy del servicio).
-    """
     try:
         auth = await b2_authorize()
         b2_key = f"generated_images/{vrepro_id}/{filename}"
@@ -309,17 +293,6 @@ def list_generated_images():
 
 @app.get("/list_images_b2")
 async def list_generated_images_b2():
-    """
-    Lista TODAS las imagenes generadas directamente desde Backblaze
-    (generated_images/), en vez de la carpeta local del servidor.
-
-    La carpeta local (/list_images) puede desincronizarse de Backblaze:
-    fotos viejas se quedan ahi de sesiones anteriores, o fotos nuevas
-    no siempre llegan a descargarse. Este endpoint evita ese problema
-    por completo, consultando Backblaze -la fuente de verdad real- cada vez.
-
-    Devuelve: {"images": [{"filename": ..., "vreproID": ...}, ...]}
-    """
     try:
         auth = await b2_authorize()
         bucket = os.getenv('B2_BUCKET')
@@ -347,7 +320,6 @@ async def list_generated_images_b2():
                 )
                 data = list_r.json()
                 for f in data.get("files", []):
-                    # fileName tiene forma: generated_images/{vreproID}/{filename}
                     parts = f["fileName"].split("/")
                     if len(parts) == 3:
                         images.append({"filename": parts[2], "vreproID": parts[1]})
@@ -360,12 +332,6 @@ async def list_generated_images_b2():
 
 
 async def delete_all_generated_from_b2():
-    """
-    Borra PERMANENTEMENTE todas las imagenes generadas de Backblaze
-    (carpeta 'generated_images/'). Sin esto, las fotos viejas de un donante
-    se quedan en B2 para siempre y reaparecen mezcladas cada vez que se
-    genera una imagen nueva para ese mismo donante.
-    """
     auth = await b2_authorize()
     bucket = os.getenv('B2_BUCKET')
     deleted = []
@@ -407,12 +373,6 @@ async def delete_all_generated_from_b2():
 
 @app.post("/clear_images")
 async def clear_images():
-    """
-    Limpia SOLO la copia local temporal del servidor. Ya NO borra nada
-    de Backblaze -- eso causaba perdida accidental de imagenes generadas,
-    ya que este boton se activaba sin que quedara claro que el borrado
-    de Backblaze era permanente e irreversible.
-    """
     try:
         for dir_path in [INPUT_IMG_DIR, OUTPUT_IMG_DIR, REF_IMG_DIR]:
             for file in os.listdir(dir_path):
@@ -424,11 +384,6 @@ async def clear_images():
 
 @app.post("/clear_images_b2_permanent")
 async def clear_images_b2_permanent():
-    """
-    Borra PERMANENTEMENTE todas las imagenes generadas de Backblaze.
-    IRREVERSIBLE. Separado a proposito de /clear_images para que nunca
-    se dispare por accidente.
-    """
     try:
         deleted_b2 = await delete_all_generated_from_b2()
         return {"status": "success", "message": f"Eliminados permanentemente {len(deleted_b2)} archivo(s) de Backblaze.", "deleted": deleted_b2}
@@ -438,7 +393,6 @@ async def clear_images_b2_permanent():
 
 @app.post("/clear_output")
 async def clear_output():
-    """Clears only the output_images directory (used between sequential model runs)."""
     try:
         del_all_files(OUTPUT_IMG_DIR)
         return {"status": "success", "message": "Output images cleared."}
@@ -452,11 +406,6 @@ async def upload_and_save_images_optional(
     reference: Optional[UploadFile] = File(None),
     csv: Optional[UploadFile] = File(None),
 ):
-    """
-    Accepts model input images, an optional pose reference image, and/or a CSV file
-    with model characteristics (vreproID, age, skinTone, etc.).
-    The CSV is saved to shared_data so the orchestrator can read it.
-    """
     ref_name = None
     try:
         if images:
@@ -488,7 +437,6 @@ async def upload_and_save_images_optional(
 
         del_all_files(TEMP_IMG_DIR)
 
-        # Subir a Backblaze
         try:
             for f in os.listdir(INPUT_IMG_DIR):
                 local = os.path.join(INPUT_IMG_DIR, f)
@@ -508,8 +456,6 @@ async def upload_and_save_images_optional(
     except Exception as e:
         print(e)
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
-
-
 
 
 @app.post("/free_vram")
@@ -599,7 +545,7 @@ async def start_job(
             import requests as req
             runpod_api_key = os.getenv("RUNPOD_API_KEY")
             runpod_endpoint = os.getenv("RUNPOD_ENDPOINT")
-            
+
             response = req.post(
                 f"https://api.runpod.ai/v2/{runpod_endpoint}/run",
                 headers={
@@ -611,37 +557,28 @@ async def start_job(
                         "vreproID": donors[0] if donors else "",
                         "generation_type": generation_type,
                         "max_cycles": max_cycles,
-                        # Reenviar los checkboxes de la UI al worker.
-                        # ANTES estos tres flags llegaban hasta aqui desde
-                        # el frontend pero NO se incluian en el payload, asi
-                        # que el handler nunca los recibia y aplicaba sus
-                        # defaults (con amateur_effect=True siempre activo).
                         "use_pose": use_pose,
                         "use_hands_refiner": use_hands_refiner,
                         "use_amateur_effect": use_amateur_effect,
                     }
                 }
             )
-            
+
             runpod_job = response.json()
             runpod_job_id = runpod_job.get("id")
-            
-            # Espera el resultado
+
             while True:
                 status_response = req.get(
                     f"https://api.runpod.ai/v2/{runpod_endpoint}/status/{runpod_job_id}",
                     headers={"Authorization": f"Bearer {runpod_api_key}"}
                 )
                 status = status_response.json()
-                
+
                 if status.get("status") in ["COMPLETED", "FAILED"]:
                     break
 
                 time.sleep(5)
 
-            # Descargar las imagenes generadas desde Backblaze hacia la
-            # carpeta local, para que el frontend pueda mostrarlas via
-            # /list_images y /images/{filename}
             if status.get("status") == "COMPLETED":
                 try:
                     vrepro_id = donors[0] if donors else ""
@@ -663,13 +600,6 @@ async def start_job(
 
 @app.get("/jobs/current")
 async def get_current_job(generation_type: Optional[str] = None):
-    """
-    Si se pasa generation_type ('fullbody' o 'portrait'), devuelve solo ese job.
-    Si no se pasa (compatibilidad con codigo viejo que no conoce generation_type),
-    devuelve el job que este corriendo ahora mismo; si ninguno esta corriendo,
-    devuelve el que termino mas recientemente. Mantiene el mismo formato de
-    un solo job que se usaba antes de soportar fullbody+portrait en paralelo.
-    """
     if generation_type:
         if generation_type not in jobs_by_type:
             raise HTTPException(status_code=400, detail=f"generation_type invalido: {generation_type}")
