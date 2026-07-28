@@ -617,7 +617,15 @@ async function clearServerImages() {
     vreproMap      = {};
     assignedFiles  = new Set();
     modelResults   = {};
-    currentSessionDonors = null; // volver a mostrar todo el historial
+    // Antes: currentSessionDonors = null volvia a mostrar TODO el
+    // historial de Backblaze (nunca se borra de ahi a proposito). Como el
+    // polling automatico sigue consultando B2 de fondo, la galeria se
+    // repoblaba sola segundos despues de "limpiar", pareciendo que el
+    // boton no hacia nada. Con un Set vacio, el filtro sigue activo pero
+    // no deja pasar ningun donante -- la galeria se queda vacia de verdad
+    // hasta que se inicie una generacion nueva (que reasigna este valor
+    // con los donantes reales en executeModelsSequentially).
+    currentSessionDonors = new Set(); // vacio a proposito: oculta todo hasta la proxima generacion
 
     renderGen();
     renderModelList();
