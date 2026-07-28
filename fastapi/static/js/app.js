@@ -13,6 +13,11 @@ let generatedImgs  = [];   // [{ filename, url, state, vreproID }]
 let currentPage    = 0;
 let selectedIndices = new Set();
 let currentSessionDonors = null; // null = mostrar todo el historial; Set = filtrar solo estos donantes
+// Snapshot de "vreproID::filename" que YA EXISTIAN en B2 justo antes de
+// arrancar la corrida actual. Sirve para que, al repetir un donante que
+// ya se habia generado antes, la galeria muestre SOLO las fotos nuevas
+// de esta corrida, sin mezclar las fotos viejas de ese mismo donante.
+let sessionBaselineFiles = new Set();
 let pollTimer      = null;
 
 /* ── Estado multi-modelo (CSV) ── */
@@ -369,7 +374,10 @@ async function fetchGeneratedImages() {
 
     const items = data.images || [];
     const itemsFiltrados = currentSessionDonors
-      ? items.filter(it => currentSessionDonors.has(it.vreproID))
+      ? items.filter(it =>
+          currentSessionDonors.has(it.vreproID) &&
+          !sessionBaselineFiles.has(`${it.vreproID}::${it.filename}`)
+        )
       : items;
 
     // Preservar estados existentes
@@ -626,6 +634,7 @@ async function clearServerImages() {
     // hasta que se inicie una generacion nueva (que reasigna este valor
     // con los donantes reales en executeModelsSequentially).
     currentSessionDonors = new Set(); // vacio a proposito: oculta todo hasta la proxima generacion
+    sessionBaselineFiles = new Set();
 
     renderGen();
     renderModelList();
@@ -782,6 +791,26 @@ async function executeModelsSequentially() {
   // sin borrar nada de Backblaze (el historial completo sigue ahi,
   // simplemente no se muestra mezclado con la corrida actual).
   currentSessionDonors = new Set(queue.map(m => m.vreproID));
+
+  // Tomar una "foto" de lo que YA EXISTE en B2 para estos donantes antes
+  // de generar nada nuevo. Si algun donante de la cola ya se habia
+  // corrido antes, sus fotos viejas quedan registradas aqui, para que el
+  // filtro de fetchGeneratedImages() las excluya y la galeria muestre
+  // unicamente las fotos que produzca ESTA corrida.
+  sessionBaselineFiles = new Set();
+  try {
+    const baselineRes = await authFetch(`${API_BASE}/list_images_b2`);
+    if (baselineRes.ok) {
+      const baselineData = await baselineRes.json();
+      for (const it of (baselineData.images || [])) {
+        if (currentSessionDonors.has(it.vreproID)) {
+          sessionBaselineFiles.add(`${it.vreproID}::${it.filename}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('No se pudo tomar el snapshot inicial de B2:', err);
+  }
 
   showToast(`Iniciando ejecución secuencial: ${queue.length} modelo(s)`, 'success');
 
