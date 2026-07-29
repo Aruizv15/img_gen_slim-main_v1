@@ -227,6 +227,17 @@
     }
   }
 
+  async function deleteUser(username) {
+    if (!confirm(`¿Seguro que quieres eliminar al usuario '${username}'? Esto no se puede deshacer.`)) return;
+    try {
+      const data = await adminFetch('/admin/delete_user', { username });
+      showMsg('list-msg', data.message || 'Usuario eliminado', true);
+      listUsers();
+    } catch (err) {
+      showMsg('list-msg', err.message, false);
+    }
+  }
+
   async function listUsers() {
     const secret = secretInput.value.trim();
     const listEl = document.getElementById('user-list');
@@ -244,7 +255,7 @@
         for (const u of data.users) {
           const li = document.createElement('li');
           const roleTag = u.role === 'admin' ? ' <span style="color:#7d92ff;">[admin]</span>' : '';
-          li.innerHTML = `<b>${u.username}</b>${roleTag} ${u.email ? '('+u.email+')' : '<span style=\"color:#a33\">sin correo</span>'} — creado ${new Date(u.created_at).toLocaleDateString()}`;
+          li.innerHTML = `<b>${u.username}</b>${roleTag} ${u.email ? '('+u.email+')' : '<span style=\"color:#a33\">sin correo</span>'} — creado ${new Date(u.created_at).toLocaleDateString()} <button onclick="deleteUser('${u.username.replace(/'/g, "\\'")}')" style="margin-left:8px;background:none;border:1px solid #a33;color:#ff8a8a;border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;">Eliminar</button>`;
           listEl.appendChild(li);
         }
       }
