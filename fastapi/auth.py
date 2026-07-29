@@ -290,6 +290,25 @@ async def admin_reset_password(request: Request, _: str = Depends(require_admin)
     return {"status": "success", "message": f"Contraseña de '{username}' actualizada"}
 
 
+@auth_router.post("/admin/delete_user")
+async def admin_delete_user(request: Request, _: str = Depends(require_admin)):
+    body = await request.json()
+    username = (body.get("username") or "").strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="username es requerido")
+
+    pool = await _get_pool()
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+
+    async with pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM batchapp_users WHERE username = $1", username)
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail=f"El usuario '{username}' no existe")
+
+    return {"status": "success", "message": f"Usuario '{username}' eliminado"}
+
+
 @auth_router.get("/admin/list_users")
 async def admin_list_users(_: str = Depends(require_admin)):
     pool = await _get_pool()
