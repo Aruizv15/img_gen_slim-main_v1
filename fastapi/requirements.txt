@@ -10,3 +10,5 @@ runpod
 nest_asyncio
 openpyxl
 pandas
+asyncpg == 0.30.0
+bcrypt == 4.2.1
