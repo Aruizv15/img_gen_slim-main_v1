@@ -1,105 +1,316 @@
-/* ============================================================
-   BatchApp Frontend — auth.js
-   Modulo separado de autenticacion. Debe cargarse ANTES de app.js
-   en index.html, ya que define API_BASE, authFetch, y dispara
-   checkExistingSession() -> initApp() (definida en app.js) al final.
-   ============================================================ */
+import os
+import time
+import hmac
+import hashlib
+import base64
+import json as _json
+import asyncio
+import smtplib
+from email.mime.text import MIMEText
+from typing import Optional
 
-const API_BASE = window.API_BASE || 'https://genrimage.onrender.com';
+import bcrypt
+import asyncpg
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-let sessionToken = localStorage.getItem('batchapp_token') || null;
+APP_USERNAME = os.getenv("APP_USERNAME", "admin")
+APP_PASSWORD = os.getenv("APP_PASSWORD", "")
+SESSION_SECRET = os.getenv("SESSION_SECRET") or os.getenv("RESTART_TOKEN", "change-me")
+ADMIN_SECRET = os.getenv("ADMIN_SECRET") or os.getenv("RESTART_TOKEN", "change-me")
+DATABASE_URL = os.getenv("DATABASE_URL")
+SESSION_TTL_SECONDS = 60 * 60 * 12
+RESET_TTL_SECONDS = 60 * 60
 
-/**
- * Wrapper de fetch que agrega automaticamente la cabecera de
- * autenticacion a todas las peticiones al backend. Si el servidor
- * responde 401 (sesion invalida o expirada), fuerza el logout.
- */
-async function authFetch(url, options = {}) {
-  const headers = { ...(options.headers || {}) };
-  if (sessionToken) headers['Authorization'] = `Bearer ${sessionToken}`;
-  const res = await fetch(url, { ...options, headers });
-  if (res.status === 401) {
-    logout('Tu sesión expiró. Inicia sesión de nuevo.');
-    throw new Error('No autenticado');
-  }
-  return res;
-}
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.office365.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_FROM = os.getenv("SMTP_FROM") or SMTP_USERNAME
 
-function showLoginScreen(errorMsg) {
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('main-app').style.display = 'none';
-  const errEl = document.getElementById('login-error');
-  if (errEl) errEl.textContent = errorMsg || '';
-}
+security = HTTPBearer()
+auth_router = APIRouter()
 
-function showMainApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('main-app').style.display = 'flex';
-}
+_pool: Optional[asyncpg.Pool] = None
 
-function logout(message) {
-  sessionToken = null;
-  localStorage.removeItem('batchapp_token');
-  if (typeof stopPolling === 'function') stopPolling();
-  showLoginScreen(message || '');
-}
 
-async function checkExistingSession() {
-  if (!sessionToken) {
-    showLoginScreen();
-    return;
-  }
-  try {
-    const res = await fetch(`${API_BASE}/session_check`, {
-      headers: { 'Authorization': `Bearer ${sessionToken}` }
-    });
-    if (res.ok) {
-      showMainApp();
-      initApp();
-    } else {
-      logout();
-    }
-  } catch {
-    // Si el servidor no responde, no cerramos sesion de golpe -- dejamos
-    // que el usuario reintente en vez de perder la sesion por un problema
-    // temporal de red.
-    showLoginScreen('No se pudo verificar la sesión. Revisa tu conexión e intenta de nuevo.');
-  }
-}
+async def _get_pool() -> Optional[asyncpg.Pool]:
+    global _pool
+    if _pool is not None:
+        return _pool
+    if not DATABASE_URL:
+        return None
+    try:
+        _pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
+        async with _pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS batchapp_users (
+                    id            SERIAL PRIMARY KEY,
+                    username      TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    email         TEXT,
+                    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+                """
+            )
+            await conn.execute("ALTER TABLE batchapp_users ADD COLUMN IF NOT EXISTS email TEXT")
+        return _pool
+    except Exception as e:
+        print(f"[AUTH] Error de conexion a la base de datos: {e}")
+        _pool = None
+        return None
 
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const username = document.getElementById('login-username').value.trim();
-  const password = document.getElementById('login-password').value;
-  const errEl    = document.getElementById('login-error');
-  const btn      = document.getElementById('login-submit');
 
-  errEl.textContent = '';
-  btn.disabled = true;
-  btn.textContent = 'Entrando...';
+async def _verify_db_user(username: str, password: str) -> bool:
+    pool = await _get_pool()
+    if pool is None:
+        return False
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT password_hash FROM batchapp_users WHERE username = $1", username
+        )
+    if row is None:
+        return False
+    return bcrypt.checkpw(password.encode(), row["password_hash"].encode())
 
-  try {
-    const res = await fetch(`${API_BASE}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Usuario o contraseña incorrectos');
 
-    sessionToken = data.token;
-    localStorage.setItem('batchapp_token', sessionToken);
-    showMainApp();
-    initApp();
-  } catch (err) {
-    errEl.textContent = err.message;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Entrar';
-  }
-});
+async def _get_user_email(username: str) -> Optional[str]:
+    pool = await _get_pool()
+    if pool is None:
+        return None
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT email FROM batchapp_users WHERE username = $1", username)
+    return row["email"] if row and row["email"] else None
 
-/* Dispara la verificacion de sesion al cargar la pagina.
-   Si hay un token guardado y valido, entra directo a la app
-   (initApp(), definida en app.js) sin pedir login de nuevo. */
-checkExistingSession();
+
+def _send_email_sync(to_email: str, subject: str, body: str) -> None:
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+        server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.sendmail(SMTP_FROM, [to_email], msg.as_string())
+
+
+async def send_email(to_email: str, subject: str, body: str) -> None:
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        raise RuntimeError("SMTP no configurado")
+    await asyncio.to_thread(_send_email_sync, to_email, subject, body)
+
+
+def _sign(payload: str) -> str:
+    return hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+
+
+def _make_token(username: str, ttl: int, typ: str) -> str:
+    payload = _json.dumps({"u": username, "exp": int(time.time()) + ttl, "typ": typ})
+    payload_b64 = base64.urlsafe_b64encode(payload.encode()).decode()
+    return f"{payload_b64}.{_sign(payload_b64)}"
+
+
+def _verify_token(token: str, expected_typ: str, invalid_msg: str, status_code: int) -> dict:
+    try:
+        payload_b64, signature = token.split(".", 1)
+        if not hmac.compare_digest(signature, _sign(payload_b64)):
+            raise ValueError
+        payload = _json.loads(base64.urlsafe_b64decode(payload_b64.encode()).decode())
+        if payload.get("typ") != expected_typ:
+            raise ValueError
+    except Exception:
+        raise HTTPException(status_code=status_code, detail=invalid_msg)
+
+    if int(time.time()) > payload.get("exp", 0):
+        raise HTTPException(status_code=status_code, detail="Expiró, solicita uno nuevo")
+    return payload
+
+
+def create_session_token(username: str) -> str:
+    return _make_token(username, SESSION_TTL_SECONDS, "session")
+
+
+def verify_session_token(token: str) -> dict:
+    return _verify_token(token, "session", "Token de sesión inválido", 401)
+
+
+def create_reset_token(username: str) -> str:
+    return _make_token(username, RESET_TTL_SECONDS, "reset")
+
+
+def verify_reset_token(token: str) -> dict:
+    return _verify_token(token, "reset", "Link de recuperación inválido", 400)
+
+
+def require_login(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    return verify_session_token(credentials.credentials)
+
+
+def require_login_flexible(request: Request, token: Optional[str] = None) -> dict:
+    if token:
+        return verify_session_token(token)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return verify_session_token(auth_header[7:])
+    raise HTTPException(status_code=401, detail="No autenticado")
+
+
+def require_admin(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    if not hmac.compare_digest(credentials.credentials, ADMIN_SECRET):
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return credentials.credentials
+
+
+@auth_router.post("/login")
+async def login(request: Request):
+    body = await request.json()
+    username = body.get("username", "")
+    password = body.get("password", "")
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Usuario y contraseña son requeridos")
+
+    valid = await _verify_db_user(username, password)
+    if not valid and APP_PASSWORD:
+        valid = hmac.compare_digest(username, APP_USERNAME) and hmac.compare_digest(password, APP_PASSWORD)
+    if not valid:
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+
+    token = create_session_token(username)
+    return {"token": token, "username": username, "expires_in": SESSION_TTL_SECONDS}
+
+
+@auth_router.get("/session_check")
+async def session_check(session: dict = Depends(require_login)):
+    return {"valid": True, "username": session.get("u")}
+
+
+@auth_router.post("/admin/create_user")
+async def admin_create_user(request: Request, _: str = Depends(require_admin)):
+    body = await request.json()
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+    email = (body.get("email") or "").strip() or None
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="username y password son requeridos")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres")
+
+    pool = await _get_pool()
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO batchapp_users (username, password_hash, email) VALUES ($1, $2, $3)",
+                username, password_hash, email,
+            )
+    except asyncpg.UniqueViolationError:
+        raise HTTPException(status_code=409, detail=f"El usuario '{username}' ya existe")
+
+    return {"status": "success", "message": f"Usuario '{username}' creado"}
+
+
+@auth_router.post("/admin/reset_password")
+async def admin_reset_password(request: Request, _: str = Depends(require_admin)):
+    body = await request.json()
+    username = (body.get("username") or "").strip()
+    new_password = body.get("new_password") or ""
+
+    if not username or not new_password:
+        raise HTTPException(status_code=400, detail="username y new_password son requeridos")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres")
+
+    pool = await _get_pool()
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+
+    password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE batchapp_users SET password_hash = $1 WHERE username = $2",
+            password_hash, username,
+        )
+    if result == "UPDATE 0":
+        raise HTTPException(status_code=404, detail=f"El usuario '{username}' no existe")
+
+    return {"status": "success", "message": f"Contraseña de '{username}' actualizada"}
+
+
+@auth_router.get("/admin/list_users")
+async def admin_list_users(_: str = Depends(require_admin)):
+    pool = await _get_pool()
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT username, email, created_at FROM batchapp_users ORDER BY created_at")
+    return {"users": [
+        {"username": r["username"], "email": r["email"], "created_at": r["created_at"].isoformat()}
+        for r in rows
+    ]}
+
+
+@auth_router.post("/forgot_password")
+async def forgot_password(request: Request):
+    body = await request.json()
+    username = (body.get("username") or "").strip()
+    generic_msg = {"status": "success", "message": "Si el usuario existe y tiene correo registrado, se envió un link de recuperación."}
+
+    if not username:
+        raise HTTPException(status_code=400, detail="username es requerido")
+
+    email = await _get_user_email(username)
+    if not email:
+        return generic_msg
+
+    token = create_reset_token(username)
+    reset_link = f"{str(request.base_url).rstrip('/')}/static/reset-password.html?token={token}"
+    subject = "BatchApp — Recuperación de contraseña"
+    body_text = (
+        f"Hola {username},\n\n"
+        f"Solicitaste restablecer tu contraseña de BatchApp.\n"
+        f"Este link es válido por 1 hora:\n\n{reset_link}\n\n"
+        f"Si no fuiste tú, ignora este correo."
+    )
+
+    try:
+        await send_email(email, subject, body_text)
+    except Exception as e:
+        print(f"[AUTH] Error enviando correo: {e}")
+
+    return generic_msg
+
+
+@auth_router.post("/reset_password_with_token")
+async def reset_password_with_token(request: Request):
+    body = await request.json()
+    token = body.get("token") or ""
+    new_password = body.get("new_password") or ""
+
+    if not token or not new_password:
+        raise HTTPException(status_code=400, detail="token y new_password son requeridos")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres")
+
+    payload = verify_reset_token(token)
+    username = payload["u"]
+
+    pool = await _get_pool()
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+
+    password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE batchapp_users SET password_hash = $1 WHERE username = $2",
+            password_hash, username,
+        )
+    if result == "UPDATE 0":
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    return {"status": "success", "message": "Contraseña actualizada. Ya puedes iniciar sesión."}
