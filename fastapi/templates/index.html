@@ -24,6 +24,10 @@
       style="height:50px;border:none;border-radius:10px;background:linear-gradient(90deg,#4f6bff,#6b5cff);color:#fff;font-size:16px;font-weight:600;cursor:pointer;transition:.2s;">
       Entrar
     </button>
+    <div style="display:flex;justify-content:space-between;margin-top:2px;">
+      <a href="/static/register.html" style="color:#8b9bff;font-size:12px;text-decoration:none;">Registrarse</a>
+      <a href="/static/forgot-password.html" style="color:#8b9bff;font-size:12px;text-decoration:none;">¿Olvidaste tu contraseña?</a>
+    </div>
     <div id="login-error" style="color:#ff6b6b;font-size:12px;text-align:center;min-height:16px;"></div>
   <div style="margin-top:12px;text-align:center;font-size:11px;color:#666;line-height:1.6;">© 2026 Progenyc Life Science<br>Version 2.1</div></form>
 </div>
@@ -44,6 +48,9 @@
       <button onclick="logout()" style="margin-left:12px;background:none;border:1px solid #333;color:#aaa;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">
         Cerrar sesión
       </button>
+      <a id="admin-panel-link" href="/static/admin.html" style="display:none;margin-left:12px;background:none;border:1px solid #4f6bff;color:#8b9bff;border-radius:6px;padding:4px 10px;font-size:11px;text-decoration:none;">
+        Panel de administrador
+      </a>
     </div>
   </div>
 
