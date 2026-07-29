@@ -102,6 +102,7 @@
     <h2>🔑 Clave de administrador</h2>
     <label for="admin-secret">ADMIN_SECRET (la misma que configuraste en Render)</label>
     <input id="admin-secret" type="password" placeholder="Pega aquí tu clave" autocomplete="off" />
+    <div class="msg ok" id="auto-session-info" style="display:none;">✓ Detectamos tu sesión de administrador, no necesitas pegar nada.</div>
     <div class="empty-note" style="margin-top:8px;">Se guarda solo en este navegador (sessionStorage), no se envía a ningún lado excepto a tu propio servidor.</div>
   </div>
 
@@ -114,6 +115,11 @@
     <input id="create-email" type="email" placeholder="ej: usuario@outlook.com" autocomplete="off" />
     <label for="create-password">Contraseña</label>
     <input id="create-password" type="text" placeholder="mínimo 6 caracteres" autocomplete="off" />
+    <label for="create-role">Rol</label>
+    <select id="create-role" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #333;background:#0f0f14;color:#eee;font-size:14px;">
+      <option value="user" selected>Usuario normal</option>
+      <option value="admin">Administrador</option>
+    </select>
     <button id="btn-create" onclick="createUser()">Crear usuario</button>
     <div class="msg" id="create-msg"></div>
   </div>
@@ -142,7 +148,21 @@
   // La clave se guarda solo para esta pestaña (sessionStorage), se borra
   // al cerrar el navegador. Nunca se guarda en el servidor ni se comparte.
   const secretInput = document.getElementById('admin-secret');
-  secretInput.value = sessionStorage.getItem('batchapp_admin_secret') || '';
+  const autoInfo = document.getElementById('auto-session-info');
+
+  const savedToken = localStorage.getItem('batchapp_token');
+  const savedRole  = localStorage.getItem('batchapp_role');
+
+  if (savedRole === 'admin' && savedToken) {
+    // Ya iniciaste sesion como administrador en la app normal: se usa esa
+    // misma sesion aqui, sin pedirte pegar el ADMIN_SECRET a mano.
+    secretInput.value = savedToken;
+    secretInput.disabled = true;
+    if (autoInfo) autoInfo.style.display = 'block';
+  } else {
+    secretInput.value = sessionStorage.getItem('batchapp_admin_secret') || '';
+  }
+
   secretInput.addEventListener('input', () => {
     sessionStorage.setItem('batchapp_admin_secret', secretInput.value);
   });
@@ -174,13 +194,15 @@
     const username = document.getElementById('create-username').value.trim();
     const email = document.getElementById('create-email').value.trim();
     const password = document.getElementById('create-password').value;
+    const role = document.getElementById('create-role').value;
     btn.disabled = true;
     try {
-      const data = await adminFetch('/admin/create_user', { username, email, password });
+      const data = await adminFetch('/admin/create_user', { username, email, password, role });
       showMsg('create-msg', data.message || 'Usuario creado', true);
       document.getElementById('create-username').value = '';
       document.getElementById('create-email').value = '';
       document.getElementById('create-password').value = '';
+      document.getElementById('create-role').value = 'user';
       listUsers();
     } catch (err) {
       showMsg('create-msg', err.message, false);
@@ -221,7 +243,8 @@
       } else {
         for (const u of data.users) {
           const li = document.createElement('li');
-          li.innerHTML = `<b>${u.username}</b> ${u.email ? '('+u.email+')' : '<span style=\"color:#a33\">sin correo</span>'} — creado ${new Date(u.created_at).toLocaleDateString()}`;
+          const roleTag = u.role === 'admin' ? ' <span style="color:#7d92ff;">[admin]</span>' : '';
+          li.innerHTML = `<b>${u.username}</b>${roleTag} ${u.email ? '('+u.email+')' : '<span style=\"color:#a33\">sin correo</span>'} — creado ${new Date(u.created_at).toLocaleDateString()}`;
           listEl.appendChild(li);
         }
       }
