@@ -94,10 +94,20 @@ def _send_email_sync(to_email: str, subject: str, body: str) -> None:
     msg["Subject"] = subject
     msg["From"] = SMTP_FROM
     msg["To"] = to_email
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-        server.starttls()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.sendmail(SMTP_FROM, [to_email], msg.as_string())
+
+    # Puerto 465 = SSL implicito desde el inicio de la conexion (SMTPS,
+    # comun en servidores propios tipo cPanel). Cualquier otro puerto
+    # (587, 25) = STARTTLS, la conexion arranca sin cifrar y se cifra
+    # despues (comun en Outlook, Gmail, Resend).
+    if SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.sendmail(SMTP_FROM, [to_email], msg.as_string())
+    else:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.sendmail(SMTP_FROM, [to_email], msg.as_string())
 
 
 async def send_email(to_email: str, subject: str, body: str) -> None:
