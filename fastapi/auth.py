@@ -11,6 +11,7 @@ from typing import Optional
 
 import bcrypt
 import asyncpg
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -27,6 +28,14 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SMTP_FROM = os.getenv("SMTP_FROM") or SMTP_USERNAME
+
+# Microsoft Graph API (metodo preferido: no depende de SMTP ni de las
+# politicas de "Security Defaults" del tenant). Si estas variables estan
+# configuradas, send_email() las usa en vez de SMTP.
+GRAPH_TENANT_ID = os.getenv("AZURE_TENANT_ID")
+GRAPH_CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
+GRAPH_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
+GRAPH_SENDER_EMAIL = os.getenv("AZURE_SENDER_EMAIL") or SMTP_FROM
 
 security = HTTPBearer()
 auth_router = APIRouter()
@@ -57,6 +66,17 @@ async def _get_pool() -> Optional[asyncpg.Pool]:
             )
             await conn.execute("ALTER TABLE batchapp_users ADD COLUMN IF NOT EXISTS email TEXT")
             await conn.execute("ALTER TABLE batchapp_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'")
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS image_ownership (
+                    vrepro_id  TEXT NOT NULL,
+                    filename   TEXT NOT NULL,
+                    username   TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    PRIMARY KEY (vrepro_id, filename)
+                )
+                """
+            )
         return _pool
     except Exception as e:
         print(f"[AUTH] Error de conexion a la base de datos: {e}")
@@ -89,6 +109,101 @@ async def _get_user_email(username: str) -> Optional[str]:
     return row["email"] if row and row["email"] else None
 
 
+async def record_image_ownership(vrepro_id: str, filenames: list, username: str) -> None:
+    """Se llama desde main.py justo despues de confirmar que las imagenes
+    de un job se subieron a B2 -- registra que ESTE usuario las genero."""
+    pool = await _get_pool()
+    if pool is None or not filenames:
+        return
+    async with pool.acquire() as conn:
+        await conn.executemany(
+            """
+            INSERT INTO image_ownership (vrepro_id, filename, username)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (vrepro_id, filename) DO NOTHING
+            """,
+            [(vrepro_id, f, username) for f in filenames],
+        )
+
+
+async def get_image_owner(vrepro_id: str, filename: str) -> Optional[str]:
+    """Devuelve el username dueño de esta imagen especifica, o None si
+    no tiene dueño registrado (imagen de antes de este sistema)."""
+    pool = await _get_pool()
+    if pool is None:
+        return None
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT username FROM image_ownership WHERE vrepro_id = $1 AND filename = $2",
+            vrepro_id, filename,
+        )
+    return row["username"] if row else None
+
+
+async def get_all_owned_files() -> set:
+    """Devuelve el set de TODAS las (vrepro_id, filename) que tienen
+    algun dueño registrado, sin importar cual. Sirve para distinguir
+    'imagen sin dueño (legacy)' de 'imagen de otro usuario'."""
+    pool = await _get_pool()
+    if pool is None:
+        return set()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT vrepro_id, filename FROM image_ownership")
+    return {(r["vrepro_id"], r["filename"]) for r in rows}
+
+
+async def get_owned_files_for_user(username: str) -> set:
+    """Devuelve el set de (vrepro_id, filename) que generó este usuario."""
+    pool = await _get_pool()
+    if pool is None:
+        return set()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT vrepro_id, filename FROM image_ownership WHERE username = $1", username
+        )
+    return {(r["vrepro_id"], r["filename"]) for r in rows}
+
+
+async def _get_graph_token() -> str:
+    url = f"https://login.microsoftonline.com/{GRAPH_TENANT_ID}/oauth2/v2.0/token"
+    data = {
+        "client_id": GRAPH_CLIENT_ID,
+        "client_secret": GRAPH_CLIENT_SECRET,
+        "scope": "https://graph.microsoft.com/.default",
+        "grant_type": "client_credentials",
+    }
+    async with httpx.AsyncClient() as client:
+        r = await client.post(url, data=data, timeout=15)
+        if r.status_code >= 300:
+            raise RuntimeError(f"Error obteniendo token de Graph: {r.status_code} {r.text}")
+        return r.json()["access_token"]
+
+
+async def _send_via_graph(to_email: str, subject: str, body: str) -> None:
+    token = await _get_graph_token()
+    url = f"https://graph.microsoft.com/v1.0/users/{GRAPH_SENDER_EMAIL}/sendMail"
+    payload = {
+        "message": {
+            "subject": subject,
+            "body": {"contentType": "Text", "content": body},
+            "toRecipients": [{"emailAddress": {"address": to_email}}],
+        },
+        # Con esto el correo SI queda registrado en la carpeta de
+        # Enviados de GRAPH_SENDER_EMAIL -- algo que SMTP nunca podia
+        # garantizar cuando se enviaba autenticado con otra cuenta.
+        "saveToSentItems": True,
+    }
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            json=payload,
+            timeout=15,
+        )
+        if r.status_code >= 300:
+            raise RuntimeError(f"Error enviando por Graph: {r.status_code} {r.text}")
+
+
 def _send_email_sync(to_email: str, subject: str, body: str) -> None:
     msg = MIMEText(body)
     msg["Subject"] = subject
@@ -111,8 +226,11 @@ def _send_email_sync(to_email: str, subject: str, body: str) -> None:
 
 
 async def send_email(to_email: str, subject: str, body: str) -> None:
+    if GRAPH_TENANT_ID and GRAPH_CLIENT_ID and GRAPH_CLIENT_SECRET:
+        await _send_via_graph(to_email, subject, body)
+        return
     if not SMTP_USERNAME or not SMTP_PASSWORD:
-        raise RuntimeError("SMTP no configurado")
+        raise RuntimeError("Ni Microsoft Graph ni SMTP estan configurados")
     await asyncio.to_thread(_send_email_sync, to_email, subject, body)
 
 
