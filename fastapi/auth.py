@@ -468,7 +468,7 @@ async def forgot_password(request: Request):
     subject = "BatchApp — Recuperación de contraseña"
     body_text = (
         f"Hola {username},\n\n"
-        f"Solicitaste restablecer tu contraseña de BatchApp.\n"
+        f"Solicitaste restablecer tu contraseña de GenrImage.\n"
         f"Este link es válido por 1 hora:\n\n{reset_link}\n\n"
         f"Si no fuiste tú, ignora este correo."
     )
