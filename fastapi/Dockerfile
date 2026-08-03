@@ -79,6 +79,7 @@ RUN pip install --no-cache-dir --force-reinstall \
     --index-url https://download.pytorch.org/whl/cu118
 COPY download_models.py /app/
 COPY main.py /app/
+COPY auth.py /app/
 COPY handler.py /app/
 COPY test_input.json /app/test_input.json
 COPY templates/ /app/templates/
