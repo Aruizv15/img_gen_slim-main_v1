@@ -378,9 +378,15 @@ async function fetchGeneratedImages() {
       ? items.filter(it => currentSessionDonors.has(it.vreproID))
       : items;
 
+    // Filtro ESTRICTO por tipo: en modo Portrait solo se muestran fotos
+    // etiquetadas como portrait, nunca fullbody (ni al reves). Las fotos
+    // "legacy" (de antes de separar por tipo, sin etiqueta) ya NO se
+    // muestran mezcladas automaticamente -- se estaban colando fotos
+    // viejas de un tipo mientras se trabajaba en el otro, justo la
+    // confusion que este filtro estricto evita.
     const modoActivo = document.querySelector('.mode-btn.active')?.textContent.trim().toLowerCase() || 'fullbody';
     const itemsFiltrados = itemsPorSesion.filter(it =>
-      it.generationType === modoActivo || it.generationType === 'legacy'
+      it.generationType === modoActivo
     );
 
     // Preservar estados existentes. Clave compuesta vreproID::filename:
@@ -849,7 +855,7 @@ async function executeModelsSequentially() {
     }
 
     startPolling();
-    const jobResult = await waitForJobDone();
+    const jobResult = await waitForJobDone(mode);
     stopPolling();
 
     if (jobResult.status === 'error') {
