@@ -181,7 +181,7 @@ async def download_inputs_from_b2(vrepro_id):
         except Exception as e:
             print(f"[WARN] CSV no descargado: {e}")
 
-async def upload_outputs_to_b2(vrepro_id):
+async def upload_outputs_to_b2(vrepro_id, generation_type):
     auth = await b2_authorize()
     bucket_id = await get_bucket_id(auth)
     output_dir = '/workspace/ComfyUI_app/output'
@@ -211,7 +211,10 @@ async def upload_outputs_to_b2(vrepro_id):
         for idx, local_path in enumerate(all_files):
             f = os.path.basename(local_path)
             stem, ext = os.path.splitext(f)
-            remote_name = f"generated_images/{vrepro_id}/{stem}{batch_ts}-{idx:02d}{ext}"
+            # Se agrega generation_type como subcarpeta para que las fotos
+            # de fullbody y portrait de un mismo donante NUNCA se mezclen
+            # en Backblaze, ni siquiera al listarlas despues.
+            remote_name = f"generated_images/{vrepro_id}/{generation_type}/{stem}{batch_ts}-{idx:02d}{ext}"
             with open(local_path, "rb") as fp:
                 content = fp.read()
             sha1 = hashlib.sha1(content).hexdigest()
@@ -333,7 +336,7 @@ def handler(job):
                     use_hands_refiner_override=use_hands_refiner,
                     use_amateur_effect_override=use_amateur_effect,
                 )
-                await upload_outputs_to_b2(vrepro_id)
+                await upload_outputs_to_b2(vrepro_id, generation_type)
                 # Vaciar la carpeta de salida despues de subir: si no, el
                 # siguiente ciclo volveria a encontrar (y re-subir con otro
                 # sufijo) las fotos de los ciclos anteriores, duplicandolas
