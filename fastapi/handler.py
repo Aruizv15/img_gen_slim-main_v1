@@ -181,7 +181,7 @@ async def download_inputs_from_b2(vrepro_id):
         except Exception as e:
             print(f"[WARN] CSV no descargado: {e}")
 
-async def upload_outputs_to_b2(vrepro_id, generation_type):
+async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
     auth = await b2_authorize()
     bucket_id = await get_bucket_id(auth)
     output_dir = '/workspace/ComfyUI_app/output'
@@ -214,7 +214,10 @@ async def upload_outputs_to_b2(vrepro_id, generation_type):
             # Se agrega generation_type como subcarpeta para que las fotos
             # de fullbody y portrait de un mismo donante NUNCA se mezclen
             # en Backblaze, ni siquiera al listarlas despues.
-            remote_name = f"generated_images/{vrepro_id}/{generation_type}/{stem}{batch_ts}-{idx:02d}{ext}"
+            # job_batch agrupa TODOS los ciclos de esta corrida bajo la
+            # misma carpeta, para que el servidor pueda identificar "la
+            # corrida mas reciente" de este donante+tipo sin ambiguedad.
+            remote_name = f"generated_images/{vrepro_id}/{generation_type}/{job_batch}/{stem}{batch_ts}-{idx:02d}{ext}"
             with open(local_path, "rb") as fp:
                 content = fp.read()
             sha1 = hashlib.sha1(content).hexdigest()
@@ -271,6 +274,11 @@ def handler(job):
     vrepro_id = job_input.get("vreproID", "")
     generation_type = job_input.get("generation_type", "fullbody")
     max_cycles = job_input.get("max_cycles", 1)
+    # Identifica esta corrida completa (todos sus ciclos) para que Backblaze
+    # las agrupe juntas y el servidor pueda quedarse solo con la corrida
+    # mas reciente por donante+tipo. Si el job no trae job_batch (por
+    # ejemplo, una prueba manual con test_input.json), se genera uno local.
+    job_batch = job_input.get("job_batch") or time.strftime('%Y%m%d-%H%M%S')
 
     # Leer los checkboxes de la interfaz desde el input del job.
     # ANTES estaban hardcodeados (pose=False, hands=True, amateur=True),
@@ -284,7 +292,7 @@ def handler(job):
 
     print(f"[HANDLER] vreproID={vrepro_id}, generation_type={generation_type}, "
           f"cycles={max_cycles}, pose={use_pose}, hands={use_hands_refiner}, "
-          f"amateur={use_amateur_effect}")
+          f"amateur={use_amateur_effect}, job_batch={job_batch}")
 
     if not vrepro_id:
         return {"status": "error", "message": "vreproID es requerido"}
@@ -336,7 +344,7 @@ def handler(job):
                     use_hands_refiner_override=use_hands_refiner,
                     use_amateur_effect_override=use_amateur_effect,
                 )
-                await upload_outputs_to_b2(vrepro_id, generation_type)
+                await upload_outputs_to_b2(vrepro_id, generation_type, job_batch)
                 # Vaciar la carpeta de salida despues de subir: si no, el
                 # siguiente ciclo volveria a encontrar (y re-subir con otro
                 # sufijo) las fotos de los ciclos anteriores, duplicandolas
