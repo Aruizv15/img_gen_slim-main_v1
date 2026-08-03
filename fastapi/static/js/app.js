@@ -13,11 +13,6 @@ let generatedImgs  = [];   // [{ filename, url, state, vreproID }]
 let currentPage    = 0;
 let selectedIndices = new Set();
 let currentSessionDonors = null; // null = mostrar todo el historial; Set = filtrar solo estos donantes
-// Snapshot de "vreproID::filename" que YA EXISTIAN en B2 justo antes de
-// arrancar la corrida actual. Sirve para que, al repetir un donante que
-// ya se habia generado antes, la galeria muestre SOLO las fotos nuevas
-// de esta corrida, sin mezclar las fotos viejas de ese mismo donante.
-let sessionBaselineFiles = new Set();
 let pollTimer      = null;
 
 /* ── Estado multi-modelo (CSV) ── */
@@ -373,25 +368,41 @@ async function fetchGeneratedImages() {
     const data = await res.json();
 
     const items = data.images || [];
-    const itemsFiltrados = currentSessionDonors
-      ? items.filter(it =>
-          currentSessionDonors.has(it.vreproID) &&
-          !sessionBaselineFiles.has(`${it.vreproID}::${it.filename}`)
-        )
+
+    // El servidor YA devuelve solo la corrida mas reciente por
+    // donante+tipo (de forma permanente, sin importar el navegador ni
+    // si se recarga la pagina) -- aqui solo falta acotar a los donantes
+    // de la sesion actual (para no mezclar con otros donantes que no se
+    // esten trabajando ahora) y al modo activo (Fullbody/Portrait).
+    const itemsPorSesion = currentSessionDonors
+      ? items.filter(it => currentSessionDonors.has(it.vreproID))
       : items;
 
-    // Preservar estados existentes
-    const stateMap = {};
-    generatedImgs.forEach(g => { stateMap[g.filename] = g.state; });
+    const modoActivo = document.querySelector('.mode-btn.active')?.textContent.trim().toLowerCase() || 'fullbody';
+    const itemsFiltrados = itemsPorSesion.filter(it =>
+      it.generationType === modoActivo || it.generationType === 'legacy'
+    );
 
-    generatedImgs = itemsFiltrados.map(({ filename, vreproID }) => ({
+    // Preservar estados existentes. Clave compuesta vreproID::filename:
+    // indexar solo por filename hacia que aprobar la foto de un donante
+    // "contagiara" el estado a la foto de otro donante que por casualidad
+    // tuviera el mismo nombre de archivo.
+    const stateMap = {};
+    generatedImgs.forEach(g => { stateMap[`${g.vreproID}::${g.filename}`] = g.state; });
+
+    generatedImgs = itemsFiltrados.map(({ filename, vreproID, generationType, b2Path }) => ({
       filename,
       // <img src> no puede enviar la cabecera Authorization, asi que el
       // token va como query param. view_from_b2 acepta ambas formas
       // (ver require_login_flexible en auth.py) justo por este motivo.
-      url:      `${API_BASE}/view_from_b2/${vreproID}/${filename}?token=${encodeURIComponent(sessionToken || '')}`,
-      state:    stateMap[filename] || 'pending',
+      // Se usa b2Path tal cual lo entrega el servidor (la ruta real en
+      // Backblaze) en vez de reconstruirla a mano, para no desincronizarse
+      // si el formato de carpetas cambia en el futuro.
+      url:      `${API_BASE}/view_from_b2/${b2Path}?token=${encodeURIComponent(sessionToken || '')}`,
+      state:    stateMap[`${vreproID}::${filename}`] || 'pending',
       vreproID: vreproID || extractVreproID(filename),
+      generationType: generationType || 'legacy',
+      b2Path,
     }));
 
     document.getElementById('gen-badge').textContent = generatedImgs.length + ' generadas';
@@ -566,9 +577,9 @@ async function downloadApproved() {
       try {
         // Descarga directo de Backblaze (permanente), no de la carpeta
         // local del servidor (que se borra en cada reinicio de Render).
-        const downloadUrl = img.vreproID
-          ? `${API_BASE}/download_from_b2/${img.vreproID}/${img.filename}`
-          : img.url; // fallback si por alguna razon no hay vreproID asignado
+        const downloadUrl = img.b2Path
+          ? `${API_BASE}/download_from_b2/${img.b2Path}`
+          : img.url; // fallback si por alguna razon no hay b2Path asignado
         const res  = await authFetch(downloadUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const blob = await res.blob();
@@ -576,7 +587,15 @@ async function downloadApproved() {
         if (blob.size === 0) {
           throw new Error('El archivo descargado esta vacio (0 bytes)');
         }
-        zip.file(img.filename, blob);
+        // Organizar el ZIP por donante / tipo / lote de subida. El handler
+        // agrega a cada foto un sello de fecha-hora (YYYYMMDD-HHMMSS) en el
+        // nombre al subirla a B2; aqui se extrae ese sello para agrupar:
+        //   OVOD03378/fullbody/20260803-154210/OVOD03378_00001_....png
+        const batchMatch = img.filename.match(/(\d{8}-\d{6})/);
+        const batchDir = batchMatch ? `${batchMatch[1]}/` : '';
+        const tipoDir = img.generationType && img.generationType !== 'legacy' ? `${img.generationType}/` : '';
+        const zipPath = img.vreproID ? `${img.vreproID}/${tipoDir}${batchDir}${img.filename}` : img.filename;
+        zip.file(zipPath, blob);
         success = true;
       } catch (err) {
         console.warn(`Intento ${intento}/3 fallo para ${img.filename}:`, err.message);
@@ -634,7 +653,6 @@ async function clearServerImages() {
     // hasta que se inicie una generacion nueva (que reasigna este valor
     // con los donantes reales en executeModelsSequentially).
     currentSessionDonors = new Set(); // vacio a proposito: oculta todo hasta la proxima generacion
-    sessionBaselineFiles = new Set();
 
     renderGen();
     renderModelList();
@@ -789,28 +807,11 @@ async function executeModelsSequentially() {
 
   // Filtrar la galeria para mostrar SOLO los donantes de esta corrida,
   // sin borrar nada de Backblaze (el historial completo sigue ahi,
-  // simplemente no se muestra mezclado con la corrida actual).
+  // simplemente no se muestra mezclado con otros donantes). Ya no hace
+  // falta tomar un "snapshot" de lo que existia antes: el propio servidor
+  // (list_images_b2) se queda automaticamente solo con la corrida mas
+  // reciente por donante+tipo, de forma permanente.
   currentSessionDonors = new Set(queue.map(m => m.vreproID));
-
-  // Tomar una "foto" de lo que YA EXISTE en B2 para estos donantes antes
-  // de generar nada nuevo. Si algun donante de la cola ya se habia
-  // corrido antes, sus fotos viejas quedan registradas aqui, para que el
-  // filtro de fetchGeneratedImages() las excluya y la galeria muestre
-  // unicamente las fotos que produzca ESTA corrida.
-  sessionBaselineFiles = new Set();
-  try {
-    const baselineRes = await authFetch(`${API_BASE}/list_images_b2`);
-    if (baselineRes.ok) {
-      const baselineData = await baselineRes.json();
-      for (const it of (baselineData.images || [])) {
-        if (currentSessionDonors.has(it.vreproID)) {
-          sessionBaselineFiles.add(`${it.vreproID}::${it.filename}`);
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('No se pudo tomar el snapshot inicial de B2:', err);
-  }
 
   showToast(`Iniciando ejecución secuencial: ${queue.length} modelo(s)`, 'success');
 
@@ -1017,6 +1018,9 @@ function stopPolling() {
 function setMode(btn) {
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  // Al cambiar de modo, la galeria debe mostrar solo las fotos de ese
+  // tipo de inmediato, sin esperar al proximo ciclo de polling.
+  if (typeof fetchGeneratedImages === 'function') fetchGeneratedImages();
 }
 
 function toggleCb(el) {
