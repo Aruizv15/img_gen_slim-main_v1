@@ -316,6 +316,17 @@ async def health_check():
     return {"status": "UP"}
 
 
+@app.get("/server_time")
+async def server_time():
+    """
+    Devuelve la hora del servidor en el MISMO formato que job_batch
+    (YYYYMMDD-HHMMSS). Se usa para que 'Limpiar servidor' pueda compararse
+    justamente contra las fotos, sin depender de la zona horaria del
+    navegador de quien lo use.
+    """
+    return {"batch": time.strftime('%Y%m%d-%H%M%S')}
+
+
 @app.get("/list_images")
 def list_generated_images():
     images = [
@@ -323,6 +334,65 @@ def list_generated_images():
         if f.lower().endswith(('.png', '.jpg', '.jpeg'))
     ]
     return {"images": images}
+
+
+@app.get("/list_reference_images_b2/{vrepro_id}")
+async def list_reference_images_b2(vrepro_id: str, session: dict = Depends(require_login)):
+    """
+    Lista las fotos de referencia (las que se subieron antes de generar)
+    de un donante especifico, para el boton 'Comparar'. Se guardan en B2
+    bajo input_images/{nombre}, donde el nombre siempre empieza con el
+    vreproID (ej: input_images/OVOD03378.jpg, input_images/OVOD03378fullbody.jpg).
+    """
+    try:
+        auth = await b2_authorize()
+        bucket = os.getenv('B2_BUCKET')
+        images = []
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                f"{auth['apiUrl']}/b2api/v2/b2_list_buckets",
+                headers={"Authorization": auth["authorizationToken"]},
+                params={"accountId": auth["accountId"], "bucketName": bucket}
+            )
+            buckets = r.json().get("buckets", [])
+            if not buckets:
+                return {"images": []}
+            bucket_id = buckets[0]["bucketId"]
+
+            list_r = await client.get(
+                f"{auth['apiUrl']}/b2api/v2/b2_list_file_names",
+                headers={"Authorization": auth["authorizationToken"]},
+                params={"bucketId": bucket_id, "prefix": f"input_images/{vrepro_id}", "maxFileCount": 50}
+            )
+            for f in list_r.json().get("files", []):
+                filename = f["fileName"].split("/")[-1]
+                if filename:
+                    images.append({"filename": filename})
+        return {"images": images}
+    except Exception as e:
+        return {"images": [], "error": str(e)}
+
+
+@app.get("/view_reference_from_b2/{vrepro_id}/{filename}")
+async def view_reference_from_b2(vrepro_id: str, filename: str, session: dict = Depends(require_login_flexible)):
+    """Sirve una foto de referencia especifica, para mostrarla en <img> junto a la generada."""
+    try:
+        auth = await b2_authorize()
+        b2_key = f"input_images/{filename}"
+        async with httpx.AsyncClient() as client:
+            dl = await client.get(
+                f"{auth['downloadUrl']}/file/{os.getenv('B2_BUCKET')}/{b2_key}",
+                headers={"Authorization": auth["authorizationToken"]}
+            )
+        if dl.status_code != 200:
+            raise HTTPException(status_code=404, detail=f"No encontrado en B2: {b2_key}")
+
+        from fastapi.responses import Response
+        return Response(content=dl.content, media_type="image/jpeg")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/list_images_b2")
