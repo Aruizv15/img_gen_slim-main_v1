@@ -385,9 +385,21 @@ async function fetchGeneratedImages() {
     // viejas de un tipo mientras se trabajaba en el otro, justo la
     // confusion que este filtro estricto evita.
     const modoActivo = document.querySelector('.mode-btn.active')?.textContent.trim().toLowerCase() || 'fullbody';
-    const itemsFiltrados = itemsPorSesion.filter(it =>
+    let itemsFiltrados = itemsPorSesion.filter(it =>
       it.generationType === modoActivo
     );
+
+    // "Limpiar servidor" persistido: si el usuario limpio la galeria y
+    // NO se ha generado nada nuevo desde entonces, las fotos viejas
+    // (aunque sigan siendo "la corrida mas reciente" en Backblaze) se
+    // mantienen ocultas incluso despues de recargar la pagina. Se compara
+    // como texto (YYYYMMDD-HHMMSS ordena bien alfabeticamente) contra la
+    // marca de tiempo del PROPIO SERVIDOR guardada al limpiar, para que
+    // no importe la zona horaria del navegador.
+    const clearedAt = localStorage.getItem('batchapp_gallery_cleared_at') || '';
+    if (clearedAt) {
+      itemsFiltrados = itemsFiltrados.filter(it => !it.jobBatch || it.jobBatch > clearedAt);
+    }
 
     // Preservar estados existentes. Clave compuesta vreproID::filename:
     // indexar solo por filename hacia que aprobar la foto de un donante
@@ -556,11 +568,12 @@ function discardSelected() {
 }
 
 /* ============================================================
-   COMPARAR — todas las fotos generadas de un donante vs sus referencias
+   COMPARAR — referencia vs generada, lado a lado, con paginacion
    ============================================================ */
+let compareGenList = [];  // indices en generatedImgs de las fotos de este donante
+let compareGenPos  = 0;   // posicion actual dentro de compareGenList
+
 async function openCompareModal() {
-  // El donante a comparar se toma de la foto seleccionada si hay una, o
-  // si no, de la primera foto visible en la pagina actual de la galeria.
   let vreproID = null;
   if (selectedIndices.size > 0) {
     vreproID = generatedImgs[[...selectedIndices][0]]?.vreproID;
@@ -574,10 +587,15 @@ async function openCompareModal() {
     return;
   }
 
+  compareGenList = generatedImgs
+    .map((img, idx) => idx)
+    .filter(idx => generatedImgs[idx].vreproID === vreproID);
+  compareGenPos = 0;
+
   document.getElementById('compare-title').textContent = `Comparar — ${vreproID}`;
   document.getElementById('compare-modal').style.display = 'flex';
 
-  renderCompareGenerated(vreproID);
+  renderCompareGenerated();
 
   const refContainer = document.getElementById('compare-ref-container');
   refContainer.innerHTML = '<span style="color:#555;font-size:12px;">Cargando...</span>';
@@ -589,50 +607,35 @@ async function openCompareModal() {
       refContainer.innerHTML = '<span style="color:#555;font-size:12px;">No se encontraron fotos de referencia para este donante.</span>';
       return;
     }
+    refContainer.style.flexWrap = 'wrap';
     refContainer.innerHTML = refs.map(r =>
-      `<img src="${API_BASE}/view_reference_from_b2/${vreproID}/${r.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-height:220px;border-radius:6px;" />`
+      `<img src="${API_BASE}/view_reference_from_b2/${vreproID}/${r.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-height:45vh;max-width:100%;object-fit:contain;border-radius:6px;margin:4px;" />`
     ).join('');
   } catch (err) {
     refContainer.innerHTML = '<span style="color:#ff8a8a;font-size:12px;">Error cargando la referencia.</span>';
   }
 }
 
-function renderCompareGenerated(vreproID) {
+function renderCompareGenerated() {
   const container = document.getElementById('compare-gen-container');
-  // Todas las fotos de ESTE donante que coincidan con el codigo OVOD,
-  // dentro de lo que ya esta filtrado por modo (Fullbody/Portrait).
-  const fotos = generatedImgs
-    .map((img, idx) => ({ img, idx }))
-    .filter(({ img }) => img.vreproID === vreproID);
+  const pageInfo  = document.getElementById('compare-page-info');
 
-  if (fotos.length === 0) {
+  if (compareGenList.length === 0) {
     container.innerHTML = '<span style="color:#555;font-size:12px;">Sin fotos generadas para este donante en el modo actual.</span>';
+    pageInfo.textContent = '—';
     return;
   }
 
-  container.innerHTML = '';
-  fotos.forEach(({ img, idx }) => {
-    const card = document.createElement('div');
-    card.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;';
-
-    const borderColor = img.state === 'approved' ? '#2ecc71' : img.state === 'discarded' ? '#e74c3c' : '#333';
-    card.innerHTML = `
-      <img src="${img.url}" style="max-height:220px;border-radius:6px;border:2px solid ${borderColor};" />
-      <div style="display:flex;gap:6px;">
-        <button onclick="setCompareState(${idx}, 'approved')" style="background:#123c1e;border:1px solid #2ecc71;color:#7ee2a0;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;">✓ Aprobar</button>
-        <button onclick="setCompareState(${idx}, 'discarded')" style="background:#3c1212;border:1px solid #e74c3c;color:#ff8a8a;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;">✕ Descartar</button>
-      </div>
-    `;
-    container.appendChild(card);
-  });
+  const idx = compareGenList[compareGenPos];
+  const img = generatedImgs[idx];
+  container.innerHTML = `<img src="${img.url}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;" />`;
+  pageInfo.textContent = `Foto ${compareGenPos + 1} de ${compareGenList.length}`;
 }
 
-function setCompareState(idx, state) {
-  if (!generatedImgs[idx]) return;
-  generatedImgs[idx].state = state;
-  renderCompareGenerated(generatedImgs[idx].vreproID);
-  renderGen();
-  updateApprCount();
+function compareChangePage(dir) {
+  if (compareGenList.length === 0) return;
+  compareGenPos = Math.max(0, Math.min(compareGenList.length - 1, compareGenPos + dir));
+  renderCompareGenerated();
 }
 
 function closeCompareModal() {
@@ -753,6 +756,21 @@ async function clearServerImages() {
     // hasta que se inicie una generacion nueva (que reasigna este valor
     // con los donantes reales en executeModelsSequentially).
     currentSessionDonors = new Set(); // vacio a proposito: oculta todo hasta la proxima generacion
+    // Se pide la hora al SERVIDOR (no Date.now() del navegador) para que
+    // la comparacion contra jobBatch (tambien generado por el servidor)
+    // sea exacta sin importar en que zona horaria este quien use la app.
+    try {
+      const timeRes = await authFetch(`${API_BASE}/server_time`);
+      const timeData = await timeRes.json();
+      localStorage.setItem('batchapp_gallery_cleared_at', timeData.batch);
+    } catch (err) {
+      console.warn('No se pudo obtener la hora del servidor, usando la del navegador como respaldo:', err);
+      // Respaldo: al menos con formato compatible, aunque no sea exacto.
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const fallback = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      localStorage.setItem('batchapp_gallery_cleared_at', fallback);
+    }
 
     renderGen();
     renderModelList();
