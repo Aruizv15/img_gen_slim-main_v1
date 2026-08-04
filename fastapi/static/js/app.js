@@ -607,10 +607,12 @@ async function openCompareModal() {
       refContainer.innerHTML = '<span style="color:#555;font-size:12px;">No se encontraron fotos de referencia para este donante.</span>';
       return;
     }
-    // Solo se muestra UNA foto de referencia (la primera que devuelva el
-    // servidor), aunque el donante tenga varias guardadas -- para que el
-    // panel izquierdo del comparador no quede saturado.
-    const primeraRef = refs[0];
+    // Si el donante tiene varias fotos de referencia (ej: una general y
+    // otra especifica de fullbody/portrait), se prioriza la que coincida
+    // con el modo activo. Si ninguna coincide, se usa la primera.
+    const modoActivo = document.querySelector('.mode-btn.active')?.textContent.trim().toLowerCase() || 'fullbody';
+    const refDelModo = refs.find(r => r.filename.toLowerCase().includes(modoActivo));
+    const primeraRef = refDelModo || refs[0];
     refContainer.innerHTML =
       `<img src="${API_BASE}/view_reference_from_b2/${vreproID}/${primeraRef.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;" />`;
   } catch (err) {
