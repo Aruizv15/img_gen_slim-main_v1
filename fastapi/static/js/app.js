@@ -555,6 +555,90 @@ function discardSelected() {
   showToast(`${count} imagen(es) descartada(s).`, 'success');
 }
 
+/* ============================================================
+   COMPARAR — todas las fotos generadas de un donante vs sus referencias
+   ============================================================ */
+async function openCompareModal() {
+  // El donante a comparar se toma de la foto seleccionada si hay una, o
+  // si no, de la primera foto visible en la pagina actual de la galeria.
+  let vreproID = null;
+  if (selectedIndices.size > 0) {
+    vreproID = generatedImgs[[...selectedIndices][0]]?.vreproID;
+  } else if (generatedImgs.length > 0) {
+    const start = currentPage * IMGS_PER_PAGE;
+    vreproID = generatedImgs[start]?.vreproID;
+  }
+
+  if (!vreproID) {
+    showToast('No hay ninguna foto generada para comparar todavía.', 'error');
+    return;
+  }
+
+  document.getElementById('compare-title').textContent = `Comparar — ${vreproID}`;
+  document.getElementById('compare-modal').style.display = 'flex';
+
+  renderCompareGenerated(vreproID);
+
+  const refContainer = document.getElementById('compare-ref-container');
+  refContainer.innerHTML = '<span style="color:#555;font-size:12px;">Cargando...</span>';
+  try {
+    const res = await authFetch(`${API_BASE}/list_reference_images_b2/${vreproID}`);
+    const data = await res.json();
+    const refs = data.images || [];
+    if (refs.length === 0) {
+      refContainer.innerHTML = '<span style="color:#555;font-size:12px;">No se encontraron fotos de referencia para este donante.</span>';
+      return;
+    }
+    refContainer.innerHTML = refs.map(r =>
+      `<img src="${API_BASE}/view_reference_from_b2/${vreproID}/${r.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-height:220px;border-radius:6px;" />`
+    ).join('');
+  } catch (err) {
+    refContainer.innerHTML = '<span style="color:#ff8a8a;font-size:12px;">Error cargando la referencia.</span>';
+  }
+}
+
+function renderCompareGenerated(vreproID) {
+  const container = document.getElementById('compare-gen-container');
+  // Todas las fotos de ESTE donante que coincidan con el codigo OVOD,
+  // dentro de lo que ya esta filtrado por modo (Fullbody/Portrait).
+  const fotos = generatedImgs
+    .map((img, idx) => ({ img, idx }))
+    .filter(({ img }) => img.vreproID === vreproID);
+
+  if (fotos.length === 0) {
+    container.innerHTML = '<span style="color:#555;font-size:12px;">Sin fotos generadas para este donante en el modo actual.</span>';
+    return;
+  }
+
+  container.innerHTML = '';
+  fotos.forEach(({ img, idx }) => {
+    const card = document.createElement('div');
+    card.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;';
+
+    const borderColor = img.state === 'approved' ? '#2ecc71' : img.state === 'discarded' ? '#e74c3c' : '#333';
+    card.innerHTML = `
+      <img src="${img.url}" style="max-height:220px;border-radius:6px;border:2px solid ${borderColor};" />
+      <div style="display:flex;gap:6px;">
+        <button onclick="setCompareState(${idx}, 'approved')" style="background:#123c1e;border:1px solid #2ecc71;color:#7ee2a0;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;">✓ Aprobar</button>
+        <button onclick="setCompareState(${idx}, 'discarded')" style="background:#3c1212;border:1px solid #e74c3c;color:#ff8a8a;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;">✕ Descartar</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function setCompareState(idx, state) {
+  if (!generatedImgs[idx]) return;
+  generatedImgs[idx].state = state;
+  renderCompareGenerated(generatedImgs[idx].vreproID);
+  renderGen();
+  updateApprCount();
+}
+
+function closeCompareModal() {
+  document.getElementById('compare-modal').style.display = 'none';
+}
+
 function updateApprCount() {
   const approved = generatedImgs.filter(g => g.state === 'approved').length;
   document.getElementById('appr-count').textContent = approved;
