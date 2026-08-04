@@ -603,14 +603,18 @@ async function openCompareModal() {
     const res = await authFetch(`${API_BASE}/list_reference_images_b2/${vreproID}`);
     const data = await res.json();
     const refs = data.images || [];
+    console.log('[COMPARAR] Fotos de referencia recibidas del servidor:', refs);
     if (refs.length === 0) {
       refContainer.innerHTML = '<span style="color:#555;font-size:12px;">No se encontraron fotos de referencia para este donante.</span>';
       return;
     }
     refContainer.style.flexWrap = 'wrap';
-    refContainer.innerHTML = refs.map(r =>
-      `<img src="${API_BASE}/view_reference_from_b2/${vreproID}/${r.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-height:45vh;max-width:100%;object-fit:contain;border-radius:6px;margin:4px;" />`
-    ).join('');
+    refContainer.innerHTML = refs.map(r => `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin:4px;">
+        <img src="${API_BASE}/view_reference_from_b2/${vreproID}/${r.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-height:45vh;max-width:100%;object-fit:contain;border-radius:6px;" />
+        <span style="font-size:10px;color:#666;">${r.filename}</span>
+      </div>
+    `).join('');
   } catch (err) {
     refContainer.innerHTML = '<span style="color:#ff8a8a;font-size:12px;">Error cargando la referencia.</span>';
   }
