@@ -577,6 +577,11 @@ async function downloadApproved() {
   const zip = new JSZip();
   const failed = [];
 
+  // Contador independiente por donante+tipo, para numerar _c1, _c2, _c3...
+  // (fullbody) y _p1, _p2, _p3... (portrait) segun el orden en que
+  // aparecen las imagenes aprobadas.
+  const contadores = {};
+
   for (const img of approved) {
     let success = false;
     for (let intento = 1; intento <= 3 && !success; intento++) {
@@ -593,14 +598,19 @@ async function downloadApproved() {
         if (blob.size === 0) {
           throw new Error('El archivo descargado esta vacio (0 bytes)');
         }
-        // Organizar el ZIP por donante / tipo / lote de subida. El handler
-        // agrega a cada foto un sello de fecha-hora (YYYYMMDD-HHMMSS) en el
-        // nombre al subirla a B2; aqui se extrae ese sello para agrupar:
-        //   OVOD03378/fullbody/20260803-154210/OVOD03378_00001_....png
-        const batchMatch = img.filename.match(/(\d{8}-\d{6})/);
-        const batchDir = batchMatch ? `${batchMatch[1]}/` : '';
-        const tipoDir = img.generationType && img.generationType !== 'legacy' ? `${img.generationType}/` : '';
-        const zipPath = img.vreproID ? `${img.vreproID}/${tipoDir}${batchDir}${img.filename}` : img.filename;
+
+        // Estructura del ZIP:
+        //   OVOD01234/fullbody/OVOD01234_c1.png, _c2.png, _c3.png...
+        //   OVOD01234/portrait/OVOD01234_p1.png, _p2.png...
+        const vreproID = img.vreproID || 'sin_codigo';
+        const tipo = img.generationType === 'portrait' ? 'portrait' : 'fullbody';
+        const prefijo = img.generationType === 'portrait' ? 'p' : 'c';
+        const contadorKey = `${vreproID}::${tipo}`;
+        contadores[contadorKey] = (contadores[contadorKey] || 0) + 1;
+        const extMatch = img.filename.match(/\.[^.]+$/);
+        const ext = extMatch ? extMatch[0] : '.png';
+        const zipPath = `${vreproID}/${tipo}/${vreproID}_${prefijo}${contadores[contadorKey]}${ext}`;
+
         zip.file(zipPath, blob);
         success = true;
       } catch (err) {
