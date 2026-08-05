@@ -361,11 +361,21 @@ function extractVreproID(filename) {
   return match ? match[1] : null;
 }
 
+let _fetchGenSeq = 0; // contador global para descartar respuestas atrasadas
+
 async function fetchGeneratedImages() {
+  const mySeq = ++_fetchGenSeq;
   try {
     const res  = await authFetch(`${API_BASE}/list_images_b2`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+
+    // Si mientras esperabamos la respuesta se disparo OTRA llamada mas
+    // reciente a esta misma funcion (ej: cambiaste de modo, o el polling
+    // automatico volvio a consultar), esta respuesta ya esta vieja --
+    // se descarta para que nunca sobrescriba algo mas actual. Esto evita
+    // que la galeria y el contador "X generadas" queden desincronizados.
+    if (mySeq !== _fetchGenSeq) return;
 
     const items = data.images || [];
 
