@@ -568,6 +568,65 @@ function discardSelected() {
 }
 
 /* ============================================================
+   ZOOM + ARRASTRE dentro de una imagen (independiente del zoom del
+   navegador). Se usa en el modal de Comparar: rueda del mouse para
+   acercar/alejar, arrastrar para moverse una vez con zoom, doble clic
+   para volver al tamaño normal.
+   ============================================================ */
+function enableZoomPan(container) {
+  const img = container.querySelector('img');
+  if (!img) return;
+
+  let scale = 1, panX = 0, panY = 0, dragging = false, startX, startY;
+
+  function applyTransform() {
+    img.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  }
+
+  img.style.transformOrigin = 'center center';
+  img.style.transition = 'transform 0.05s linear';
+  img.style.userSelect = 'none';
+  container.style.overflow = 'hidden';
+  container.style.cursor = 'zoom-in';
+  container.style.touchAction = 'none';
+
+  container.onwheel = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.25 : -0.25;
+    scale = Math.min(5, Math.max(1, scale + delta));
+    if (scale === 1) { panX = 0; panY = 0; }
+    container.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
+    applyTransform();
+  };
+
+  container.onpointerdown = (e) => {
+    if (scale === 1) return;
+    dragging = true;
+    startX = e.clientX - panX;
+    startY = e.clientY - panY;
+    container.setPointerCapture(e.pointerId);
+    container.style.cursor = 'grabbing';
+  };
+  container.onpointermove = (e) => {
+    if (!dragging) return;
+    panX = e.clientX - startX;
+    panY = e.clientY - startY;
+    applyTransform();
+  };
+  container.onpointerup = (e) => {
+    dragging = false;
+    container.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
+    try { container.releasePointerCapture(e.pointerId); } catch {}
+  };
+
+  container.ondblclick = () => {
+    scale = 1; panX = 0; panY = 0;
+    container.style.cursor = 'zoom-in';
+    applyTransform();
+  };
+}
+
+/* ============================================================
    COMPARAR — referencia vs generada, lado a lado, con paginacion
    ============================================================ */
 let compareGenList = [];  // indices en generatedImgs de las fotos de este donante
@@ -615,6 +674,7 @@ async function openCompareModal() {
     const primeraRef = refDelModo || refs[0];
     refContainer.innerHTML =
       `<img src="${API_BASE}/view_reference_from_b2/${vreproID}/${primeraRef.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;" />`;
+    enableZoomPan(refContainer);
   } catch (err) {
     refContainer.innerHTML = '<span style="color:#ff8a8a;font-size:12px;">Error cargando la referencia.</span>';
   }
@@ -633,6 +693,7 @@ function renderCompareGenerated() {
   const idx = compareGenList[compareGenPos];
   const img = generatedImgs[idx];
   container.innerHTML = `<img src="${img.url}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;" />`;
+  enableZoomPan(container);
   pageInfo.textContent = `Foto ${compareGenPos + 1} de ${compareGenList.length}`;
 }
 
