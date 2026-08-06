@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import httpx
 import base64
@@ -368,6 +369,29 @@ async def list_reference_images_b2(vrepro_id: str, session: dict = Depends(requi
                 filename = f["fileName"].split("/")[-1]
                 if filename:
                     images.append({"filename": filename})
+
+        # uploadModelImages() en el frontend re-sube las mismas fotos de
+        # referencia con el modo agregado al nombre cada vez que se corre
+        # un ciclo (OVOD03419.jpg -> OVOD03419fullbody.jpg,
+        # OVOD03419Portrait.jpg...), asi que la MISMA foto real puede
+        # terminar guardada bajo 2-3 nombres distintos en B2. Aqui se
+        # agrupan como una sola, quitando ese sufijo antes de comparar,
+        # para que el modal de Comparar no muestre "duplicados" que en
+        # realidad son la misma foto subida varias veces con otro nombre.
+        def _normalizar(filename: str) -> str:
+            name, ext = os.path.splitext(filename)
+            name = re.sub(r'(fullbody|portrait)$', '', name, flags=re.IGNORECASE)
+            return name.lower() + ext.lower()
+
+        vistos = set()
+        deduplicadas = []
+        for img in images:
+            clave = _normalizar(img["filename"])
+            if clave not in vistos:
+                vistos.add(clave)
+                deduplicadas.append(img)
+        images = deduplicadas
+
         return {"images": images}
     except Exception as e:
         return {"images": [], "error": str(e)}
