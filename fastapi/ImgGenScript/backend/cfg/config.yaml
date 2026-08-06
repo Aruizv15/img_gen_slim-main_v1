@@ -68,19 +68,9 @@ fullbody:
   detailer_bbox_dilation: 10
   detailer_bbox_crop_factor: 3.0
   detailer_drop_size: 10
-  # --- HANDS REFINER ---
-  # CAMBIO (fix calidad facial): mask_bbox_padding 35 -> 15.
-  # Con 35px de padding + 10px de expand (45px en total), la mascara de
-  # manos invadia mandibula/cuello en poses con manos cerca de la cara.
+ 
   hands_refiner_mask_bbox_padding: 15
-  # CAMBIO CRITICO (fix calidad facial): "based_on_depth" -> "tight_bboxes".
-  # based_on_depth construye la mascara umbralizando el mapa de profundidad
-  # GLOBAL: todo lo que este a profundidad similar a las manos entra en la
-  # mascara. En poses de brazos cruzados / mano cerca de la cara, la CARA
-  # completa caia dentro de la mascara y el KSampler de manos la
-  # regeneraba SIN FaceID (el nodo 37 usa el modelo base), destruyendo el
-  # trabajo del FaceDetailer. tight_bboxes limita la mascara a las cajas
-  # de manos detectadas.
+
   hands_refiner_mask_type: "tight_bboxes"
   # CAMBIO (fix calidad facial): mask_expand 10 -> 4 (mismo motivo que padding).
   hands_refiner_mask_expand: 4
@@ -118,15 +108,7 @@ portrait:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  # --- AJUSTE DE PARECIDO (portrait) ---
-  # CAMBIO: se sube faceid_weight/faceid_v2_weight (identidad/geometria)
-  # de 0.45/0.5 a 0.55/0.6, porque comparando fotos generadas contra la
-  # referencia real de una donante, la forma de nariz y proporciones
-  # generales mostraban una desviacion notable del parecido exacto.
-  # Subida MODERADA, no al maximo (1.0): valores muy altos suelen rigidizar
-  # la pose/angulo y darle un aspecto mas "encerado" a la piel. Si con
-  # este ajuste el parecido sigue flojo, se puede subir un poco mas; si
-  # aparecen fotos demasiado "planas" o con poca variedad de pose, bajar.
+
   faceid_weight: 0.55
   faceid_v2_weight: 0.6
   faceid_weight_type: "linear"
@@ -134,13 +116,8 @@ portrait:
   faceid_start: 0.0
   faceid_end: 1.0
   plus_face_loader_preset: "STANDARD (medium strength)"
-  # CAMBIO: plus_face_weight (textura/detalle de piel) de 0.35 a 0.45.
-  # Ayuda a que rasgos finos (forma de nariz, textura de piel) se parezcan
-  # mas a la referencia. Es seguro subirlo un poco mas ahora porque ya
-  # existe el negative prompt reforzado contra acne/manchas/marcas -- ese
-  # es el que evita que este cambio vuelva a traer el problema de manchas
-  # que ya resolvimos, aunque ahora se copie mas textura literal.
-  plus_face_weight: 0.45
+
+  plus_face_weight: 0.4
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
