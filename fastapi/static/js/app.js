@@ -703,8 +703,12 @@ function renderCompareRef() {
   if (compareRefList.length === 0) return;
 
   const ref = compareRefList[compareRefPos];
-  refContainer.innerHTML =
-    `<img src="${API_BASE}/view_reference_from_b2/${compareRefVreproID}/${ref.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;" />`;
+  refContainer.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;max-height:100%;">
+      <img src="${API_BASE}/view_reference_from_b2/${compareRefVreproID}/${ref.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-width:100%;max-height:90%;object-fit:contain;border-radius:6px;" />
+      <span style="font-size:10px;color:#666;">${ref.filename}</span>
+    </div>
+  `;
   enableZoomPan(refContainer);
   pageInfo.textContent = `Foto ${compareRefPos + 1} de ${compareRefList.length}`;
 }
@@ -911,9 +915,7 @@ async function startSingleExecution() {
   startPolling();
 }
 
-/* ============================================================
-   EJECUCIÓN — MULTI-MODELO SECUENCIAL (CSV)
-   ============================================================ */
+
 
 /* Espera hasta que el job actual termine (polling cada 3s) */
 async function waitForJobDone(generationType) {
@@ -993,9 +995,7 @@ async function executeModelsSequentially() {
   generatedImgs  = [];
   renderGen();
 
-  // Limpiar las imágenes viejas del servidor antes de empezar, para que
-  // fotos de donantes de ejecuciones anteriores no se mezclen con las
-  // de esta corrida nueva en la galería.
+
   try {
     await authFetch(`${API_BASE}/clear_output`, { method: 'POST' });
   } catch (err) {
@@ -1023,12 +1023,7 @@ async function executeModelsSequentially() {
     return;
   }
 
-  // Filtrar la galeria para mostrar SOLO los donantes de esta corrida,
-  // sin borrar nada de Backblaze (el historial completo sigue ahi,
-  // simplemente no se muestra mezclado con otros donantes). Ya no hace
-  // falta tomar un "snapshot" de lo que existia antes: el propio servidor
-  // (list_images_b2) se queda automaticamente solo con la corrida mas
-  // reciente por donante+tipo, de forma permanente.
+
   currentSessionDonors = new Set(queue.map(m => m.vreproID));
 
   showToast(`Iniciando ejecución secuencial: ${queue.length} modelo(s)`, 'success');
@@ -1174,7 +1169,7 @@ async function startExecution() {
     return;
   }
 
-  // Si hay modelos del CSV con imágenes asignadas → ejecución secuencial
+
   const hasModelImages = csvModels.length > 0 &&
     csvModels.some(m => (modelImages[m.vreproID] || []).length > 0);
 
@@ -1211,9 +1206,6 @@ async function stopExecution() {
   renderModelList();
 }
 
-/* ============================================================
-   POLLING AUTOMÁTICO DE IMÁGENES
-   ============================================================ */
 function startPolling() {
   if (pollTimer) return;
   pollTimer = setInterval(fetchGeneratedImages, POLL_INTERVAL);
@@ -1228,8 +1220,7 @@ function stopPolling() {
 function setMode(btn) {
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  // Al cambiar de modo, la galeria debe mostrar solo las fotos de ese
-  // tipo de inmediato, sin esperar al proximo ciclo de polling.
+
   if (typeof fetchGeneratedImages === 'function') fetchGeneratedImages();
 }
 
@@ -1237,11 +1228,7 @@ function toggleCb(el) {
   el.classList.toggle('on');
 }
 
-/* ============================================================
-   INIT
-   Nota: esta funcion la llama checkExistingSession() desde auth.js,
-   una vez confirmada la sesion -- no se dispara sola aqui.
-   ============================================================ */
+
 function initApp() {
   checkHealth();
   setInterval(checkHealth, 30000);
