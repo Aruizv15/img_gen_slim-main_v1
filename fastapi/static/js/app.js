@@ -641,6 +641,9 @@ function enableZoomPan(container) {
    ============================================================ */
 let compareGenList = [];  // indices en generatedImgs de las fotos de este donante
 let compareGenPos  = 0;   // posicion actual dentro de compareGenList
+let compareRefList = [];  // lista de {filename} de referencia de este donante
+let compareRefPos  = 0;   // posicion actual dentro de compareRefList
+let compareRefVreproID = null; // vreproID actual, para armar la URL de cada referencia
 
 async function openCompareModal() {
   let vreproID = null;
@@ -668,26 +671,48 @@ async function openCompareModal() {
 
   const refContainer = document.getElementById('compare-ref-container');
   refContainer.innerHTML = '<span style="color:#555;font-size:12px;">Cargando...</span>';
+  compareRefVreproID = vreproID;
   try {
     const res = await authFetch(`${API_BASE}/list_reference_images_b2/${vreproID}`);
     const data = await res.json();
     const refs = data.images || [];
     if (refs.length === 0) {
+      compareRefList = [];
       refContainer.innerHTML = '<span style="color:#555;font-size:12px;">No se encontraron fotos de referencia para este donante.</span>';
+      document.getElementById('compare-ref-page-info').textContent = '—';
       return;
     }
+    compareRefList = refs;
     // Si el donante tiene varias fotos de referencia (ej: una general y
-    // otra especifica de fullbody/portrait), se prioriza la que coincida
-    // con el modo activo. Si ninguna coincide, se usa la primera.
+    // otra especifica de fullbody/portrait), se empieza mostrando la que
+    // coincida con el modo activo. Si ninguna coincide, se empieza en la
+    // primera. De ahi en adelante, las flechas dejan recorrer todas.
     const modoActivo = document.querySelector('.mode-btn.active')?.textContent.trim().toLowerCase() || 'fullbody';
-    const refDelModo = refs.find(r => r.filename.toLowerCase().includes(modoActivo));
-    const primeraRef = refDelModo || refs[0];
-    refContainer.innerHTML =
-      `<img src="${API_BASE}/view_reference_from_b2/${vreproID}/${primeraRef.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;" />`;
-    enableZoomPan(refContainer);
+    const idxDelModo = refs.findIndex(r => r.filename.toLowerCase().includes(modoActivo));
+    compareRefPos = idxDelModo !== -1 ? idxDelModo : 0;
+    renderCompareRef();
   } catch (err) {
+    compareRefList = [];
     refContainer.innerHTML = '<span style="color:#ff8a8a;font-size:12px;">Error cargando la referencia.</span>';
   }
+}
+
+function renderCompareRef() {
+  const refContainer = document.getElementById('compare-ref-container');
+  const pageInfo = document.getElementById('compare-ref-page-info');
+  if (compareRefList.length === 0) return;
+
+  const ref = compareRefList[compareRefPos];
+  refContainer.innerHTML =
+    `<img src="${API_BASE}/view_reference_from_b2/${compareRefVreproID}/${ref.filename}?token=${encodeURIComponent(sessionToken || '')}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;" />`;
+  enableZoomPan(refContainer);
+  pageInfo.textContent = `Foto ${compareRefPos + 1} de ${compareRefList.length}`;
+}
+
+function compareRefChangePage(dir) {
+  if (compareRefList.length === 0) return;
+  compareRefPos = Math.max(0, Math.min(compareRefList.length - 1, compareRefPos + dir));
+  renderCompareRef();
 }
 
 function renderCompareGenerated() {
@@ -1052,29 +1077,21 @@ async function executeModelsSequentially() {
     // Pausa para asegurar que los archivos están escritos
     await new Promise(r => setTimeout(r, 1000));
 
-    const newImgs = await fetchNewImages();
-    modelResults[model.vreproID] = newImgs;
-    generatedImgs.push(...newImgs);
-
-    // Evitar duplicados: si el polling automático (que corre en paralelo)
-    // ya habia agregado este mismo archivo justo antes, no queremos que
-    // aparezca dos veces en la galeria.
-    const seen = new Set();
-    generatedImgs = generatedImgs.filter(g => {
-      if (seen.has(g.filename)) return false;
-      seen.add(g.filename);
-      return true;
-    });
+    // IMPORTANTE: se usa fetchGeneratedImages() (la fuente correcta, que
+    // filtra por sesion + tipo activo + "limpiar servidor" persistido) en
+    // vez de fetchNewImages()+push manual. Ese camino viejo llamaba a
+    // /list_images (disco local, SIN filtro de tipo ni de corrida), lo
+    // que colaba fotos de fullbody mientras se corria portrait (o
+    // viceversa) porque download_generated_from_b2() en el backend baja
+    // TODO el historial del donante al disco local, sin distinguir tipo.
+    await fetchGeneratedImages();
+    modelResults[model.vreproID] = generatedImgs.filter(g => g.vreproID === model.vreproID);
 
     activeVreproID = null;
     renderModelList();
-    renderGen();
-    updateApprCount();
-
-    showToast(`✓ ${model.vreproID}: ${newImgs.length} imagen(es) lista(s).`, 'success');
-
-    // Continua automaticamente al siguiente modelo, sin pausa manual.
     updateSeqProgress(i + 1, queue.length, model.vreproID, i === queue.length - 1 ? 'done' : 'processing');
+
+    showToast(`✓ ${model.vreproID}: ${modelResults[model.vreproID].length} imagen(es) lista(s).`, 'success');
   }
 
   seqRunning     = false;
