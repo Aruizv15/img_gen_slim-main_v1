@@ -349,7 +349,13 @@ async function uploadModelImages(vreproID) {
   if (!res.ok) throw new Error(`Error subiendo imágenes de ${vreproID}`);
 }
 
-
+/* ============================================================
+   PANEL DERECHO — IMÁGENES GENERADAS
+   ============================================================ */
+/* Extrae el vreproID del nombre de archivo (patron: "{vreproID}_00001_.png").
+   Sirve como respaldo confiable cuando vreproMap no lo tiene (por ejemplo,
+   despues de recargar la pagina, o con imagenes de sesiones anteriores
+   detectadas por el polling automatico). */
 function extractVreproID(filename) {
   const match = filename.match(/^(.+?)_\d+_\.\w+$/);
   return match ? match[1] : null;
@@ -364,23 +370,42 @@ async function fetchGeneratedImages() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    
+    // Si mientras esperabamos la respuesta se disparo OTRA llamada mas
+    // reciente a esta misma funcion (ej: cambiaste de modo, o el polling
+    // automatico volvio a consultar), esta respuesta ya esta vieja --
+    // se descarta para que nunca sobrescriba algo mas actual. Esto evita
+    // que la galeria y el contador "X generadas" queden desincronizados.
     if (mySeq !== _fetchGenSeq) return;
 
     const items = data.images || [];
 
-  
+    // El servidor YA devuelve solo la corrida mas reciente por
+    // donante+tipo (de forma permanente, sin importar el navegador ni
+    // si se recarga la pagina) -- aqui solo falta acotar a los donantes
+    // de la sesion actual (para no mezclar con otros donantes que no se
+    // esten trabajando ahora) y al modo activo (Fullbody/Portrait).
     const itemsPorSesion = currentSessionDonors
       ? items.filter(it => currentSessionDonors.has(it.vreproID))
       : items;
 
-    
+    // Filtro ESTRICTO por tipo: en modo Portrait solo se muestran fotos
+    // etiquetadas como portrait, nunca fullbody (ni al reves). Las fotos
+    // "legacy" (de antes de separar por tipo, sin etiqueta) ya NO se
+    // muestran mezcladas automaticamente -- se estaban colando fotos
+    // viejas de un tipo mientras se trabajaba en el otro, justo la
+    // confusion que este filtro estricto evita.
     const modoActivo = document.querySelector('.mode-btn.active')?.textContent.trim().toLowerCase() || 'fullbody';
     let itemsFiltrados = itemsPorSesion.filter(it =>
       it.generationType === modoActivo
     );
 
-    
+    // "Limpiar servidor" persistido: si el usuario limpio la galeria y
+    // NO se ha generado nada nuevo desde entonces, las fotos viejas
+    // (aunque sigan siendo "la corrida mas reciente" en Backblaze) se
+    // mantienen ocultas incluso despues de recargar la pagina. Se compara
+    // como texto (YYYYMMDD-HHMMSS ordena bien alfabeticamente) contra la
+    // marca de tiempo del PROPIO SERVIDOR guardada al limpiar, para que
+    // no importe la zona horaria del navegador.
     const clearedAt = localStorage.getItem('batchapp_gallery_cleared_at') || '';
     if (clearedAt) {
       itemsFiltrados = itemsFiltrados.filter(it => !it.jobBatch || it.jobBatch > clearedAt);
@@ -1052,7 +1077,13 @@ async function executeModelsSequentially() {
     // Pausa para asegurar que los archivos están escritos
     await new Promise(r => setTimeout(r, 1000));
 
-    
+    // IMPORTANTE: se usa fetchGeneratedImages() (la fuente correcta, que
+    // filtra por sesion + tipo activo + "limpiar servidor" persistido) en
+    // vez de fetchNewImages()+push manual. Ese camino viejo llamaba a
+    // /list_images (disco local, SIN filtro de tipo ni de corrida), lo
+    // que colaba fotos de fullbody mientras se corria portrait (o
+    // viceversa) porque download_generated_from_b2() en el backend baja
+    // TODO el historial del donante al disco local, sin distinguir tipo.
     await fetchGeneratedImages();
     modelResults[model.vreproID] = generatedImgs.filter(g => g.vreproID === model.vreproID);
 
