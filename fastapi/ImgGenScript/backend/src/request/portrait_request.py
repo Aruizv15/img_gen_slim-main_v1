@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+import random
 
 from src.config.settings import get_settings
 from backend.src.generator.image_generator import ImageGenerator
@@ -63,6 +64,8 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             A list of tuples, where each tuple represents a specific node input
             to be modified in the workflow (node_id, input_name, value).
         """
+       
+        seed = random.randint(0, 2**32 - 1)
         workflow_args = [
             ("1", "ckpt_name", self.workflow_data.checkpoint), # Checkpoint Model
 
@@ -82,7 +85,7 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             ("8", "start_percent", self.workflow_data.pose_controlnet_start), # Inicio de ControlNet de pose
             ("8", "end_percent", self.workflow_data.pose_controlnet_end), # Fin de ControlNet de pose
 
-            ("9", "seed", self.workflow_data.k1_seed), # Semilla del primer Ksampler
+            ("9", "seed", seed), # Semilla del primer Ksampler -- COMPARTIDA
             ("9", "steps", self.workflow_data.k1_steps), # Pasos del primer Ksampler
             ("9", "cfg", self.workflow_data.k1_cfg), # CFG del primer Ksampler
             ("9", "sampler_name", self.workflow_data.k1_sampler_name), # Sampler del primer Ksampler
@@ -94,54 +97,54 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
 
             ("11", "directory", self.workflow_data.ref_directory), # Directorio para el nodo 11 (Load Image)
 
-            ("13", "clip_name", self.workflow_data.clip_vision_model), # Modelo de CLIP Vision
+            ("13", "clip_name", self.workflow_data.clip_vision_model),
 
-            ("14", "model_name", self.workflow_data.insightface_model_name), # Modelo de InsightFace
+            ("14", "model_name", self.workflow_data.insightface_model_name), 
 
-            ("15", "preset", self.workflow_data.faceid_loader_preset), # Preset de FaceID Loader
-            ("15", "lora_strength", self.workflow_data.faceid_loader_lora_strength), # Fuerza de LoRA de FaceID Loader
+            ("15", "preset", self.workflow_data.faceid_loader_preset),
+            ("15", "lora_strength", self.workflow_data.faceid_loader_lora_strength), 
 
-            ("16", "weight", self.workflow_data.faceid_weight), # Peso de FaceID
-            ("16", "weight_faceidv2", self.workflow_data.faceid_v2_weight), # Peso de FaceID v2
-            ("16", "weight_type", self.workflow_data.faceid_weight_type), # Tipo de peso de FaceID
-            ("16", "combine_embeds", self.workflow_data.faceid_combine_embeds), # Combinación de embeds de FaceID
-            ("16", "start_at", self.workflow_data.faceid_start), # Inicio de FaceID
-            ("16", "end_at", self.workflow_data.faceid_end), # Fin de FaceID
+            ("16", "weight", self.workflow_data.faceid_weight), 
+            ("16", "weight_faceidv2", self.workflow_data.faceid_v2_weight), 
+            ("16", "weight_type", self.workflow_data.faceid_weight_type),
+            ("16", "combine_embeds", self.workflow_data.faceid_combine_embeds), 
+            ("16", "start_at", self.workflow_data.faceid_start), 
+            ("16", "end_at", self.workflow_data.faceid_end), 
 
-            ("17", "preset", self.workflow_data.plus_face_loader_preset), # Preset de Plus Face Loader
+            ("17", "preset", self.workflow_data.plus_face_loader_preset), 
 
-            ("18", "weight", self.workflow_data.plus_face_weight), # Peso de Plus Face
-            ("18", "weight_type", self.workflow_data.plus_face_weight_type), # Tipo de peso de Plus Face
-            ("18", "combine_embeds", self.workflow_data.plus_face_combine_embeds), # Combinación de embeds de Plus Face
-            ("18", "start_at", self.workflow_data.plus_face_start), # Inicio de Plus Face
-            ("18", "end_at", self.workflow_data.plus_face_end), # Fin de Plus Face
+            ("18", "weight", self.workflow_data.plus_face_weight),
+            ("18", "weight_type", self.workflow_data.plus_face_weight_type), 
+            ("18", "combine_embeds", self.workflow_data.plus_face_combine_embeds), 
+            ("18", "start_at", self.workflow_data.plus_face_start), 
+            ("18", "end_at", self.workflow_data.plus_face_end), 
 
-            ("19", "seed", self.workflow_data.k2_seed), # Semilla del segundo Ksampler
-            ("19", "steps", self.workflow_data.k2_steps), # Pasos del segundo Ksampler
-            ("19", "cfg", self.workflow_data.k2_cfg), # CFG del segundo Ksampler
-            ("19", "sampler_name", self.workflow_data.k2_sampler_name), # Sampler del segundo Ksampler
-            ("19", "scheduler", self.workflow_data.k2_scheduler), # Scheduler del segundo Ksampler
-            ("19", "denoise", self.workflow_data.k2_denoise), # Denoise del segundo Ksampler
+            ("19", "seed", seed), 
+            ("19", "steps", self.workflow_data.k2_steps), 
+            ("19", "cfg", self.workflow_data.k2_cfg), 
+            ("19", "sampler_name", self.workflow_data.k2_sampler_name),
+            ("19", "scheduler", self.workflow_data.k2_scheduler),
+            ("19", "denoise", self.workflow_data.k2_denoise),
 
-            ("22", "text", client.built_prompts["detailer_positive_prompt"]), # Detailer Positivo
-            ("23", "text", client.built_prompts["detailer_negative_prompt"]), # Detailer Negativo
+            ("22", "text", client.built_prompts["detailer_positive_prompt"]), 
+            ("23", "text", client.built_prompts["detailer_negative_prompt"]), 
 
-            ("24", "model_name", self.workflow_data.detailer_bbox_model), # Modelo de BBox para Detailer
+            ("24", "model_name", self.workflow_data.detailer_bbox_model), 
 
-            ("25", "seed", self.workflow_data.detailer_seed), # Semilla del face detailer
-            ("25", "steps", self.workflow_data.detailer_steps), # Pasos del face detailer
-            ("25", "cfg", self.workflow_data.detailer_cfg), # CFG del face detailer
-            ("25", "sampler_name", self.workflow_data.detailer_sampler_name), # Sampler del detailer
-            ("25", "scheduler", self.workflow_data.detailer_scheduler), # Scheduler del detailer
-            ("25", "denoise", self.workflow_data.detailer_denoise), # Denoise del detailer
-            ("25", "wildcard", client.built_prompts["detailer_wildcard_prompt"]), # Detailer Wildcard
-            ("25", "feather", self.workflow_data.detailer_feather), # Feather del detailer
-            ("25", "bbox_threshold", self.workflow_data.detailer_bbox_threshold), # BBox Threshold del detailer
-            ("25", "bbox_dilation", self.workflow_data.detailer_bbox_dilation), # BBox Dilation del detailer
-            ("25", "bbox_crop_factor", self.workflow_data.detailer_bbox_crop_factor), # BBox Crop Factor del detailer
-            ("25", "drop_size", self.workflow_data.detailer_drop_size), # Drop Size del detailer
+            ("25", "seed", seed), 
+            ("25", "steps", self.workflow_data.detailer_steps), 
+            ("25", "cfg", self.workflow_data.detailer_cfg), 
+            ("25", "sampler_name", self.workflow_data.detailer_sampler_name), 
+            ("25", "scheduler", self.workflow_data.detailer_scheduler), 
+            ("25", "denoise", self.workflow_data.detailer_denoise), 
+            ("25", "wildcard", client.built_prompts["detailer_wildcard_prompt"]), 
+            ("25", "feather", self.workflow_data.detailer_feather), 
+            ("25", "bbox_threshold", self.workflow_data.detailer_bbox_threshold), 
+            ("25", "bbox_dilation", self.workflow_data.detailer_bbox_dilation), 
+            ("25", "bbox_crop_factor", self.workflow_data.detailer_bbox_crop_factor), 
+            ("25", "drop_size", self.workflow_data.detailer_drop_size), 
 
-            ("27", "filename_prefix", self.donor_data.vrepro_id) # Prefijo de archivo de salida
+            ("27", "filename_prefix", self.donor_data.vrepro_id) 
         ]
         return workflow_args
     
@@ -162,10 +165,7 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
         }
 
         if not self.workflow_data.use_reference_pose:
-            # NOTA: se quito "28" de esta lista porque ese nodo (era un
-            # "easy cleanGpuUsed" del paquete ComfyUI-Easy-Use, roto) ya
-            # fue eliminado directamente del archivo portrait.json. Dejarlo
-            # aqui causaria "Node '28' was not found in the workflow".
+ 
             changes["remove"].extend(["5", "6", "7", "8"])
             changes["reconnect"].extend([("3", 0, "9", "positive"), ("4", 0, "9", "negative"), ("2", 0, "9", "latent_image")])
 
