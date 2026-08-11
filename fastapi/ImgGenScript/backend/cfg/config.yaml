@@ -105,8 +105,8 @@ portrait:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.55
-  faceid_v2_weight: 0.6
+  faceid_weight: 0.5  # bajado de 0.55 — el peso alto estaba aplanando la textura de piel
+  faceid_v2_weight: 0.55  # bajado de 0.6 — mismo motivo, probar contra piel del buzo blanco
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
