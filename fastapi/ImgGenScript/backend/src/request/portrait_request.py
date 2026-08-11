@@ -144,27 +144,7 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             ("25", "bbox_crop_factor", self.workflow_data.detailer_bbox_crop_factor), 
             ("25", "drop_size", self.workflow_data.detailer_drop_size), 
 
-            ("27", "filename_prefix", self.donor_data.vrepro_id),
-
-            # --- Segunda pasada de FaceDetailer (boca/nariz/mentón) ---
-            # Reutiliza los MISMOS prompts del detailer principal (nodos 22/23) para no dejar
-            # esta pasada sin guía positiva/negativa, y el MISMO seed compartido para no
-            # reintroducir el bug de incoherencia entre etapas.
-            ("28", "text", client.built_prompts["detailer_positive_prompt"]),
-            ("29", "text", client.built_prompts["detailer_negative_prompt"]),
-
-            ("25b", "seed", seed),
-            ("25b", "steps", self.workflow_data.detailer_steps),
-            ("25b", "cfg", self.workflow_data.detailer_cfg),
-            ("25b", "sampler_name", self.workflow_data.detailer_sampler_name),
-            ("25b", "scheduler", self.workflow_data.detailer_scheduler),
-            ("25b", "denoise", 0.35),  # TODO: mover a config.yaml (detailer2_denoise) una vez validado
-            ("25b", "wildcard", client.built_prompts["detailer_wildcard_prompt"]),
-            ("25b", "feather", self.workflow_data.detailer_feather),
-            ("25b", "bbox_threshold", self.workflow_data.detailer_bbox_threshold),
-            ("25b", "bbox_dilation", self.workflow_data.detailer_bbox_dilation),
-            ("25b", "bbox_crop_factor", 1.8),  # TODO: mover a config.yaml (detailer2_bbox_crop_factor) una vez validado
-            ("25b", "drop_size", self.workflow_data.detailer_drop_size),
+            ("27", "filename_prefix", self.donor_data.vrepro_id) 
         ]
         return workflow_args
     
