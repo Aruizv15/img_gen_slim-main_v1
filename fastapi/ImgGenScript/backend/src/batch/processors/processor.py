@@ -81,7 +81,7 @@ class ProjectProcessor:
         if generation_type == "portrait":
             use_pose = True
             use_hands_refiner = False
-            use_amateur_effect = True  # antes False — activado para probar si mejora el realismo general
+            use_amateur_effect = False  # revertido: el bloque de geometria del post-processor parece mover rasgos faciales
 
         donor_id = project_path.name
         self.logger.info(f"Processing project: {donor_id}")
