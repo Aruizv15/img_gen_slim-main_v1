@@ -124,7 +124,7 @@ portrait:
   k2_denoise: 0.45
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_steps: 24
-  detailer_cfg: 5.5  # bajado de 7.0 — CFG alto empuja a resultados demasiado "perfectos", menos naturales
+  detailer_cfg: 6.5  # subido de 5.5 — ese valor debilitaba demasiado el negative prompt (CFG bajo = menos adherencia a AMBOS prompts, no solo mas "natural")
   detailer_sampler_name: "dpmpp_2m"
   detailer_scheduler: "karras"
   detailer_denoise: 0.25
