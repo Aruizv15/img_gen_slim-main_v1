@@ -6,7 +6,6 @@ from backend.src.utils import make_random_seed
 
 class WorkflowBuilder:
     
-
     def __init__(
         self,
         generation_type: str,
@@ -17,18 +16,7 @@ class WorkflowBuilder:
         request_data: Dict[str, Any],
         logger: logging.Logger = None,
     ):
-        """
-        Initializes the WorkflowBuilder.
-
-        Args:
-            generation_type (str): The type of generation ('fullbody' or 'portrait').
-            generation_settings (Dict[str, Any]): Type-specific configuration settings (from RequestFactory).
-            prompts (Dict[str, str]): A dictionary containing prompt templates.
-            use_ref_pose (bool): Whether a reference pose image is being used.
-            ref_image_name (str): The filename of the reference image, if `use_ref_pose` is True.
-            request_data (Dict[str, Any]): Request data for the specific generation type (from RequestFactory).
-            logger (logging.Logger, optional): A logger instance for recording events. Defaults to None.
-        """
+        
         if generation_type not in ["fullbody", "portrait"]:
             raise ValueError(f"Unknown generation type: {generation_type}")
 
@@ -167,7 +155,7 @@ class WorkflowBuilder:
             specific_args.update({
                 "controlnet_preprocessor": self.generation_settings.controlnet_preprocessor,
                 "controlnet_preprocessor_sd_version": self.generation_settings.controlnet_preprocessor_sd_version,
-                "fixed_pose_image": self.generation_settings.fixed_pose_image,
+                "fixed_pose_image": (Path(self.settings.comfyui_reference_dir) / self.generation_settings.fixed_pose_image).as_posix(),
             })
 
         # --- Build and return WorkflowData ---
