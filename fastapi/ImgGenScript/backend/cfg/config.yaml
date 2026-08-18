@@ -40,14 +40,14 @@ fullbody:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.4
-  faceid_v2_weight: 0.45
+  faceid_weight: 0.3
+  faceid_v2_weight: 0.35
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.4
+  plus_face_weight: 0.35
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
@@ -84,7 +84,6 @@ fullbody:
   hands_refiner_denoise: 0.38
 
 portrait:
-  fixed_pose_image: "pose_fija_portrait.png"
   workflow: "portrait.json"
   checkpoint: "RealVisXL_V5.0_fp16.safetensors"
   batch_size: 1
@@ -106,14 +105,14 @@ portrait:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.62
-  faceid_v2_weight: 0.68
+  faceid_weight: 0.55
+  faceid_v2_weight: 0.6
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.45
+  plus_face_weight: 0.4
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
