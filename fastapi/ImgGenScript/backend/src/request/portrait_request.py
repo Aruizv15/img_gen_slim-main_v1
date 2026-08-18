@@ -12,7 +12,14 @@ from src.utils import save_json_file
 SETTINGS = get_settings()
 
 class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
-   
+    """
+    A concrete implementation of a request to generate portrait images.
+
+    This class specializes the `BaseRequest` to handle the specific requirements
+    of generating portrait images. It defines how to assemble the positive
+    prompt arguments, which workflow arguments to set, and how to modify the
+    workflow structure based on the request's configuration.
+    """
     def _get_positive_prompt_args(self) -> Dict[str, Any]:
         """Assembles the arguments for the positive prompt template.
 
@@ -67,7 +74,7 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             ("3", "text", client.built_prompts["positive_prompt"]), # Prompt Positivo
             ("4", "text", client.built_prompts["negative_prompt"]), # Prompt Negativo
 
-            ("5", "image", self.workflow_data.fixed_pose_image), # Pose fija de portrait (config.yaml)
+            ("5", "image", self.workflow_data.ref_image), # Nodo de carga de imagen principal (referencia)
 
             ("6", "preprocessor", self.workflow_data.controlnet_preprocessor), # Preprocesador de ControlNet
             ("6", "sd_version", self.workflow_data.controlnet_preprocessor_sd_version), # Versión de SD para Preprocesador de ControlNet
