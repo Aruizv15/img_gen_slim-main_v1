@@ -84,6 +84,7 @@ fullbody:
   hands_refiner_denoise: 0.38
 
 portrait:
+  fixed_pose_image: "pose_fija_portrait.png"
   workflow: "portrait.json"
   checkpoint: "RealVisXL_V5.0_fp16.safetensors"
   batch_size: 1
@@ -105,14 +106,14 @@ portrait:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.3  # alineado con fullbody (antes 0.5, luego 0.55 original) — fullbody se ve mas natural con este valor
-  faceid_v2_weight: 0.35  # alineado con fullbody (antes 0.55, luego 0.6 original)
+  faceid_weight: 0.3
+  faceid_v2_weight: 0.35
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.35  # alineado con fullbody (antes 0.4)
+  plus_face_weight: 0.35
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
@@ -124,7 +125,7 @@ portrait:
   k2_denoise: 0.45
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_steps: 24
-  detailer_cfg: 6.5  # subido de 5.5 — ese valor debilitaba demasiado el negative prompt (CFG bajo = menos adherencia a AMBOS prompts, no solo mas "natural")
+  detailer_cfg: 6.5
   detailer_sampler_name: "dpmpp_2m"
   detailer_scheduler: "karras"
   detailer_denoise: 0.25
