@@ -2,12 +2,11 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 class PortraitSettings(BaseSettings):
-   
+    """
+    Configuration settings for portrait image generation.
+    """
     # --- Workflow ---
     workflow: str
-
-    # --- Fixed Pose ---
-    fixed_pose_image: str
 
     # --- Checkpoint ---
     checkpoint: str
@@ -52,7 +51,7 @@ class PortraitSettings(BaseSettings):
     faceid_combine_embeds: str
     faceid_start: float
     faceid_end: float
-    
+
     # --- Plus Face ---
     plus_face_loader_preset: str
     plus_face_weight: float
