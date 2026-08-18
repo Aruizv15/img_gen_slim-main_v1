@@ -5,15 +5,7 @@ from backend.src.config.settings import Settings, get_settings
 from backend.src.utils import make_random_seed
 
 class WorkflowBuilder:
-    """
-    Constructs the specific WorkflowData object based on the generation type.
-
-    This class encapsulates all the workflow construction logic,
-    including common parameters, type-specific parameters (fullbody/portrait),
-    and handling of reference images. It acts as a factory for `WorkflowData`
-    objects, ensuring that all necessary settings and prompts are correctly
-    assembled for a given generation task.
-    """
+    
 
     def __init__(
         self,
@@ -175,6 +167,7 @@ class WorkflowBuilder:
             specific_args.update({
                 "controlnet_preprocessor": self.generation_settings.controlnet_preprocessor,
                 "controlnet_preprocessor_sd_version": self.generation_settings.controlnet_preprocessor_sd_version,
+                "fixed_pose_image": self.generation_settings.fixed_pose_image,
             })
 
         # --- Build and return WorkflowData ---
