@@ -3,10 +3,11 @@ from .workflow_data import WorkflowData
 
 @dataclass
 class PortraitWorkflowData(WorkflowData):
-   
+    """
+    Stores all configuration parameters for the portrait ComfyUI workflow.
+    """
     # --- RefImage ---
     ref_image: str
-    fixed_pose_image: str
 
     # --- ControlNet Preprocessor ---
     controlnet_preprocessor: str
@@ -54,7 +55,7 @@ class PortraitWorkflowData(WorkflowData):
     plus_face_combine_embeds: str
     plus_face_start: float
     plus_face_end: float
-    
+
     # --- KSampler 2 ---
     k2_seed: int
     k2_steps: int
@@ -62,7 +63,7 @@ class PortraitWorkflowData(WorkflowData):
     k2_sampler_name: str
     k2_scheduler: str
     k2_denoise: float
-    
+
     # --- Face Detailer ---
     detailer_positive_prompt_template: str
     detailer_negative_prompt_template: str
