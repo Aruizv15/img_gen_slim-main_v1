@@ -155,7 +155,6 @@ class WorkflowBuilder:
             specific_args.update({
                 "controlnet_preprocessor": self.generation_settings.controlnet_preprocessor,
                 "controlnet_preprocessor_sd_version": self.generation_settings.controlnet_preprocessor_sd_version,
-                "fixed_pose_image": (Path(self.settings.comfyui_reference_dir) / self.generation_settings.fixed_pose_image).as_posix(),
             })
 
         # --- Build and return WorkflowData ---
