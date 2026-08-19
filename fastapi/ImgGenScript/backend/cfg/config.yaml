@@ -87,7 +87,7 @@ portrait:
   workflow: "portrait.json"
   checkpoint: "RealVisXL_V5.0_fp16.safetensors"
   batch_size: 1
-  use_reference_pose: true
+  use_reference_pose: false
   controlnet_preprocessor: "DWPreprocessor"
   controlnet_preprocessor_sd_version: "sdxl"
   pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
