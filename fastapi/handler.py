@@ -17,7 +17,7 @@ nest_asyncio.apply()
 import urllib.request
 
 print("=" * 60)
-print("[HANDLER BUILD] v3-subida-por-ciclo-2026-07-27")
+print("[HANDLER BUILD] v4-pose-fija-portrait-2026-08-19")
 print("[HANDLER BUILD] Si NO ves '[HANDLER] Ciclo X/N generado y")
 print("[HANDLER BUILD] subido a B2' entre cada ciclo mas abajo, este")
 print("[HANDLER BUILD] worker esta corriendo una imagen VIEJA. Termina")
@@ -112,6 +112,19 @@ for _i in range(60):
 else:
     raise RuntimeError("[COMFYUI] No respondió en 5 minutos")
 
+# --- TEMPORAL: imprime la lista real de preprocesadores validos para
+# AV_ControlNetPreprocessor, para confirmar el valor correcto de
+# controlnet_preprocessor en config.yaml. Borrar este bloque despues
+# de leer el log una vez. ---
+try:
+    _obj_info = urllib.request.urlopen(
+        "http://127.0.0.1:8188/object_info/AV_ControlNetPreprocessor", timeout=10
+    ).read().decode()
+    print("[DEBUG PREPROCESSOR LIST] " + _obj_info)
+except Exception as _e:
+    print(f"[DEBUG PREPROCESSOR LIST] No se pudo obtener: {_e}")
+# --- FIN BLOQUE TEMPORAL ---
+
 async def b2_authorize():
     key_id = os.getenv('B2_KEY_ID')
     app_key = os.getenv('B2_APP_KEY')
@@ -180,6 +193,27 @@ async def download_inputs_from_b2(vrepro_id):
                 out.write(dl.content)
         except Exception as e:
             print(f"[WARN] CSV no descargado: {e}")
+
+        # Pose de referencia fija para portrait. La carpeta se recrea vacia
+        # en cada cold start (no es Network Volume persistente), asi que se
+        # revalida en cada job. Si el archivo ya esta ahi (worker "caliente"
+        # atendiendo otro job), no se vuelve a descargar.
+        pose_dir = '/workspace/ImgGenScript/files/reference/portrait'
+        pose_path = os.path.join(pose_dir, 'pose_fija_portrait.png')
+        if not os.path.exists(pose_path):
+            try:
+                dl_pose = await client.get(
+                    f"{auth['downloadUrl']}/file/{bucket}/reference/pose_fija_portrait.png",
+                    headers={"Authorization": auth["authorizationToken"]}
+                )
+                if dl_pose.status_code == 200 and len(dl_pose.content) > 1024:
+                    with open(pose_path, "wb") as out:
+                        out.write(dl_pose.content)
+                    print(f"[B2] Pose de referencia descargada: {pose_path}")
+                else:
+                    print(f"[WARN] Pose de referencia no descargada: status={dl_pose.status_code}, bytes={len(dl_pose.content)}")
+            except Exception as e:
+                print(f"[WARN] Pose de referencia no descargada: {e}")
 
 async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
     auth = await b2_authorize()
@@ -274,18 +308,9 @@ def handler(job):
     vrepro_id = job_input.get("vreproID", "")
     generation_type = job_input.get("generation_type", "fullbody")
     max_cycles = job_input.get("max_cycles", 1)
-    # Identifica esta corrida completa (todos sus ciclos) para que Backblaze
-    # las agrupe juntas y el servidor pueda quedarse solo con la corrida
-    # mas reciente por donante+tipo. Si el job no trae job_batch (por
-    # ejemplo, una prueba manual con test_input.json), se genera uno local.
+   
     job_batch = job_input.get("job_batch") or time.strftime('%Y%m%d-%H%M%S')
 
-    # Leer los checkboxes de la interfaz desde el input del job.
-    # ANTES estaban hardcodeados (pose=False, hands=True, amateur=True),
-    # asi que lo que el usuario marcara en la UI se ignoraba por completo
-    # (p.ej. Amateur Effect salia SIEMPRE activado aunque estuviera
-    # desmarcado). Los defaults replican el comportamiento anterior por
-    # si main.py todavia no envia estos campos.
     use_pose = bool(job_input.get("use_pose", False))
     use_hands_refiner = bool(job_input.get("use_hands_refiner", True))
     use_amateur_effect = bool(job_input.get("use_amateur_effect", True))
@@ -306,11 +331,7 @@ def handler(job):
             shutil.rmtree(comfy_input)
         os.makedirs(comfy_input, exist_ok=True)
 
-        # Limpiar tambien la carpeta de salida antes de generar. Sin esto,
-        # ComfyUI acumula las imagenes de TODAS las corridas anteriores en
-        # el mismo worker, y upload_outputs_to_b2 las sube TODAS bajo la
-        # carpeta del donante actual (mezclando fotos de donantes distintos
-        # en Backblaze).
+       
         comfy_output = '/workspace/ComfyUI_app/output'
         if os.path.isdir(comfy_output):
             shutil.rmtree(comfy_output)
@@ -322,19 +343,7 @@ def handler(job):
             print(f"[COMFYUI INPUT] Copiadas: {os.listdir(comfy_input)}")
 
         async def main():
-            # SUBIDA POR CICLO: se ejecuta cada ciclo por separado y se sube
-            # su resultado a B2 inmediatamente, en vez de generar todos los
-            # ciclos y subir una sola vez al final. Ventajas:
-            #   1. Las fotos aparecen en la galeria en tiempo real, ciclo a
-            #      ciclo, en vez de todas juntas al final.
-            #   2. Si el worker muere (Execution Timeout, crash, etc.) a
-            #      mitad de la corrida, los ciclos ya completados estan a
-            #      salvo en B2; solo se pierde el ciclo en curso.
-            # Esta es la misma estructura del bucle antiguo, que era correcta
-            # salvo por un defecto: ComfyUI nombraba todos los ciclos igual
-            # (_00001_) y las subidas se pisaban entre si en B2. Ese defecto
-            # ya no existe porque upload_outputs_to_b2 agrega un sufijo unico
-            # de fecha-hora a cada subida.
+            
             for _ciclo in range(max_cycles):
                 orchestrator = BatchOrchestrator(generation_type=generation_type)
                 await orchestrator.run(
@@ -345,10 +354,7 @@ def handler(job):
                     use_amateur_effect_override=use_amateur_effect,
                 )
                 await upload_outputs_to_b2(vrepro_id, generation_type, job_batch)
-                # Vaciar la carpeta de salida despues de subir: si no, el
-                # siguiente ciclo volveria a encontrar (y re-subir con otro
-                # sufijo) las fotos de los ciclos anteriores, duplicandolas
-                # en B2 y en la galeria.
+               
                 if os.path.isdir(comfy_output):
                     shutil.rmtree(comfy_output)
                 os.makedirs(comfy_output, exist_ok=True)
