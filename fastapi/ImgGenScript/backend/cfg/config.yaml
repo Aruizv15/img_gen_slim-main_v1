@@ -87,8 +87,8 @@ portrait:
   workflow: "portrait.json"
   checkpoint: "RealVisXL_V5.0_fp16.safetensors"
   batch_size: 1
-  use_reference_pose: false  # TEMPORAL: se vuelve a activar cuando confirmemos el preprocesador (ver TODO abajo)
-  controlnet_preprocessor: "DWPreprocessor"  # TODO: confirmar valor exacto vía [DEBUG PREPROCESSOR LIST] en el log
+  use_reference_pose: true
+  controlnet_preprocessor: "dwpose"  # confirmado vía [DEBUG PREPROCESSOR LIST] en el log del 2026-08-19
   controlnet_preprocessor_sd_version: "sdxl"
   pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
   pose_controlnet_weight: 0.7
