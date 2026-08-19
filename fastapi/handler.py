@@ -112,10 +112,7 @@ for _i in range(60):
 else:
     raise RuntimeError("[COMFYUI] No respondió en 5 minutos")
 
-# --- TEMPORAL: imprime la lista real de preprocesadores validos para
-# AV_ControlNetPreprocessor, para confirmar el valor correcto de
-# controlnet_preprocessor en config.yaml. Borrar este bloque despues
-# de leer el log una vez. ---
+
 try:
     _obj_info = urllib.request.urlopen(
         "http://127.0.0.1:8188/object_info/AV_ControlNetPreprocessor", timeout=10
@@ -150,9 +147,7 @@ async def download_inputs_from_b2(vrepro_id):
     auth = await b2_authorize()
     bucket = os.getenv('B2_BUCKET')
     input_dir = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
-    # Limpiar la carpeta antes de descargar: si en una corrida anterior
-    # (antes del filtro por donante) se guardaron ahi fotos de OTRO
-    # donante, seguirian copiandose para siempre si no se borran primero.
+
     if os.path.isdir(input_dir):
         shutil.rmtree(input_dir)
     os.makedirs(input_dir, exist_ok=True)
@@ -164,19 +159,13 @@ async def download_inputs_from_b2(vrepro_id):
         )
         for f in r.json().get("files", []):
             filename = f["fileName"].split("/")[-1]
-            # Solo descargar archivos que pertenezcan a ESTE donante.
-            # Sin este filtro, se descargaban las fotos de TODOS los
-            # donantes que hubiera en input_images/, y luego se mezclaban
-            # juntas en el mismo lote de referencia para FaceID,
-            # produciendo caras que no correspondian a la persona correcta.
+            
             if filename and filename.startswith(vrepro_id):
                 dl = await client.get(
                     f"{auth['downloadUrl']}/file/{bucket}/{f['fileName']}",
                     headers={"Authorization": auth["authorizationToken"]}
                 )
-                # Verificar que la descarga fue exitosa y trae contenido
-                # real de imagen, no un error truncado guardado como si
-                # fuera la foto (causa de "image file is truncated").
+              
                 if dl.status_code != 200 or len(dl.content) < 1024:
                     print(f"[WARN] Descarga sospechosa de {filename}: status={dl.status_code}, bytes={len(dl.content)}. Se omite.")
                     continue
@@ -194,10 +183,6 @@ async def download_inputs_from_b2(vrepro_id):
         except Exception as e:
             print(f"[WARN] CSV no descargado: {e}")
 
-        # Pose de referencia fija para portrait. La carpeta se recrea vacia
-        # en cada cold start (no es Network Volume persistente), asi que se
-        # revalida en cada job. Si el archivo ya esta ahi (worker "caliente"
-        # atendiendo otro job), no se vuelve a descargar.
         pose_dir = '/workspace/ImgGenScript/files/reference/portrait'
         pose_path = os.path.join(pose_dir, 'pose_fija_portrait.png')
         if not os.path.exists(pose_path):
@@ -229,15 +214,7 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
         print(f"[B2] No hay archivos en {output_dir}")
         return
 
-    # Sufijo unico por lote de subida. ComfyUI reinicia su contador de
-    # nombres (_00001_) cada vez que la carpeta de salida se limpia, asi
-    # que dos ciclos/jobs distintos pueden producir archivos con EL MISMO
-    # nombre. Subirlos a la misma ruta de B2 sobrescribe el anterior
-    # silenciosamente (asi se "perdian" 5 de 6 fotos: todas eran _00001_
-    # y cada subida pisaba a la anterior). Con este sufijo de fecha-hora
-    # cada subida va a una ruta unica, sin importar como se llame el
-    # archivo localmente. El nombre sigue empezando con el vreproID, asi
-    # que extractVreproID() del frontend sigue funcionando igual.
+ 
     batch_ts = time.strftime('%Y%m%d-%H%M%S')
 
     failed_files = []
@@ -245,22 +222,13 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
         for idx, local_path in enumerate(all_files):
             f = os.path.basename(local_path)
             stem, ext = os.path.splitext(f)
-            # Se agrega generation_type como subcarpeta para que las fotos
-            # de fullbody y portrait de un mismo donante NUNCA se mezclen
-            # en Backblaze, ni siquiera al listarlas despues.
-            # job_batch agrupa TODOS los ciclos de esta corrida bajo la
-            # misma carpeta, para que el servidor pueda identificar "la
-            # corrida mas reciente" de este donante+tipo sin ambiguedad.
+           
             remote_name = f"generated_images/{vrepro_id}/{generation_type}/{job_batch}/{stem}{batch_ts}-{idx:02d}{ext}"
             with open(local_path, "rb") as fp:
                 content = fp.read()
             sha1 = hashlib.sha1(content).hexdigest()
 
-            # Se pide una upload_url NUEVA para cada archivo (en vez de
-            # reutilizar una sola para todos): las upload_url de B2 pueden
-            # invalidarse despues de un solo uso o tras cierto tiempo, y
-            # reutilizarla podia causar fallos silenciosos en subidas
-            # posteriores dentro del mismo lote.
+          
             success = False
             for intento in range(3):
                 try:
@@ -308,8 +276,9 @@ def handler(job):
     vrepro_id = job_input.get("vreproID", "")
     generation_type = job_input.get("generation_type", "fullbody")
     max_cycles = job_input.get("max_cycles", 1)
-   
+  
     job_batch = job_input.get("job_batch") or time.strftime('%Y%m%d-%H%M%S')
+
 
     use_pose = bool(job_input.get("use_pose", False))
     use_hands_refiner = bool(job_input.get("use_hands_refiner", True))
@@ -331,7 +300,6 @@ def handler(job):
             shutil.rmtree(comfy_input)
         os.makedirs(comfy_input, exist_ok=True)
 
-       
         comfy_output = '/workspace/ComfyUI_app/output'
         if os.path.isdir(comfy_output):
             shutil.rmtree(comfy_output)
@@ -343,7 +311,7 @@ def handler(job):
             print(f"[COMFYUI INPUT] Copiadas: {os.listdir(comfy_input)}")
 
         async def main():
-            
+    
             for _ciclo in range(max_cycles):
                 orchestrator = BatchOrchestrator(generation_type=generation_type)
                 await orchestrator.run(
@@ -353,8 +321,14 @@ def handler(job):
                     use_hands_refiner_override=use_hands_refiner,
                     use_amateur_effect_override=use_amateur_effect,
                 )
+          
+                try:
+                    _comfyui_log.flush()
+                    print(f"[DEBUG COMFYUI LOG POST-CICLO] {open('/tmp/comfyui.log').read()[-4000:]}")
+                except Exception as _e:
+                    print(f"[DEBUG COMFYUI LOG POST-CICLO] No se pudo leer: {_e}")
                 await upload_outputs_to_b2(vrepro_id, generation_type, job_batch)
-               
+          
                 if os.path.isdir(comfy_output):
                     shutil.rmtree(comfy_output)
                 os.makedirs(comfy_output, exist_ok=True)
