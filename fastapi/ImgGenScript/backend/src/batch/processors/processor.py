@@ -79,7 +79,7 @@ class ProjectProcessor:
         generation_settings: Dict[str, Any] = request_data["settings"] # Settings for each generation type
         
         if generation_type == "portrait":
-            use_pose = True
+            use_pose = generation_settings.use_reference_pose
             use_hands_refiner = False
             use_amateur_effect = False  # revertido: el bloque de geometria del post-processor parece mover rasgos faciales
 
