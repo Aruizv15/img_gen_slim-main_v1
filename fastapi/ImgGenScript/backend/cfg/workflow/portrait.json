@@ -170,16 +170,6 @@
     "class_type": "SaveImage",
     "_meta": { "title": "Save Image" }
   },
-  "28": {
-    "inputs": { "anything": ["6", 0] },
-    "class_type": "easy cleanGpuUsed",
-    "_meta": { "title": "Clean VRAM Used" }
-  },
-  "29": {
-    "inputs": { "anything": ["26", 0] },
-    "class_type": "easy cleanGpuUsed",
-    "_meta": { "title": "Clean VRAM Used" }
-  },
   "30": {
     "inputs": { "images": ["20", 0] },
     "class_type": "PreviewImage",
