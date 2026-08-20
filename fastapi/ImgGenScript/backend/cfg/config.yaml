@@ -91,9 +91,9 @@ portrait:
   controlnet_preprocessor: "dwpose"  # confirmado vía [DEBUG PREPROCESSOR LIST] en el log del 2026-08-19
   controlnet_preprocessor_sd_version: "sdxl"
   pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  pose_controlnet_weight: 0.7
+  pose_controlnet_weight: 1.0
   pose_controlnet_start: 0.0
-  pose_controlnet_end: 0.7
+  pose_controlnet_end: 1.0
   k1_steps: 8
   k1_cfg: 2.0
   k1_sampler_name: "dpmpp_sde"
