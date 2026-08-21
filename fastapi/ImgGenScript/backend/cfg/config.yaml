@@ -91,54 +91,53 @@ portrait:
   controlnet_preprocessor: "dwpose"
   controlnet_preprocessor_sd_version: "sdxl"
   pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  pose_controlnet_weight: 0.90
+  pose_controlnet_weight: 0.85
   pose_controlnet_start: 0.0
-  pose_controlnet_end: 1.0
+  pose_controlnet_end: 0.85
 
-  # --- PASO 1: Generación Base ---
+  # --- SAMPLER BASE ---
   k1_steps: 10
   k1_cfg: 2.0
   k1_sampler_name: "dpmpp_sde"
   k1_scheduler: "karras"
 
-  # --- IP-ADAPTER / FACEID (Máxima Fidelidad a la Donante Original) ---
+  # --- IDENTIDAD / IP-ADAPTER (Identidad 100% Real sin Artefactos) ---
   ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
-  ipadapter_lora_strength_model: 0.75
+  ipadapter_lora_strength_model: 0.70
   ipadapter_lora_strength_clip: 1.0
   clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
-  faceid_loader_lora_strength: 0.75
-  
-  # VALORES CLAVE DE RETENCIÓN DE FACCIONES:
-  faceid_weight: 0.65                  # Mantener alto para no perder los rasgos reales
-  faceid_v2_weight: 0.70
-  faceid_weight_type: "linear"
+  faceid_loader_lora_strength: 0.70
+
+  faceid_weight: 0.60
+  faceid_v2_weight: 0.65
+  faceid_weight_type: "ease in-out"     # <--- CLAVE DE RAÍZ: Suaviza la inyección para eliminar las líneas de la boca
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
-  faceid_end: 1.0                      # <--- AHORA AL 100%: Aplica identidad en todo el render
+  faceid_end: 0.95                     # Libera el 5% final para corregir texturas de piel
 
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.50               # Mantener alto para fijar ojos y forma de rostro
-  plus_face_weight_type: "linear"
+  plus_face_weight: 0.45
+  plus_face_weight_type: "ease in-out" # <--- CLAVE DE RAÍZ: Previene sombras y lunares en la barbilla
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
-  plus_face_end: 1.0                  # <--- AHORA AL 100%: Mantiene la fisonomía exacta
+  plus_face_end: 0.95
 
-  # --- PASO 2: Refinamiento ---
+  # --- PASO 2: REFINAMIENTO ---
   k2_steps: 10
   k2_cfg: 2.0
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
-  k2_denoise: 0.45
+  k2_denoise: 0.40
 
-  # --- DETAILER FACE (Pulido sin alterar la cara) ---
+  # --- FACE DETAILER (Corrección de ojos, boca y piel limpia) ---
   detailer_bbox_model: "bbox/face_yolov8m.pt"
-  detailer_steps: 24
-  detailer_cfg: 4.5                    # <--- CFG BAJO: Evita crear lunares falsos y arrugas marcadas
+  detailer_steps: 20
+  detailer_cfg: 3.5                    # <--- CLAVE DE RAÍZ: Elimina el "over-contrast" que inventaba lunares
   detailer_sampler_name: "dpmpp_2m"
   detailer_scheduler: "karras"
-  detailer_denoise: 0.22               # <--- DENOISE CONSERVADOR: Limpia sombras de la boca sin cambiar la forma
+  detailer_denoise: 0.20               # <--- CLAVE DE RAÍZ: Denoise bajo para no cambiar los rasgos, solo pulir
   detailer_feather: 15
   detailer_bbox_threshold: 0.5
   detailer_bbox_dilation: 10
