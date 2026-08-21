@@ -82,6 +82,7 @@ fullbody:
   hands_refiner_sampler_name: "dpmpp_2m"
   hands_refiner_scheduler: "karras"
   hands_refiner_denoise: 0.38
+  
 
 portrait:
   workflow: "portrait.json"
@@ -91,47 +92,47 @@ portrait:
   controlnet_preprocessor: "dwpose"
   controlnet_preprocessor_sd_version: "sdxl"
   pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  pose_controlnet_weight: 0.85 # Reducido ligeramente de 1.0 para dar más libertad natural a los hombros/cabeza
+  pose_controlnet_weight: 0.85
   pose_controlnet_start: 0.0
-  pose_controlnet_end: 0.8
-  k1_steps: 15 # Subido de 8 a 15 para estructurar mejor la iluminación y fondo
-  k1_cfg: 2.5 # Subido ligeramente de 2.0 para mejorar nitidez de contraste
+  pose_controlnet_end: 0.7 # Finalizado ligeramente antes para dar naturalidad a la mandíbula
+  k1_steps: 15
+  k1_cfg: 2.5
   k1_sampler_name: "dpmpp_sde"
   k1_scheduler: "karras"
   ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
-  ipadapter_lora_strength_model: 0.6 # Reducido de 0.7
-  ipadapter_lora_strength_clip: 0.8 # Reducido de 1.0 para evitar dominancia visual agresiva
+  ipadapter_lora_strength_model: 0.6
+  ipadapter_lora_strength_clip: 0.8
   clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.6
-  faceid_weight: 0.40 
-  faceid_v2_weight: 0.45 
-  faceid_weight_type: "linear"
+  faceid_weight: 0.55             # Subido significativamente de 0.40 para recuperar facciones
+  faceid_v2_weight: 0.60          # Subido significativamente de 0.45
+  faceid_weight_type: "ease"      # CAMBIADO de 'linear' a 'ease' -> Crucial para evitar la boca deforme
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
-  faceid_end: 0.85 
+  faceid_end: 0.85
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.30 # Reducido de 0.45
-  plus_face_weight_type: "linear"
+  plus_face_weight: 0.42          # Subido significativamente de 0.30
+  plus_face_weight_type: "ease"   # CAMBIADO de 'linear' a 'ease'
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
   plus_face_end: 0.85
-  k2_steps: 14 # Subido de 10
+  k2_steps: 14
   k2_cfg: 2.5
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
   k2_denoise: 0.40
   detailer_bbox_model: "bbox/face_yolov8m.pt"
-  detailer_steps: 30 # Subido de 24 para definir ojos, cejas y contornos suaves
-  detailer_cfg: 5.5 # Reducido de 6.5 para evitar piel acartonada/quemada
+  detailer_steps: 32              # Aumentado ligeramente para definir micro-facciones
+  detailer_cfg: 5.5
   detailer_sampler_name: "dpmpp_2m"
   detailer_scheduler: "karras"
-  detailer_denoise: 0.35 # Subido de 0.25 para reconstruir mejor la boca y rasgos
+  detailer_denoise: 0.38          # Subido de 0.35 para que el Detailer aplique más la identidad original
   detailer_feather: 10
   detailer_bbox_threshold: 0.5
   detailer_bbox_dilation: 10
-  detailer_bbox_crop_factor: 2.5 # Ajustado de 3.0 para enfocar mejor la región facial sin bordes extraños
+  detailer_bbox_crop_factor: 2.5
   detailer_drop_size: 10
   
 interrupt_after_seconds: 900
