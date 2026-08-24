@@ -91,57 +91,52 @@ portrait:
   controlnet_preprocessor: "dwpose"
   controlnet_preprocessor_sd_version: "sdxl"
   pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
-  pose_controlnet_weight: 0.85
+  pose_controlnet_weight: 0.85 # Reducido ligeramente de 1.0 para dar más libertad natural a los hombros/cabeza
   pose_controlnet_start: 0.0
-  pose_controlnet_end: 0.85
+  pose_controlnet_end: 0.8
 
-  # --- SAMPLER BASE ---
-  k1_steps: 10
-  k1_cfg: 2.0
+  # --- PASO 1: Generación de Base General ---
+  k1_steps: 15 # Subido de 8 a 15 para estructurar mejor la iluminación y fondo
+  k1_cfg: 2.5 # Subido ligeramente de 2.0 para mejorar nitidez de contraste
   k1_sampler_name: "dpmpp_sde"
   k1_scheduler: "karras"
 
-  # --- IDENTIDAD / IP-ADAPTER (Identidad 100% Real sin Artefactos) ---
+  # --- IP-ADAPTER / FACEID (Ajuste para evitar deformaciones) ---
   ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
-  ipadapter_lora_strength_model: 0.70
-  ipadapter_lora_strength_clip: 1.0
+  ipadapter_lora_strength_model: 0.6 # Reducido de 0.7
+  ipadapter_lora_strength_clip: 0.8 # Reducido de 1.0 para evitar dominancia visual agresiva
   clip_vision_model: "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
-  faceid_loader_lora_strength: 0.70
-
-  faceid_weight: 0.60
-  faceid_v2_weight: 0.65
-  faceid_weight_type: "ease in-out"     # <--- CLAVE DE RAÍZ: Suaviza la inyección para eliminar las líneas de la boca
+  faceid_loader_lora_strength: 0.6
+  faceid_weight: 0.40 # Reducido de 0.60 para corregir distorsión en la boca
+  faceid_v2_weight: 0.45 # Reducido de 0.65
+  faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
-  faceid_end: 0.95                     # Libera el 5% final para corregir texturas de piel
+  faceid_end: 0.85 # Finalizar IP-Adapter al 85% para que el sampler suavice la piel al final
 
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.45
-  plus_face_weight_type: "ease in-out" # <--- CLAVE DE RAÍZ: Previene sombras y lunares en la barbilla
+  plus_face_weight: 0.30 # Reducido de 0.45
+  plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
-  plus_face_end: 0.95
-
-  # --- PASO 2: REFINAMIENTO ---
-  k2_steps: 10
-  k2_cfg: 2.0
+  plus_face_end: 0.85
+  k2_steps: 14 # Subido de 10
+  k2_cfg: 2.5
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
   k2_denoise: 0.40
-
-  # --- FACE DETAILER (Corrección de ojos, boca y piel limpia) ---
   detailer_bbox_model: "bbox/face_yolov8m.pt"
-  detailer_steps: 20
-  detailer_cfg: 3.5                    # <--- CLAVE DE RAÍZ: Elimina el "over-contrast" que inventaba lunares
+  detailer_steps: 30 # Subido de 24 para definir ojos, cejas y contornos suaves
+  detailer_cfg: 5.5 # Reducido de 6.5 para evitar piel acartonada/quemada
   detailer_sampler_name: "dpmpp_2m"
   detailer_scheduler: "karras"
-  detailer_denoise: 0.20               # <--- CLAVE DE RAÍZ: Denoise bajo para no cambiar los rasgos, solo pulir
-  detailer_feather: 15
+  detailer_denoise: 0.35 # Subido de 0.25 para reconstruir mejor la boca y rasgos
+  detailer_feather: 10
   detailer_bbox_threshold: 0.5
   detailer_bbox_dilation: 10
-  detailer_bbox_crop_factor: 3.0
+  detailer_bbox_crop_factor: 2.5 # Ajustado de 3.0 para enfocar mejor la región facial sin bordes extraños
   detailer_drop_size: 10
 
 interrupt_after_seconds: 900
