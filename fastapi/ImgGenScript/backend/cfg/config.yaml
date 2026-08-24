@@ -105,14 +105,14 @@ portrait:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.75
-  faceid_v2_weight: 0.75
+  faceid_weight: 0.60
+  faceid_v2_weight: 0.65
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.30
+  plus_face_weight: 0.45
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
@@ -124,14 +124,14 @@ portrait:
   k2_denoise: 0.45
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_steps: 24
-  detailer_cfg: 5.0
+  detailer_cfg: 6.5
   detailer_sampler_name: "dpmpp_2m"
   detailer_scheduler: "karras"
   detailer_denoise: 0.25
   detailer_feather: 15
   detailer_bbox_threshold: 0.5
   detailer_bbox_dilation: 10
-  detailer_bbox_crop_factor: 2.0
+  detailer_bbox_crop_factor: 3.0
   detailer_drop_size: 10
 interrupt_after_seconds: 900
 generation_verbose: false
