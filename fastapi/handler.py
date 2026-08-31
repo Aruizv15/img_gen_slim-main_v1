@@ -16,11 +16,7 @@ import csv as _csv_module
 from eye_color_correction import correct_eye_color, extract_primary_color_name
 
 def _get_donor_eye_color(vrepro_id: str) -> str:
-    """
-    Lee el CSV local ya descargado y devuelve el valor de eyeColor para
-    el donante indicado. Devuelve "" si no se encuentra (en ese caso,
-    correct_eye_color() no hace nada y se sube la imagen original).
-    """
+
     csv_path = '/workspace/ImgGenScript/files/csv/donor_info.csv'
     try:
         with open(csv_path, 'r', encoding='utf-8-sig') as f:
@@ -287,6 +283,11 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
             with open(local_path, "rb") as fp:
                 content = fp.read()
 
+            # --- FLAG DE EMERGENCIA: correccion de ojos desactivada temporalmente
+            # para descartarla como causa de un cuelgue en produccion.
+            # Cambiar a True para reactivarla una vez confirmado que no es la causa.
+            _EYE_COLOR_FIX_ENABLED = False
+
             # Correccion deterministica de color de ojos: garantiza el
             # color exacto sin importar lo que haya generado el modelo.
             # Solo se aplica para colores "dificiles" (verde, azul,
@@ -294,6 +295,8 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
             # genera bien de forma nativa la mayoria de las veces, asi
             # que tocarlos solo agregaria riesgo sin ningun beneficio.
             try:
+                if not _EYE_COLOR_FIX_ENABLED:
+                    raise RuntimeError("__skip__")
                 eye_color_raw = _get_donor_eye_color(vrepro_id)
                 _skip_colors = {"brown", "black"}
                 _primary = extract_primary_color_name(eye_color_raw) if eye_color_raw else ""
@@ -309,7 +312,8 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
                     else:
                         print(f"[EYE COLOR FIX] No se pudo corregir (sin cara detectada o color no reconocido) para {vrepro_id}: {f}")
             except Exception as e:
-                print(f"[EYE COLOR FIX] Error, se sube la imagen original sin corregir: {e}")
+                if str(e) != "__skip__":
+                    print(f"[EYE COLOR FIX] Error, se sube la imagen original sin corregir: {e}")
 
             sha1 = hashlib.sha1(content).hexdigest()
 
@@ -397,24 +401,14 @@ def handler(job):
             shutil.rmtree(comfy_input)
         os.makedirs(comfy_input, exist_ok=True)
 
-        # Limpiar tambien la carpeta de salida antes de generar. Sin esto,
-        # ComfyUI acumula las imagenes de TODAS las corridas anteriores en
-        # el mismo worker, y upload_outputs_to_b2 las sube TODAS bajo la
-        # carpeta del donante actual (mezclando fotos de donantes distintos
-        # en Backblaze).
+       
         comfy_output = '/workspace/ComfyUI_app/output'
         if os.path.isdir(comfy_output):
             shutil.rmtree(comfy_output)
         os.makedirs(comfy_output, exist_ok=True)
         src = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
         if os.path.isdir(src):
-            # Filtrar por tipo de generacion: las fotos de referencia de
-            # portrait tienen "Portrait" en el nombre, las de fullbody no.
-            # Sin este filtro, LoadImagesFromDir en ComfyUI carga TODAS las
-            # fotos del donante (portrait + fullbody mezcladas) como
-            # referencia de identidad, y si alguna no tiene una cara clara
-            # (ej. una foto de cuerpo completo), el detector de rostro falla
-            # ("no detections") y arruina la generacion completa.
+         
             all_files = os.listdir(src)
             if generation_type == "portrait":
                 relevant_files = [f for f in all_files if "portrait" in f.lower()]
