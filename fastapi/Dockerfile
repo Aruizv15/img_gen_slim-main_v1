@@ -81,28 +81,16 @@ COPY download_models.py /app/
 COPY main.py /app/
 COPY auth.py /app/
 COPY handler.py /app/
+COPY eye_color_correction.py /app/
 COPY test_input.json /app/test_input.json
 COPY templates/ /app/templates/
 COPY static/ /app/static/
 RUN python -c "import torch; print(torch.__version__, torch.version.cuda)"
 
-# --- Fix adicional: forzar transformers==4.41.2 ---
-# Igual que con numpy: algun custom_node reinstala 'transformers' sin fijar
-# version, y las versiones nuevas de transformers exigen torch>=2.4 para
-# reconocer PyTorch como backend disponible. Como aqui usamos torch==2.1.0
-# (por compatibilidad con CUDA 11.8), transformers "deshabilita" PyTorch
-# silenciosamente, rompiendo MeshGraphormer (Hands Refiner) con el error
-# "modeling_bert requires the PyTorch library but it was not found".
-# IMPORTANTE: esto va ANTES del fix de numpy, porque instalar transformers
-# arrastra su propia version de numpy (sin tope superior) como dependencia,
-# lo que rompe el pin de numpy si se hace despues.
+
 RUN pip install --no-cache-dir --force-reinstall transformers==4.41.2
 
-# --- Fix final: forzar NumPy 1.26.4 como VERDADERA ULTIMA instalacion ---
-# Varios custom_nodes instalados arriba (y ahora tambien transformers)
-# reinstalan numpy>=2, rompiendo la compatibilidad con torch==2.1.0
-# (compilado contra NumPy 1.x). Esta linea tiene que ser la ultima palabra
-# del build para garantizar que nada la sobreescriba despues.
+
 RUN pip install --no-cache-dir --force-reinstall numpy==1.26.4
 
 RUN python -c "import numpy, torch; print('NumPy:', numpy.__version__); print('Torch:', torch.__version__); import torch; torch.tensor([1,2,3]).numpy()" 
