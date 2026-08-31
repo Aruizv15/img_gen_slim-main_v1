@@ -40,8 +40,8 @@ fullbody:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.3
-  faceid_v2_weight: 0.35
+  faceid_weight: 0.55
+  faceid_v2_weight: 0.6
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
