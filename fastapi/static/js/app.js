@@ -987,6 +987,23 @@ function hideSeqProgress() {
 }
 
 async function executeModelsSequentially() {
+  // Confirmacion explicita ANTES de tocar nada del servidor: evita
+  // mandar un numero de ciclos distinto al que el usuario cree que dejo
+  // en el campo (paso que causo confusion antes: el campo decia "2"
+  // pero el usuario pensaba que decia "1").
+  const _mode0   = document.querySelector('.mode-btn.active').textContent.trim().toLowerCase();
+  const _cycles0 = document.getElementById(_mode0 === 'fullbody' ? 'fb-cycles' : 'pt-cycles').value;
+  const _queue0  = csvModels.filter(m => (modelImages[m.vreproID] || []).length > 0);
+  if (_queue0.length === 0) {
+    showToast('Ningún modelo tiene imágenes asignadas. Sube fotos con el nombre del vreproID.', 'error');
+    return;
+  }
+  const _donorNames0 = _queue0.map(m => m.vreproID).join(', ');
+  const _confirmMsg0 = `Vas a generar ${_cycles0} ciclo(s) de ${_mode0} para ${_queue0.length} donante(s): ${_donorNames0}.\n\n¿Confirmas que estos valores son correctos?`;
+  if (!window.confirm(_confirmMsg0)) {
+    return;
+  }
+
   seqRunning     = true;
   seqCancelled   = false;
   assignedFiles  = new Set();
@@ -1072,13 +1089,7 @@ async function executeModelsSequentially() {
     // Pausa para asegurar que los archivos están escritos
     await new Promise(r => setTimeout(r, 1000));
 
-    // IMPORTANTE: se usa fetchGeneratedImages() (la fuente correcta, que
-    // filtra por sesion + tipo activo + "limpiar servidor" persistido) en
-    // vez de fetchNewImages()+push manual. Ese camino viejo llamaba a
-    // /list_images (disco local, SIN filtro de tipo ni de corrida), lo
-    // que colaba fotos de fullbody mientras se corria portrait (o
-    // viceversa) porque download_generated_from_b2() en el backend baja
-    // TODO el historial del donante al disco local, sin distinguir tipo.
+
     await fetchGeneratedImages();
     modelResults[model.vreproID] = generatedImgs.filter(g => g.vreproID === model.vreproID);
 
