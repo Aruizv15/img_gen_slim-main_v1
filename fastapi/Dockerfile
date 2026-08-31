@@ -108,5 +108,9 @@ RUN pip install --no-cache-dir --force-reinstall numpy==1.26.4
 RUN python -c "import numpy, torch; print('NumPy:', numpy.__version__); print('Torch:', torch.__version__); import torch; torch.tensor([1,2,3]).numpy()" 
 RUN python -c "from transformers.utils import is_torch_available; assert is_torch_available(), 'transformers no reconoce torch como backend disponible'; print('transformers reconoce PyTorch correctamente')"
 
+RUN mkdir -p /app/models && \
+    wget -O /app/models/face_landmarker.task \
+    https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+
 EXPOSE 8000
 CMD ["python", "/app/handler.py"]
