@@ -1,42 +1,4 @@
-"""
-Correccion deterministica de color de ojos (post-procesamiento).
 
-A diferencia de ajustar pesos en el prompt (que solo aumenta la
-*probabilidad* de que el modelo genere el color pedido), este script
-edita directamente los pixeles del iris DESPUES de que la imagen ya fue
-generada -- por lo tanto GARANTIZA el color, sin depender de que el
-modelo "obedezca" el texto.
-
-Requiere:
-    pip install mediapipe opencv-python-headless --break-system-packages
-
-Requiere ademas descargar UNA VEZ el modelo de deteccion facial de
-mediapipe (unos pocos MB), colocarlo en la ruta indicada en
-FACE_LANDMARKER_MODEL_PATH. El contenedor de RunPod si tiene salida a
-internet para hacer esta descarga (a diferencia del sandbox donde se
-escribio este script, que tiene la red restringida):
-
-    wget -O face_landmarker.task \\
-      https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
-
-Uso basico:
-    from eye_color_correction import correct_eye_color
-
-    corrected_bytes = correct_eye_color(
-        image_bytes=original_png_bytes,
-        target_color="green",       # o el valor crudo del Excel, se
-                                     # interpreta con extract_primary_eye_color
-        model_path="/app/models/face_landmarker.task",
-    )
-    # corrected_bytes ya tiene los ojos con el color correcto, listo
-    # para subir a B2 en vez de la imagen original.
-
-Donde integrarlo: el punto natural es justo antes de subir las imagenes
-a B2 (en handler.py, en la funcion que sube los resultados), aplicando
-esta correccion solo si el donante tiene un color de ojos "no cafe"
-(para no tocar innecesariamente a la mayoria de donantes, que si suelen
-salir bien con cafe/negro por ser el sesgo natural del modelo).
-"""
 
 import io
 import re
@@ -64,6 +26,50 @@ _COLOR_HUE_MAP = {
     "brown": 12,
     "black": 10,
 }
+
+
+_HUE_MODIFIERS = [
+    ("emerald", 10), ("teal", 12), ("sea green", 12),
+    ("olive", -15), ("forest", -8), ("moss", -12),
+    ("gray-green", -5), ("grey-green", -5), ("sage", -10),
+    ("turquoise", 15), ("sky blue", 8), ("steel blue", 5),
+    ("navy", -10), ("cobalt", -5),
+    ("golden", -5), ("honey", -3),
+]
+
+
+_INTENSITY_MODIFIERS = [
+    ("muted", -6), ("soft", -4), ("pale", -8), ("light", -4), ("dull", -6),
+    ("vivid", 8), ("bright", 6), ("intense", 8), ("deep", 4), ("dark", 3),
+]
+
+
+def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]:
+    """
+    Ajusta el tono base segun palabras descriptivas presentes en la frase
+    completa del Excel, para que distintos donantes del mismo color
+    general (ej. "green") no salgan todos con el iris identico.
+
+    Returns:
+        (hue_final, saturation_boost) -- ambos ya listos para usar en
+        _recolor_iris_region.
+    """
+    lowered = raw_value.lower()
+    hue = base_hue
+    for keyword, offset in _HUE_MODIFIERS:
+        if keyword in lowered:
+            hue += offset
+            break  # solo el primer matiz que coincida, para no acumular varios
+    hue = int(np.clip(hue, 0, 179))
+
+    saturation_boost = 8  # valor base, mismo que antes del ajuste de matices
+    for keyword, offset in _INTENSITY_MODIFIERS:
+        if keyword in lowered:
+            saturation_boost += offset
+            break
+    saturation_boost = int(np.clip(saturation_boost, 0, 25))
+
+    return hue, saturation_boost
 
 # Indices de landmarks del iris en el modelo de mediapipe (478 puntos,
 # incluye refinamiento de iris). Cada iris tiene 5 puntos: el centro y
@@ -103,13 +109,9 @@ def _recolor_iris_region(
     center: Tuple[int, int],
     radius: int,
     target_hue: int,
+    saturation_boost: int = 8,
 ) -> np.ndarray:
-    """
-    Cambia el tono (hue) de los pixeles dentro de un circulo suave
-    (mascara con borde difuminado), preservando brillo y evitando
-    tocar el reflejo de luz (catchlight, muy brillante) y la pupila
-    (muy oscura) para que el resultado se vea natural.
-    """
+
     h, w = image_bgr.shape[:2]
     mask = np.zeros((h, w), dtype=np.float32)
     cv2.circle(mask, center, radius, 1.0, thickness=-1)
@@ -117,6 +119,10 @@ def _recolor_iris_region(
     # borde duro (que es lo que causaba las "manchas" en el enfoque de
     # prompt).
     mask = cv2.GaussianBlur(mask, (0, 0), sigmaX=radius * 0.25)
+    # Limitar la opacidad maxima (no llegar a 1.0 puro) para que se
+    # conserve algo de la textura/sombreado natural del iris original en
+    # vez de un relleno de color completamente plano y "pintado".
+    mask = mask * 0.82
 
     hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
     hue, sat, val = hsv[..., 0], hsv[..., 1], hsv[..., 2]
@@ -130,9 +136,11 @@ def _recolor_iris_region(
     new_hue = hue * (1 - effective_mask) + target_hue * effective_mask
 
     hsv[..., 0] = new_hue
-    # Empujar levemente la saturacion hacia arriba solo donde se aplico
-    # el cambio, para que el color nuevo se note (no solo el matiz).
-    hsv[..., 1] = np.clip(sat + effective_mask * 40, 0, 255)
+    # Empuje de saturacion MUY leve -- el valor anterior (+40) dejaba un
+    # verde plano y sobresaturado, muy distinto al tono natural y sutil
+    # de un ojo real. +8 es suficiente para que el color se note sin
+    # verse pintado.
+    hsv[..., 1] = np.clip(sat + effective_mask * saturation_boost, 0, 255)
 
     result = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
     return result
@@ -143,27 +151,15 @@ def correct_eye_color(
     target_color: str,
     model_path: str = "/app/models/face_landmarker.task",
 ) -> Optional[bytes]:
-    """
-    Corrige el color de ambos ojos en una imagen ya generada.
-
-    Args:
-        image_bytes: bytes de la imagen generada (PNG/JPEG).
-        target_color: color deseado, puede ser una palabra simple
-            ("green") o una descripcion larga del Excel (se extrae la
-            palabra clave automaticamente).
-        model_path: ruta al archivo .task de mediapipe (descargar una
-            vez, ver docstring del modulo).
-
-    Returns:
-        Los bytes de la imagen corregida (PNG), o None si no se detecto
-        ninguna cara (en ese caso, usar la imagen original sin tocar).
-    """
+ 
     color_name = extract_primary_color_name(target_color)
-    target_hue = _COLOR_HUE_MAP.get(color_name)
-    if target_hue is None:
-        # Color no reconocido: no se puede mapear a un tono, se
-        # devuelve None para que el llamador use la imagen original.
+    base_hue = _COLOR_HUE_MAP.get(color_name)
+    if base_hue is None:
+     
         return None
+
+  
+    target_hue, saturation_boost = _compute_hue_and_intensity(target_color, base_hue)
 
     # Decodificar imagen
     arr = np.frombuffer(image_bytes, dtype=np.uint8)
@@ -193,8 +189,8 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-    corrected = _recolor_iris_region(image_bgr, left_center, left_radius, target_hue)
-    corrected = _recolor_iris_region(corrected, right_center, right_radius, target_hue)
+    corrected = _recolor_iris_region(image_bgr, left_center, left_radius, target_hue, saturation_boost)
+    corrected = _recolor_iris_region(corrected, right_center, right_radius, target_hue, saturation_boost)
 
     success, encoded = cv2.imencode(".png", corrected)
     if not success:
