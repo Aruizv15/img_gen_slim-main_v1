@@ -127,7 +127,7 @@ portrait:
   detailer_cfg: 6.5
   detailer_sampler_name: "dpmpp_2m"
   detailer_scheduler: "karras"
-  detailer_denoise: 0.18
+  detailer_denoise: 0.21
   detailer_feather: 15
   detailer_bbox_threshold: 0.5
   detailer_bbox_dilation: 10
