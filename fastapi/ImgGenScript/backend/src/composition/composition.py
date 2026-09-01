@@ -7,41 +7,14 @@ from backend.src.composition.physical_traits import PhysicalTraits
 from backend.src.composition.style_traits import StyleTraits
 
 class Composition:
-    """
-    Orchestrates the creation of a coherent set of traits for image generation.
-
-    This class takes physical traits of a subject and a set of stylistic options
-    and combines them to produce a consistent and logical "composition". It ensures
-    that choices like outfits, hairstyles, and lighting are compatible with each
-    other and with the subject's physical attributes by applying a series of
-    sequential filters based on tags.
-
-    Attributes:
-        physical (PhysicalTraits): An object containing the physical attributes
-            of the subject (e.g., hair type, hair length).
-        style_options (StyleTraits): An object providing access to all available
-            stylistic traits (e.g., outfits, locations, poses) based on the
-            selected styles.
-        logger (Optional[logging.Logger]): A logger instance for logging warnings
-            and other information.
-    """
+    
     def __init__(
             self,
             physical_traits: PhysicalTraits,
             style_traits: StyleTraits,
             logger: Optional[logging.Logger] = None
         ):
-        """
-        Initializes the Composition orchestrator.
-
-        Args:
-            physical_traits (PhysicalTraits): The object containing the base, 
-                unchangeable physical attributes of the subject.
-            style_traits (StyleTraits): The object containing the merged, de-duplicated 
-                pool of stylistic options available for selection.
-            logger (Optional[logging.Logger], optional): A logging instance for 
-                tracking the composition selection process. Defaults to None.
-        """
+       
         self.physical: PhysicalTraits = physical_traits
         self.style_options: StyleTraits = style_traits
         self.logger: logging.Logger = logger
@@ -52,22 +25,7 @@ class Composition:
         tag_requirements: Dict[str, Set[str]],
         match_all: bool = True
     ) -> List[Trait]:
-        """
-        Filters traits of a specific type based on tag requirements.
-
-        Args:
-            trait_type (str): The category of traits to filter (e.g., 'outfits_fullbody',
-                'locations').
-            tag_requirements Dict[str, Set[str]]: A dictionary where keys are tag categories (e.g.,
-                'temperature') and values are sets of required tag values (e.g.,
-                {'temp_hot'}). A trait must have at least one of the required tags
-                for a given category.
-            match_all (bool): If True, a trait must satisfy the requirements for all
-                tag categories. If False, it must satisfy at least one.
-
-        Returns:
-            A list of `Trait` objects that meet the specified criteria.
-        """
+   
         trait_options = self.style_options[trait_type]
         coherent_options = []
 
@@ -159,11 +117,19 @@ class Composition:
             fallback_warning="No coherent hairstyles found for the physical traits. Choosing one at random."
         )
 
-        # --- Expressions (Aleatorio) ---
+        # --- Expressions (Aleatorio, con preferencia por sonrisas) ---
         expression_options = self.style_options['expressions']
         if not expression_options:
             raise ValueError("No 'expressions' options available.")
-        choices['expression'] = random.choice(expression_options)
+        # Le damos mas peso (3x) a las expresiones que suenan a sonrisa,
+        # para que aparezcan mas seguido sin eliminar la variedad de las
+        # demas (neutra, seria, etc. siguen pudiendo salir).
+        _smile_keywords = ("smil", "happy", "joy", "grin", "cheerful")
+        _weights = [
+            3 if any(k in expr.value.lower() for k in _smile_keywords) else 1
+            for expr in expression_options
+        ]
+        choices['expression'] = random.choices(expression_options, weights=_weights, k=1)[0]
 
         # --- Lighting (Coherencia de Ambiente) ---
         choices['lighting'] = self._select_coherent_trait(
@@ -173,20 +139,7 @@ class Composition:
         )
 
     def composition_fullbody(self) -> Dict[str, Any]:
-        """
-        Generates a coherent composition for a full-body image.
-
-        This method follows a sequence to build a logical set of traits:
-            1. Randomly select a 'location'.
-            2. Select a coherent 'outfit' based on the location's tags.
-            3. Compose base traits (color, makeup, hairstyle) coherent with the outfit.
-            4. Select a coherent 'pose' based on the chosen expression's emotion tag.
-            5. Return the final composition as a dictionary of trait values.
-
-        Returns:
-            A dictionary mapping trait types to their selected string values,
-            including the initial physical traits.
-        """
+       
         choices: Dict[str, Trait] = {}
         
         # --- 1. Location ---
@@ -232,19 +185,7 @@ class Composition:
         return composition
 
     def composition_portrait(self) -> Dict[str, Any]:
-        """
-        Generates a coherent composition for a portrait image.
-
-        This method follows a sequence to build a logical set of traits:
-            1. Randomly select a 'background'.
-            2. Select a coherent 'outfit' based on the background's tags.
-            3. Compose base traits (color, makeup, hairstyle) coherent with the outfit.
-            4. Return the final composition as a dictionary of trait values.
-
-        Returns:
-            A dictionary mapping trait types to their selected string values,
-            including the initial physical traits.
-        """
+        
         choices: Dict[str, Trait] = {}
         
         # --- 1. Background ---
