@@ -13,16 +13,7 @@ from backend.src.config.settings import Settings, get_settings
 from backend.src.utils import get_random_option, ensure_dir
 
 class ProjectProcessor:
-    """
-    Processes a single project (e.g., 'OVODxxxxx') from start to finish.
-
-    This class encapsulates all the logic required to generate images for one
-    specific donor. Its responsibilities include:
-    - Building a coherent composition of traits using `CompositionBuilder`.
-    - Constructing the appropriate ComfyUI workflow via `WorkflowBuilder`.
-    - Executing the asynchronous generation request.
-    - Handling optional post-processing of the generated images.
-    """
+    
     def __init__(
         self,
         trait_loader: TraitDataLoader,
@@ -52,24 +43,7 @@ class ProjectProcessor:
         use_hands_refiner: Optional[bool],
         use_amateur_effect: Optional[bool],
     ) -> bool:
-        """
-        Processes a single project to generate and save images.
-
-        This is the main method that orchestrates the entire generation pipeline for
-        a single donor. It builds the composition, constructs the workflow, executes
-        the request, and handles post-processing.
-
-        Args:
-            project_data (Dict[str, str]): The donor's data row from the CSV file.
-            project_path (Path): The path to the project's root directory (e.g., '.../OVODxxxxx').
-            generation_type (Literal["fullbody", "portrait"]): The type of generation to perform.
-            use_pose (Optional[bool]): Override for using a reference pose image.
-            use_hands_refiner (Optional[bool]): Override for using the hands refiner.
-            use_amateur_effect (Optional[bool]): Override for applying the amateur post-processing effect.
-
-        Returns:
-            bool: True if the process completed successfully, False otherwise.
-        """
+       
         # --- Pre-generation setup ---
         if generation_type not in ["fullbody", "portrait"]:
             raise ValueError(f"Invalid generation_type: {generation_type}")
