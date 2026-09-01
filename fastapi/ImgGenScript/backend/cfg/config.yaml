@@ -30,7 +30,7 @@ fullbody:
   pose_controlnet_start: 0.0
   pose_controlnet_end: 0.7
   k1_steps: 8
-  k1_cfg: 2.0
+  k1_cfg: 2.5
   k1_sampler_name: "dpmpp_sde"
   k1_scheduler: "karras"
   ipadapter_lora_name: "ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
@@ -53,7 +53,7 @@ fullbody:
   plus_face_start: 0.0
   plus_face_end: 1.0
   k2_steps: 10
-  k2_cfg: 2.0
+  k2_cfg: 2.5
   k2_sampler_name: "dpmpp_sde"
   k2_scheduler: "karras"
   k2_denoise: 0.45
