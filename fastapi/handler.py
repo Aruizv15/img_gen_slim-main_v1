@@ -298,7 +298,7 @@ def handler(job):
     
     use_pose = bool(job_input.get("use_pose", False))
     use_hands_refiner = bool(job_input.get("use_hands_refiner", True))
-    use_amateur_effect = bool(job_input.get("use_amateur_effect", True))
+    use_amateur_effect = bool(job_input.get("use_amateur_effect", false))
 
     print(f"[HANDLER] vreproID={vrepro_id}, generation_type={generation_type}, "
           f"cycles={max_cycles}, pose={use_pose}, hands={use_hands_refiner}, "
