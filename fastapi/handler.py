@@ -195,26 +195,56 @@ async def download_inputs_from_b2(vrepro_id):
         except Exception as e:
             print(f"[WARN] CSV no descargado: {e}")
 
-        # Pose de referencia fija para portrait. La carpeta se recrea vacia
-        # en cada cold start (no es Network Volume persistente), asi que se
-        # revalida en cada job. Si el archivo ya esta ahi (worker "caliente"
-        # atendiendo otro job), no se vuelve a descargar.
-        pose_dir = '/workspace/ImgGenScript/files/reference/portrait'
-        pose_path = os.path.join(pose_dir, 'pose_fija_portrait.png')
-        if not os.path.exists(pose_path):
+        # Pose de referencia fija para portrait.
+        # FIX: antes solo se descargaba "if not os.path.exists", asi que si una
+        # descarga fallaba una vez, ningun job posterior la reintentaba y portrait
+        # salia SIN pose (niebla, pelo tieso, cara descolocada). Ahora:
+        #   1. Se descarga SIEMPRE, con reintentos.
+        #   2. Se copia la pose a AMBAS rutas conocidas (la de ref_portrait_dir que
+        #      usa processor.py para buscarla, y la comfyui_reference_dir que usa
+        #      workflow_builder.py para pasarsela a ComfyUI), para que coincidan
+        #      pase lo que pase. Esta era la causa raiz historica del bug de rutas.
+        pose_filename = 'pose_fija_portrait.png'
+        pose_dirs = [
+            '/workspace/ImgGenScript/files/reference/portrait',
+            os.getenv('COMFYUI_REFERENCE_DIR', '/app/reference'),
+        ]
+        for _d in pose_dirs:
+            os.makedirs(_d, exist_ok=True)
+
+        pose_content = None
+        for intento in range(3):
             try:
                 dl_pose = await client.get(
-                    f"{auth['downloadUrl']}/file/{bucket}/reference/pose_fija_portrait.png",
+                    f"{auth['downloadUrl']}/file/{bucket}/reference/{pose_filename}",
                     headers={"Authorization": auth["authorizationToken"]}
                 )
                 if dl_pose.status_code == 200 and len(dl_pose.content) > 1024:
-                    with open(pose_path, "wb") as out:
-                        out.write(dl_pose.content)
-                    print(f"[B2] Pose de referencia descargada: {pose_path}")
+                    pose_content = dl_pose.content
+                    break
                 else:
-                    print(f"[WARN] Pose de referencia no descargada: status={dl_pose.status_code}, bytes={len(dl_pose.content)}")
+                    print(f"[WARN] Pose intento {intento+1}/3: status={dl_pose.status_code}, bytes={len(dl_pose.content)}")
             except Exception as e:
-                print(f"[WARN] Pose de referencia no descargada: {e}")
+                print(f"[WARN] Pose intento {intento+1}/3 excepcion: {e}")
+
+        if pose_content is not None:
+            escritas = []
+            for _d in pose_dirs:
+                dest = os.path.join(_d, pose_filename)
+                try:
+                    with open(dest, "wb") as out:
+                        out.write(pose_content)
+                    escritas.append(dest)
+                except Exception as e:
+                    print(f"[WARN] No se pudo escribir la pose en {dest}: {e}")
+            print(f"[B2] Pose de referencia descargada y copiada a: {escritas}")
+        else:
+            # La pose es OBLIGATORIA para portrait. Si no se pudo bajar, se avisa
+            # de forma RUIDOSA. El processor.py corregido hara fallar el job de
+            # portrait en vez de generar una imagen sin pose en silencio.
+            print(f"[ERROR] POSE FIJA NO DESCARGADA tras 3 intentos. "
+                  f"Los portraits de este worker fallaran hasta que B2 responda. "
+                  f"Verificar que exista reference/{pose_filename} en el bucket '{bucket}'.")
 
 async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
     auth = await b2_authorize()
@@ -298,7 +328,7 @@ def handler(job):
     
     use_pose = bool(job_input.get("use_pose", False))
     use_hands_refiner = bool(job_input.get("use_hands_refiner", True))
-    use_amateur_effect = bool(job_input.get("use_amateur_effect", false))
+    use_amateur_effect = bool(job_input.get("use_amateur_effect", True))
 
     print(f"[HANDLER] vreproID={vrepro_id}, generation_type={generation_type}, "
           f"cycles={max_cycles}, pose={use_pose}, hands={use_hands_refiner}, "
