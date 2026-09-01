@@ -90,11 +90,41 @@ class ProjectProcessor:
             # --- 1. Reference Images ---
             ref_image_name, ref_image_path = "", None
             if use_pose:
-                ref_images = [f.name for f in Path(request_data["ref_dir"]).iterdir() if f.suffix.lower() in ('.png', '.jpg', '.jpeg')]
+                ref_dir = Path(request_data["ref_dir"])
+                # Log EXPLICITO de la ruta que se esta inspeccionando. La causa raiz del
+                # bug historico de "pose que no llega" fue que esta ruta no coincidia con
+                # la carpeta donde el handler descarga pose_fija_portrait.png desde B2.
+                self.logger.info(f"[POSE] Buscando pose de referencia en: {ref_dir}")
+
+                if not ref_dir.is_dir():
+                    msg = (f"[POSE] La carpeta de referencia NO existe: {ref_dir}. "
+                           f"La pose fija no fue descargada o la ruta ref_dir no coincide "
+                           f"con la carpeta de descarga del handler.")
+                    if generation_type == "portrait":
+                        # En portrait la pose fija es OBLIGATORIA. Antes esto se degradaba
+                        # en silencio a use_pose=False y salia una imagen con encuadre libre
+                        # y rasgos descolocados. Ahora falla ruidosamente para que el job
+                        # se marque como fallido y quede constancia en el log.
+                        self.logger.error(msg)
+                        raise FileNotFoundError(msg)
+                    self.logger.warning(msg + " (fullbody: se continua sin pose)")
+                    use_pose = False
+                    ref_images = []
+                else:
+                    ref_images = [f.name for f in ref_dir.iterdir() if f.suffix.lower() in ('.png', '.jpg', '.jpeg')]
+
                 if ref_images:
                     ref_image_name = get_random_option(ref_images)
-                    ref_image_path = str(Path(request_data["ref_dir"]) / ref_image_name)
-                else:
+                    ref_image_path = str(ref_dir / ref_image_name)
+                    self.logger.info(f"[POSE] Pose de referencia seleccionada: {ref_image_name}")
+                elif use_pose:
+                    # Carpeta existe pero esta vacia.
+                    msg = (f"[POSE] La carpeta de referencia existe pero esta VACIA: {ref_dir}. "
+                           f"No hay pose_fija_portrait.png. Revisar descarga desde B2 en el handler.")
+                    if generation_type == "portrait":
+                        self.logger.error(msg)
+                        raise FileNotFoundError(msg)
+                    self.logger.warning(msg + " (fullbody: se continua sin pose)")
                     use_pose = False
 
             # --- 2. Data Objects ---
