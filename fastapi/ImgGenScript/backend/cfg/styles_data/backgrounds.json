@@ -1,149 +1,248 @@
 {
     "backgrounds": [
         {
-            "value": "solid complementary color background",
-            "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_studio", "env_indoor"]
-            },
-            "style": ["style_minimalist", "style_chic", "style_formal", "style_edgy", "style_glam", "style_street"]
-        },
-        {
-            "value": "solid dark background",
-            "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_studio", "env_indoor"]
-            },
-            "style": ["style_minimalist", "style_chic", "style_formal", "style_edgy", "style_glam"]
-        },
-        {
-            "value": "solid neutral gray background",
-            "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_studio", "env_indoor"]
-            },
-            "style": ["style_minimalist", "style_soft", "style_chic", "style_formal", "style_academic"]
-        },
-        {
-            "value": "solid white background",
-            "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_studio", "env_indoor"]
-            },
-            "style": ["style_minimalist", "style_soft", "style_chic", "style_formal", "style_academic", "style_glam"]
-        },
-        {
             "value": "blurred urban background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_street", "style_casual", "style_chic", "style_edgy", "style_glam"]
+            "style": [
+                "style_street",
+                "style_casual",
+                "style_chic",
+                "style_edgy",
+                "style_glam"
+            ]
         },
         {
             "value": "out-of-focus natural scenery background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_natural", "env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_natural",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_boho", "style_soft", "style_casual", "style_athleisure", "style_vintage"]
+            "style": [
+                "style_boho",
+                "style_soft",
+                "style_casual",
+                "style_athleisure",
+                "style_vintage"
+            ]
         },
         {
             "value": "minimalist interior background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_indoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor"
+                ]
             },
-            "style": ["style_minimalist", "style_chic", "style_soft", "style_academic", "style_casual", "style_formal"]
-        },
-        {
-            "value": "gradient color background",
-            "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_studio", "env_indoor"]
-            },
-            "style": ["style_minimalist", "style_chic", "style_glam", "style_soft", "style_street"]
+            "style": [
+                "style_minimalist",
+                "style_chic",
+                "style_soft",
+                "style_academic",
+                "style_casual",
+                "style_formal"
+            ]
         },
         {
             "value": "neutral-toned textured wall background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_indoor", "env_studio"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_studio"
+                ]
             },
-            "style": ["style_minimalist", "style_casual", "style_chic", "style_boho", "style_academic", "style_soft"]
-        }
-        ,
+            "style": [
+                "style_minimalist",
+                "style_casual",
+                "style_chic",
+                "style_boho",
+                "style_academic",
+                "style_soft"
+            ]
+        },
         {
             "value": "interior of a latin american house with plants background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_indoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_indoor"
+                ]
             },
-            "style": ["style_boho", "style_soft"]
+            "style": [
+                "style_boho",
+                "style_soft"
+            ]
         },
         {
             "value": "street with neon lights background",
             "tags": {
-                "temperature": ["temp_neutral", "temp_cold"],
-                "environment": ["env_indoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_vintage", "style_street", "style_edgy"]
+            "style": [
+                "style_vintage",
+                "style_street",
+                "style_edgy"
+            ]
         },
         {
             "value": "university campus background",
             "tags": {
-                "temperature": ["temp_neutral", "temp_cold"],
-                "environment": ["env_outdoor", "env_urban"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_academic", "style_preppy", "style_vintage"]
+            "style": [
+                "style_academic",
+                "style_preppy",
+                "style_vintage"
+            ]
         },
         {
             "value": "urban latin american street background",
             "tags": {
-                "temperature": ["temp_cold"],
-                "environment": ["env_urban", "env_outdoor"]
+                "temperature": [
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_urban",
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_edgy", "style_glam", "style_street"]
+            "style": [
+                "style_edgy",
+                "style_glam",
+                "style_street"
+            ]
         },
         {
             "value": "interior of a modern house background",
             "tags": {
-                "temperature": ["temp_neutral", "temp_cold"],
-                "environment": ["env_indoor"]
+                "temperature": [
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor"
+                ]
             },
-            "style": ["style_glam", "style_formal", "style_chic", "style_minimalist"]
+            "style": [
+                "style_glam",
+                "style_formal",
+                "style_chic",
+                "style_minimalist"
+            ]
         },
         {
             "value": "park with trees background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor", "env_natural"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_natural"
+                ]
             },
-            "style": ["style_soft", "style_boho", "style_casual", "style_athleisure"]
+            "style": [
+                "style_soft",
+                "style_boho",
+                "style_casual",
+                "style_athleisure"
+            ]
         },
         {
             "value": "urban skatepark with graffiti art background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor", "env_urban"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor",
+                    "env_urban"
+                ]
             },
-            "style": ["style_street", "style_edgy", "style_casual"]
+            "style": [
+                "style_street",
+                "style_edgy",
+                "style_casual"
+            ]
         },
         {
             "value": "modern yoga studio background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral", "temp_cold"],
-                "environment": ["env_indoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral",
+                    "temp_cold"
+                ],
+                "environment": [
+                    "env_indoor"
+                ]
             },
-            "style": ["style_athleisure", "style_sporty", "style_minimalist", "style_soft"]
+            "style": [
+                "style_athleisure",
+                "style_sporty",
+                "style_minimalist",
+                "style_soft"
+            ]
         },
         {
             "value": "manicured lawn background",
             "tags": {
-                "temperature": ["temp_hot", "temp_neutral"],
-                "environment": ["env_outdoor"]
+                "temperature": [
+                    "temp_hot",
+                    "temp_neutral"
+                ],
+                "environment": [
+                    "env_outdoor"
+                ]
             },
-            "style": ["style_preppy", "style_formal", "style_chic"]
+            "style": [
+                "style_preppy",
+                "style_formal",
+                "style_chic"
+            ]
         }
     ]
 }
