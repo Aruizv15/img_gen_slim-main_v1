@@ -3,7 +3,7 @@ from huggingface_hub import hf_hub_download, list_repo_files
 
 HF_TOKEN = os.getenv("HF_TOKEN", "")
 repo = 'novafem54/batchapp-models'
-extensions = ('.safetensors', '.pt', '.pth', '.onnx', '.bin')
+extensions = ('.safetensors', '.pt', '.pth', '.onnx', '.bin', '.task')
 
 files = [f for f in list_repo_files(repo, token=HF_TOKEN) if f.endswith(extensions)]
 print(f'Descargando {len(files)} modelos...', flush=True)
