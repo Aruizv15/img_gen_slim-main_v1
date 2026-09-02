@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -35,9 +28,7 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     with _landmarker_lock:
         if model_path not in _landmarker_cache:
             if not os.path.exists(model_path):
-                # Fallar rapido y con mensaje claro, en vez de dejar que
-                # mediapipe intente cargar algo inexistente y se quede
-                # esperando/reintentando en silencio.
+               
                 raise FileNotFoundError(
                     f"[EYE_COLOR] Modelo de landmarks no encontrado en {model_path}. "
                     f"Verificar que face_landmarker.task este presente en esa ruta."
@@ -54,12 +45,7 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     return _landmarker_cache[model_path]
 
 
-# --- FIX #2: detectar landmarks sobre una copia reducida ---
-# Los landmarks de mediapipe son coordenadas NORMALIZADAS (0-1), no pixeles
-# absolutos -- asi que detectar sobre una copia chica da el mismo resultado
-# relativo que detectar sobre la imagen completa, pero mucho mas rapido.
-# Esto importa mas ahora que las fullbody finales salen a ~2048px (fix de
-# nitidez reciente) en vez de ~1024px.
+
 _DETECTION_MAX_DIM = 640
 
 
@@ -71,12 +57,7 @@ def _resize_for_detection(image_bgr: np.ndarray) -> np.ndarray:
     return cv2.resize(image_bgr, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
 
-# --- FIX #3: timeout duro sobre la deteccion ---
-# landmarker.detect() es una llamada sincronica/bloqueante en C++. Si algo
-# interno se traba (contencion de CPU con ComfyUI, inicializacion rara del
-# delegate, etc.), esto garantiza que NUNCA vuelva a colgar el proceso
-# 10+ minutos: pasado el timeout se abandona esa foto puntual (se sigue
-# usando la imagen sin corregir) en vez de tumbar el job entero.
+
 def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeout_seconds: float = 25.0):
     result_holder: dict = {}
 
@@ -154,9 +135,7 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]
 
     return hue, saturation_boost
 
-# Indices de landmarks del iris en el modelo de mediapipe (478 puntos,
-# incluye refinamiento de iris). Cada iris tiene 5 puntos: el centro y
-# 4 en el borde.
+
 _LEFT_IRIS_IDX = [474, 475, 476, 477]
 _RIGHT_IRIS_IDX = [469, 470, 471, 472]
 
@@ -232,7 +211,7 @@ def _recolor_iris_region(
 def correct_eye_color(
     image_bytes: bytes,
     target_color: str,
-    model_path: str = "/app/models/face_landmarker.task",
+    model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
 ) -> Optional[bytes]:
 
     color_name = extract_primary_color_name(target_color)
