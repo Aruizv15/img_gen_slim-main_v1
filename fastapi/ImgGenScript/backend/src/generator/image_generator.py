@@ -251,7 +251,7 @@ class ImageGenerator:
             else:
                 processed_images = None
 
-            
+        
             if eye_color:
                 raw_images = self._apply_eye_color_correction(raw_images, eye_color, verbose=v("images"))
                 if processed_images is not None:
