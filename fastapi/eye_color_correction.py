@@ -1,7 +1,8 @@
-
-
 import io
 import re
+import os
+import logging
+import threading
 from typing import Optional, Tuple
 
 import cv2
@@ -13,6 +14,88 @@ from mediapipe.tasks.python.vision import (
     FaceLandmarkerOptions,
     RunningMode,
 )
+
+logger = logging.getLogger(__name__)
+
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
+_landmarker_lock = threading.Lock()
+_landmarker_cache: dict = {}
+
+
+def _get_landmarker(model_path: str) -> FaceLandmarker:
+    if model_path in _landmarker_cache:
+        return _landmarker_cache[model_path]
+    with _landmarker_lock:
+        if model_path not in _landmarker_cache:
+            if not os.path.exists(model_path):
+                # Fallar rapido y con mensaje claro, en vez de dejar que
+                # mediapipe intente cargar algo inexistente y se quede
+                # esperando/reintentando en silencio.
+                raise FileNotFoundError(
+                    f"[EYE_COLOR] Modelo de landmarks no encontrado en {model_path}. "
+                    f"Verificar que face_landmarker.task este presente en esa ruta."
+                )
+            options = FaceLandmarkerOptions(
+                base_options=BaseOptions(model_asset_path=model_path),
+                running_mode=RunningMode.IMAGE,
+                num_faces=1,
+                output_face_blendshapes=False,
+                output_facial_transformation_matrixes=False,
+            )
+            _landmarker_cache[model_path] = FaceLandmarker.create_from_options(options)
+            logger.info(f"[EYE_COLOR] Modelo de landmarks cargado y cacheado desde {model_path}")
+    return _landmarker_cache[model_path]
+
+
+# --- FIX #2: detectar landmarks sobre una copia reducida ---
+# Los landmarks de mediapipe son coordenadas NORMALIZADAS (0-1), no pixeles
+# absolutos -- asi que detectar sobre una copia chica da el mismo resultado
+# relativo que detectar sobre la imagen completa, pero mucho mas rapido.
+# Esto importa mas ahora que las fullbody finales salen a ~2048px (fix de
+# nitidez reciente) en vez de ~1024px.
+_DETECTION_MAX_DIM = 640
+
+
+def _resize_for_detection(image_bgr: np.ndarray) -> np.ndarray:
+    h, w = image_bgr.shape[:2]
+    scale = _DETECTION_MAX_DIM / max(h, w)
+    if scale >= 1.0:
+        return image_bgr
+    return cv2.resize(image_bgr, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
+
+# --- FIX #3: timeout duro sobre la deteccion ---
+# landmarker.detect() es una llamada sincronica/bloqueante en C++. Si algo
+# interno se traba (contencion de CPU con ComfyUI, inicializacion rara del
+# delegate, etc.), esto garantiza que NUNCA vuelva a colgar el proceso
+# 10+ minutos: pasado el timeout se abandona esa foto puntual (se sigue
+# usando la imagen sin corregir) en vez de tumbar el job entero.
+def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeout_seconds: float = 25.0):
+    result_holder: dict = {}
+
+    def _run():
+        try:
+            result_holder["result"] = landmarker.detect(mp_image)
+        except Exception as e:
+            result_holder["error"] = e
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=timeout_seconds)
+    if t.is_alive():
+        logger.error(f"[EYE_COLOR] Timeout de {timeout_seconds}s detectando landmarks. Se omite correccion para esta imagen.")
+        return None
+    if "error" in result_holder:
+        logger.error(f"[EYE_COLOR] Error detectando landmarks: {result_holder['error']}")
+        return None
+    return result_holder.get("result")
 
 
 # --- Mapeo de nombre de color a tono (Hue) en el espacio HSV de OpenCV (0-179) ---
@@ -151,14 +234,12 @@ def correct_eye_color(
     target_color: str,
     model_path: str = "/app/models/face_landmarker.task",
 ) -> Optional[bytes]:
- 
+
     color_name = extract_primary_color_name(target_color)
     base_hue = _COLOR_HUE_MAP.get(color_name)
     if base_hue is None:
-     
         return None
 
-  
     target_hue, saturation_boost = _compute_hue_and_intensity(target_color, base_hue)
 
     # Decodificar imagen
@@ -168,21 +249,21 @@ def correct_eye_color(
         return None
     img_h, img_w = image_bgr.shape[:2]
 
-    # Detectar landmarks faciales (incluye iris)
-    options = FaceLandmarkerOptions(
-        base_options=BaseOptions(model_asset_path=model_path),
-        running_mode=RunningMode.IMAGE,
-        num_faces=1,
-        output_face_blendshapes=False,
-        output_facial_transformation_matrixes=False,
-    )
-    with FaceLandmarker.create_from_options(options) as landmarker:
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
-        result = landmarker.detect(mp_image)
+    try:
+        landmarker = _get_landmarker(model_path)
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        return None
 
-    if not result.face_landmarks:
-        return None  # no se detecto cara -- devolver None, usar original
+    # Detectar sobre una copia reducida (FIX #2); el recoloreado final usa
+    # SIEMPRE la imagen original a resolucion completa, sin perdida de calidad.
+    detection_image = _resize_for_detection(image_bgr)
+    image_rgb = cv2.cvtColor(detection_image, cv2.COLOR_BGR2RGB)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+
+    result = _detect_with_timeout(landmarker, mp_image, timeout_seconds=25.0)
+    if result is None or not result.face_landmarks:
+        return None  # no se detecto cara, hubo timeout, o hubo error -- devolver None, usar original
 
     landmarks = result.face_landmarks[0]
 
