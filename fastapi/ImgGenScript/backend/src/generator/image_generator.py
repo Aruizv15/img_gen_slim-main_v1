@@ -9,6 +9,10 @@ from .components.builders.prompt_builder import PromptBuilder
 from .components.handlers.image_handler import ImageHandler
 from .components.handlers.memory_manager import MemoryManager
 from .components.post_processor.post_processor import PostProcessor
+# NOTA: ajustar esta ruta de import a donde efectivamente se coloque
+# eye_color_correction.py en el repo (por ejemplo junto a post_processor,
+# o como modulo propio components/eye_color/eye_color_correction.py).
+from .components.post_processor.eye_color_correction import correct_eye_color
 from src.utils import save_json_file
 from src.config.settings import get_settings
 
@@ -69,6 +73,48 @@ class ImageGenerator:
         """Provides read-only access to the final, formatted prompts."""
         return self._prompt_builder.prompts
 
+    def _apply_eye_color_correction(
+        self,
+        images: List[Tuple[str, bytes]],
+        eye_color: str,
+        verbose: bool = False,
+    ) -> List[Tuple[str, bytes]]:
+        """
+        Aplica correct_eye_color() a cada imagen de la lista, de forma
+        independiente del post-proceso amateur (por eso NO esta atado al
+        flag `post_process`: en portrait ese flag esta siempre en False,
+        y el color de ojos debe corregirse igual).
+
+        Si la correccion falla para una imagen puntual (no se detecto cara,
+        timeout, color no reconocido, etc.) se conserva la imagen original
+        sin corregir en vez de perder el archivo completo -- correct_eye_color
+        ya devuelve None en esos casos, nunca lanza excepcion por diseño,
+        pero se envuelve en try/except igual por seguridad adicional.
+        """
+        if not eye_color:
+            return images
+
+        corrected_list = []
+        n_corrected = 0
+        for filename, img_bytes in images:
+            try:
+                corrected_bytes = correct_eye_color(img_bytes, eye_color)
+            except Exception as e:
+                corrected_bytes = None
+                if self.logger:
+                    self.logger.error(f"[EYE_COLOR] Excepcion corrigiendo {filename}: {e}", exc_info=True)
+
+            if corrected_bytes is not None:
+                corrected_list.append((filename, corrected_bytes))
+                n_corrected += 1
+            else:
+                corrected_list.append((filename, img_bytes))
+
+        if self.logger and verbose:
+            self.logger.info(f"[EYE_COLOR] Corregidas {n_corrected}/{len(images)} imagenes (color objetivo: {eye_color})")
+
+        return corrected_list
+
     def generate(
         self,
         prompt_config: Dict[str, Dict[str, Any]],
@@ -78,7 +124,8 @@ class ImageGenerator:
         ref_img: Optional[str] = None,
         output_dir: Optional[str] = None,
         post_process: bool = False,
-        post_process_args: Optional[Dict[str, Any]] = None
+        post_process_args: Optional[Dict[str, Any]] = None,
+        eye_color: Optional[str] = None,
     ) -> List[Tuple[str, bytes]]:
         """
         Executes the full image generation pipeline.
@@ -90,6 +137,9 @@ class ImageGenerator:
         4. Configures the ComfyUI workflow with dynamic values and structural changes.
         5. Triggers the generation in ComfyUI and downloads the resulting images.
         6. Applies a post-processing effect if specified.
+        6.5. Applies deterministic eye color correction if eye_color is provided
+             (independent of post_process -- runs even when post_process=False,
+             which is always the case for portrait).
         7. Performs a final cleanup of memory and temporary files.
 
         Args:
@@ -101,6 +151,9 @@ class ImageGenerator:
             output_dir (str, optional): Directory to save the generated images.
             post_process (bool, optional): Whether to apply a post-processing effect.
             post_process_args (Dict[str, Any], optional): Additional arguments for the post-processing effect (style_name, environment_type, light_temperature ).
+            eye_color (str, optional): Target eye color for the donor (e.g. "green", "hazel-green").
+                When provided, deterministically recolors the iris in every generated image via
+                mediapipe landmark detection, regardless of post_process.
 
         Returns:
             True if the generation was successful, False otherwise.
@@ -143,6 +196,18 @@ class ImageGenerator:
                 )
             else:
                 processed_images = None
+
+            # 7.5 Eye color correction -- deliberadamente INDEPENDIENTE del
+            # flag post_process (en portrait post_process siempre es False,
+            # y el color de ojos debe corregirse igual). Se aplica sobre
+            # raw_images y, si existe, tambien sobre processed_images, ya
+            # que save_images() recibe ambas listas y no sabemos aqui cual
+            # termina usandose para el archivo final -- asi queda cubierto
+            # cualquiera de los dos casos.
+            if eye_color:
+                raw_images = self._apply_eye_color_correction(raw_images, eye_color, verbose=v("images"))
+                if processed_images is not None:
+                    processed_images = self._apply_eye_color_correction(processed_images, eye_color, verbose=v("images"))
 
             # 8. Save
             self.images.save_images(
