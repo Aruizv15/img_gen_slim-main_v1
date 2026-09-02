@@ -14,21 +14,10 @@ from .components.post_processor.post_processor import PostProcessor
 
 _module_logger = logging.getLogger(__name__)
 
-# --- Carga de eye_color_correction.py por RUTA DE ARCHIVO, no por import normal ---
-# El archivo vive en una carpeta llamada "fastapi/" en la raiz del repo, que
-# choca de nombre con el paquete real "fastapi" (el framework que corre el
-# servidor API). Un "from fastapi.eye_color_correction import ..." normal es
-# ambiguo y fragil segun el orden de sys.path. Cargarlo por ruta de archivo
-# evita el choque por completo, sin importar el nombre de la carpeta.
-#
-# IMPORTANTE: si esta carga falla (archivo movido, roto, modelo faltante,
-# etc.) NO debe tumbar el resto de la generacion -- antes, un import roto
-# a nivel de modulo crasheaba el handler ENTERO (ni portrait ni fullbody
-# generaban nada). Ahora se degrada a un no-op: se sigue generando todo
-# normal, solo sin correccion de color de ojos, con un log claro.
+
 _EYE_COLOR_MODULE_PATH = os.getenv(
     "EYE_COLOR_CORRECTION_PATH",
-    "/workspace/ImgGenScript/fastapi/eye_color_correction.py",
+    "/app/eye_color_correction.py",
 )
 
 
@@ -60,8 +49,7 @@ _correct_eye_color_fn = _load_correct_eye_color()
 
 
 def correct_eye_color(image_bytes: bytes, target_color: str):
-    """Wrapper seguro: si el modulo no cargo, devuelve None (sin corregir)
-    en vez de lanzar una excepcion que tumbe la generacion."""
+
     if _correct_eye_color_fn is None:
         return None
     return _correct_eye_color_fn(image_bytes, target_color)
@@ -73,19 +61,7 @@ from src.config.settings import get_settings
 SETTINGS = get_settings()
 
 class ImageGenerator:
-    """
-    A high-level client that orchestrates the entire image generation process.
-
-    This class acts as a facade, integrating multiple clients and managers to
-    provide a simplified interface for a complete generation workflow. It handles:
-    - Communication with ComfyUI (`ComfyUIClient`) and a FastAPI backend (`FastAPIClient`).
-    - Management of workflow templates (`WorkflowManager`).
-    - Building and formatting of text prompts (`PromptBuilder`).
-    - Handling of image uploads and downloads (`ImageHandler`).
-    - Memory and resource cleanup (`MemoryManager`).
-
-    It is designed to be used as a context manager to ensure proper resource cleanup.
-    """
+ 
     def __init__(
         self,
         comfyui_address: str = SETTINGS.comfyui_server_address,
@@ -94,16 +70,7 @@ class ImageGenerator:
         client_id: Optional[str] = None,
         logger: Optional[logging.Logger] | None = None
     ):
-        """
-        Initializes the ImageGenerator and its underlying components.
-
-        Args:
-            comfyui_address (str): The address of the ComfyUI server (e.g., "127.0.0.1:8188").
-            fastapi_address (str): The address of the FastAPI server (e.g., "127.0.0.1:8000").
-            workflow_path (str, optional): The file path to the base ComfyUI workflow JSON.
-            client_id (str, optional): A unique identifier for the client session. Auto-generated if None.
-            logger (logging.Logger, optional): A logger for recording process information.
-        """
+        
         self.client_id = client_id or str(uuid.uuid4())
 
         self.logger = logger
@@ -133,18 +100,7 @@ class ImageGenerator:
         eye_color: str,
         verbose: bool = False,
     ) -> List[Tuple[str, bytes]]:
-        """
-        Aplica correct_eye_color() a cada imagen de la lista, de forma
-        independiente del post-proceso amateur (por eso NO esta atado al
-        flag `post_process`: en portrait ese flag esta siempre en False,
-        y el color de ojos debe corregirse igual).
-
-        Si la correccion falla para una imagen puntual (no se detecto cara,
-        timeout, color no reconocido, etc.) se conserva la imagen original
-        sin corregir en vez de perder el archivo completo -- correct_eye_color
-        ya devuelve None en esos casos, nunca lanza excepcion por diseño,
-        pero se envuelve en try/except igual por seguridad adicional.
-        """
+       
         if not eye_color:
             return images
 
@@ -181,37 +137,7 @@ class ImageGenerator:
         post_process_args: Optional[Dict[str, Any]] = None,
         eye_color: Optional[str] = None,
     ) -> List[Tuple[str, bytes]]:
-        """
-        Executes the full image generation pipeline.
-
-        This method orchestrates the entire process:
-        1. Cleans up memory and previous images.
-        2. Uploads new input and reference images.
-        3. Builds text prompts from templates and arguments.
-        4. Configures the ComfyUI workflow with dynamic values and structural changes.
-        5. Triggers the generation in ComfyUI and downloads the resulting images.
-        6. Applies a post-processing effect if specified.
-        6.5. Applies deterministic eye color correction if eye_color is provided
-             (independent of post_process -- runs even when post_process=False,
-             which is always the case for portrait).
-        7. Performs a final cleanup of memory and temporary files.
-
-        Args:
-            prompt_config (Dict[str, Dict[str, Any]]): Configuration for building text prompts.
-            values_to_set (List[Tuple[str, str, Any]])): A list of tuples to modify specific inputs in the workflow nodes.
-            structural_changes (Dict[str, Any]): A dictionary defining nodes to remove or reconnect.
-            input_dir (str, optional): Path to a directory of input images for the workflow.
-            ref_img (str, optional): Path to a single reference image (e.g., for pose).
-            output_dir (str, optional): Directory to save the generated images.
-            post_process (bool, optional): Whether to apply a post-processing effect.
-            post_process_args (Dict[str, Any], optional): Additional arguments for the post-processing effect (style_name, environment_type, light_temperature ).
-            eye_color (str, optional): Target eye color for the donor (e.g. "green", "hazel-green").
-                When provided, deterministically recolors the iris in every generated image via
-                mediapipe landmark detection, regardless of post_process.
-
-        Returns:
-            True if the generation was successful, False otherwise.
-        """
+       
         def v(section: str) -> bool:
             return SETTINGS.get_verbose_flag(section)
 
@@ -251,7 +177,7 @@ class ImageGenerator:
             else:
                 processed_images = None
 
-        
+       
             if eye_color:
                 raw_images = self._apply_eye_color_correction(raw_images, eye_color, verbose=v("images"))
                 if processed_images is not None:
