@@ -3,338 +3,723 @@
         {
             "value": "standing, one leg slightly forward, arms crossed over the torso",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_confident", "emotion_neutral"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_confident",
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_casual", "style_formal", "style_street", "style_chic"]
+            "style": [
+                "style_casual",
+                "style_formal",
+                "style_street",
+                "style_chic"
+            ]
         },
         {
             "value": "standing, weight shifted to one leg, one arm behind the back",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_calm", "emotion_neutral"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_casual", "style_chic", "style_soft"]
+            "style": [
+                "style_casual",
+                "style_chic",
+                "style_soft"
+            ]
         },
         {
             "value": "standing, leaning slightly forward, arms hanging loosely at sides",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_soft", "style_boho"]
+            "style": [
+                "style_casual",
+                "style_soft",
+                "style_boho"
+            ]
         },
         {
             "value": "standing, one leg slightly bent, other leg straight, arms behind the back",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_neutral"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_chic", "style_formal", "style_minimalist"]
+            "style": [
+                "style_chic",
+                "style_formal",
+                "style_minimalist"
+            ]
         },
         {
             "value": "standing, legs slightly apart, one arm bent behind the head, other arm straight down",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_playful", "emotion_confident"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_playful",
+                    "emotion_confident",
+                    "emotion_happy"
+                ]
             },
-            "style": ["style_casual", "style_sporty", "style_street", "style_playful"]
+            "style": [
+                "style_casual",
+                "style_sporty",
+                "style_street",
+                "style_playful"
+            ]
         },
         {
             "value": "standing, one leg resting on a raised surface, arms straight down at sides",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_calm", "emotion_confident"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_confident"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_sporty"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_sporty"
+            ]
         },
         {
             "value": "leaning against a surface, standing with arms folded loosely across the torso",
             "tags": {
-                "type": ["pose_leaning"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_leaning"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_vintage"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_vintage"
+            ]
         },
         {
             "value": "standing, arms straight down at sides",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_neutral"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_casual", "style_formal", "style_minimalist", "style_soft"]
+            "style": [
+                "style_casual",
+                "style_formal",
+                "style_minimalist",
+                "style_soft"
+            ]
         },
         {
             "value": "standing, arms folded across the torso",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_confident", "emotion_neutral"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_confident",
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_chic", "style_formal"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_chic",
+                "style_formal"
+            ]
         },
         {
             "value": "standing, one arm bent behind the back, other arm straight down at side",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_calm", "emotion_neutral"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_casual", "style_soft", "style_chic"]
+            "style": [
+                "style_casual",
+                "style_soft",
+                "style_chic"
+            ]
         },
         {
             "value": "standing, leaning on one hip",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_confident", "emotion_calm"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_confident",
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_chic", "style_street", "style_edgy"]
+            "style": [
+                "style_casual",
+                "style_chic",
+                "style_street",
+                "style_edgy"
+            ]
         },
         {
             "value": "standing, feet crossed casually, hands behind neck",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_calm", "emotion_playful"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_playful",
+                    "emotion_happy"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_boho"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_boho"
+            ]
         },
         {
             "value": "standing, head tilted back slightly",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_calm", "emotion_playful"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_playful",
+                    "emotion_happy"
+                ]
             },
-            "style": ["style_soft", "style_boho", "style_glam"]
+            "style": [
+                "style_soft",
+                "style_boho",
+                "style_glam"
+            ]
         },
         {
             "value": "standing, one leg crossed over the other, looking casually to the side",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_chic", "style_street"]
+            "style": [
+                "style_casual",
+                "style_chic",
+                "style_street"
+            ]
         },
         {
             "value": "sitting, legs crossed at ankles, arms resting on lap",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_calm", "emotion_neutral"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_casual", "style_soft", "style_formal", "style_academic"]
+            "style": [
+                "style_casual",
+                "style_soft",
+                "style_formal",
+                "style_academic"
+            ]
         },
         {
             "value": "sitting on the floor, legs bent to the side, torso turned towards camera, arms relaxed at sides",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_soft", "style_boho"]
+            "style": [
+                "style_casual",
+                "style_soft",
+                "style_boho"
+            ]
         },
         {
             "value": "sitting, knees bent, arms resting on knees",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_sporty", "style_street"]
+            "style": [
+                "style_casual",
+                "style_sporty",
+                "style_street"
+            ]
         },
         {
             "value": "sitting cross-legged, arms resting on knees",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_boho", "style_soft", "style_sporty"]
+            "style": [
+                "style_casual",
+                "style_boho",
+                "style_soft",
+                "style_sporty"
+            ]
         },
         {
             "value": "sitting, torso twisted slightly, arms resting on lap",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_calm", "emotion_neutral"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_chic", "style_soft", "style_formal"]
+            "style": [
+                "style_chic",
+                "style_soft",
+                "style_formal"
+            ]
         },
         {
             "value": "sitting, leaning forward with elbows on a surface",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_calm", "emotion_confident"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_confident"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_academic"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_academic"
+            ]
         },
         {
             "value": "sitting, torso slightly turned, one arm resting, other on lap",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_calm", "emotion_neutral"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_chic", "style_soft", "style_formal"]
+            "style": [
+                "style_chic",
+                "style_soft",
+                "style_formal"
+            ]
         },
         {
             "value": "sitting, leaning slightly to the side",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_calm", "emotion_playful"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_playful"
+                ]
             },
-            "style": ["style_casual", "style_chic", "style_soft"]
+            "style": [
+                "style_casual",
+                "style_chic",
+                "style_soft"
+            ]
         },
         {
             "value": "sitting, legs stretched, back relaxed",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_boho", "style_soft"]
+            "style": [
+                "style_casual",
+                "style_boho",
+                "style_soft"
+            ]
         },
         {
             "value": "reclining, legs slightly bent, arms straight down at sides",
             "tags": {
-                "type": ["pose_reclining"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_reclining"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_soft", "style_boho", "style_glam"]
+            "style": [
+                "style_soft",
+                "style_boho",
+                "style_glam"
+            ]
         },
         {
             "value": "reclining, legs extended, arms resting along the sides",
             "tags": {
-                "type": ["pose_reclining"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_reclining"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_soft", "style_boho", "style_glam", "style_minimalist"]
+            "style": [
+                "style_soft",
+                "style_boho",
+                "style_glam",
+                "style_minimalist"
+            ]
         },
         {
             "value": "reclining, one leg bent, other extended, arms resting along the body",
             "tags": {
-                "type": ["pose_reclining"],
-                "emotion": ["emotion_calm", "emotion_playful"]
+                "type": [
+                    "pose_reclining"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_playful"
+                ]
             },
-            "style": ["style_soft", "style_boho", "style_glam"]
+            "style": [
+                "style_soft",
+                "style_boho",
+                "style_glam"
+            ]
         },
         {
             "value": "reclining, arms resting on the stomach",
             "tags": {
-                "type": ["pose_reclining"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_reclining"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_soft", "style_casual"]
+            "style": [
+                "style_soft",
+                "style_casual"
+            ]
         },
         {
             "value": "reclining, head turned to the side, arms relaxed at sides",
             "tags": {
-                "type": ["pose_reclining"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_reclining"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_soft", "style_boho"]
+            "style": [
+                "style_soft",
+                "style_boho"
+            ]
         },
         {
             "value": "reclining, arms lying beside the body",
             "tags": {
-                "type": ["pose_reclining"],
-                "emotion": ["emotion_calm", "emotion_neutral"]
+                "type": [
+                    "pose_reclining"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_soft", "style_minimalist"]
+            "style": [
+                "style_soft",
+                "style_minimalist"
+            ]
         },
         {
             "value": "leaning back against a railing, hands behind",
             "tags": {
-                "type": ["pose_leaning"],
-                "emotion": ["emotion_confident", "emotion_calm"]
+                "type": [
+                    "pose_leaning"
+                ],
+                "emotion": [
+                    "emotion_confident",
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_chic"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_chic"
+            ]
         },
         {
             "value": "leaning sideways, head tilted",
             "tags": {
-                "type": ["pose_leaning"],
-                "emotion": ["emotion_calm", "emotion_playful"]
+                "type": [
+                    "pose_leaning"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_playful",
+                    "emotion_happy"
+                ]
             },
-            "style": ["style_casual", "style_soft", "style_playful"]
+            "style": [
+                "style_casual",
+                "style_soft",
+                "style_playful"
+            ]
         },
         {
             "value": "leaning against, one leg bent and resting, arms hanging relaxed",
             "tags": {
-                "type": ["pose_leaning"],
-                "emotion": ["emotion_calm"]
+                "type": [
+                    "pose_leaning"
+                ],
+                "emotion": [
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_boho"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_boho"
+            ]
         },
         {
             "value": "walking forward, looking at the camera",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_confident", "emotion_playful"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_confident",
+                    "emotion_playful",
+                    "emotion_happy"
+                ]
             },
-            "style": ["style_casual", "style_street", "style_sporty", "style_athleisure", "style_chic"]
+            "style": [
+                "style_casual",
+                "style_street",
+                "style_sporty",
+                "style_athleisure",
+                "style_chic"
+            ]
         },
         {
             "value": "hands on hips, looking confidently at the camera",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_confident"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_confident"
+                ]
             },
-            "style": ["style_sporty", "style_athleisure", "style_casual", "style_street", "style_edgy", "style_chic"]
+            "style": [
+                "style_sporty",
+                "style_athleisure",
+                "style_casual",
+                "style_street",
+                "style_edgy",
+                "style_chic"
+            ]
         },
         {
             "value": "sitting with chin resting on hand, looking thoughtfully",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_thoughtful", "emotion_calm"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_thoughtful",
+                    "emotion_calm"
+                ]
             },
-            "style": ["style_academic", "style_vintage", "style_soft", "style_chic"]
+            "style": [
+                "style_academic",
+                "style_vintage",
+                "style_soft",
+                "style_chic"
+            ]
         },
         {
             "value": "adjusting glasses, looking slightly to the side",
             "tags": {
-                "type": ["pose_standing", "pose_sitting"],
-                "emotion": ["emotion_thoughtful", "emotion_neutral"]
+                "type": [
+                    "pose_standing",
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_thoughtful",
+                    "emotion_neutral"
+                ]
             },
-            "style": ["style_academic", "style_preppy", "style_vintage"]
+            "style": [
+                "style_academic",
+                "style_preppy",
+                "style_vintage"
+            ]
         },
         {
             "value": "standing with hands clasped behind back, poised",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_neutral", "emotion_confident"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_neutral",
+                    "emotion_confident"
+                ]
             },
-            "style": ["style_preppy", "style_formal", "style_academic", "style_minimalist"]
+            "style": [
+                "style_preppy",
+                "style_formal",
+                "style_academic",
+                "style_minimalist"
+            ]
         },
         {
             "value": "squatting, looking intensely at the camera",
             "tags": {
-                "type": ["pose_sitting"],
-                "emotion": ["emotion_intense", "emotion_confident"]
+                "type": [
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_intense",
+                    "emotion_confident"
+                ]
             },
-            "style": ["style_edgy", "style_street", "style_sporty"]
+            "style": [
+                "style_edgy",
+                "style_street",
+                "style_sporty"
+            ]
         },
         {
             "value": "one hand in waist, looking away with a slight smirk",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_confident", "emotion_playful"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_confident",
+                    "emotion_playful"
+                ]
             },
-            "style": ["style_edgy", "style_street", "style_casual", "style_vintage"]
+            "style": [
+                "style_edgy",
+                "style_street",
+                "style_casual",
+                "style_vintage"
+            ]
         },
         {
             "value": "leaning back with a hand touching hair",
             "tags": {
-                "type": ["pose_leaning"],
-                "emotion": ["emotion_confident", "emotion_playful"]
+                "type": [
+                    "pose_leaning"
+                ],
+                "emotion": [
+                    "emotion_confident",
+                    "emotion_playful"
+                ]
             },
-            "style": ["style_glam", "style_chic", "style_edgy", "style_soft"]
+            "style": [
+                "style_glam",
+                "style_chic",
+                "style_edgy",
+                "style_soft"
+            ]
         },
         {
             "value": "hand on hip, head tilted, looking over shoulder",
             "tags": {
-                "type": ["pose_standing"],
-                "emotion": ["emotion_confident", "emotion_intense"]
+                "type": [
+                    "pose_standing"
+                ],
+                "emotion": [
+                    "emotion_confident",
+                    "emotion_intense"
+                ]
             },
-            "style": ["style_glam", "style_chic", "style_edgy", "style_formal"]
+            "style": [
+                "style_glam",
+                "style_chic",
+                "style_edgy",
+                "style_formal"
+            ]
         },
         {
             "value": "one hand gently touching the neck, looking softly at the camera",
             "tags": {
-                "type": ["pose_standing", "pose_sitting"],
-                "emotion": ["emotion_calm", "emotion_confident"]
+                "type": [
+                    "pose_standing",
+                    "pose_sitting"
+                ],
+                "emotion": [
+                    "emotion_calm",
+                    "emotion_confident"
+                ]
             },
-            "style": ["style_glam", "style_soft", "style_chic"]
+            "style": [
+                "style_glam",
+                "style_soft",
+                "style_chic"
+            ]
         }
     ]
 }
