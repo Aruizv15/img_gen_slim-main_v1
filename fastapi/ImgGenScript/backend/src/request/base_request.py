@@ -244,6 +244,15 @@ class BaseRequest(Generic[SceneDataType, WorkflowDataType], ABC):
             values_to_set = self._get_node_values_to_set(self.generator)
             structural_changes = self._get_structural_changes()
 
+            # DEBUG temporal: confirmar en el log el valor EXACTO de eye_color
+            # que llega en este punto, para descartar de una vez si el problema
+            # es que llega vacio/None/con un valor inesperado.
+            if self.logger:
+                self.logger.info(
+                    f"[EYE_COLOR] donor_data.eye_color = {self.donor_data.eye_color!r} "
+                    f"(vrepro_id={getattr(self.donor_data, 'vrepro_id', '?')})"
+                )
+
             return self.generator.generate(
                 prompt_config={},
                 values_to_set=values_to_set,
@@ -252,7 +261,12 @@ class BaseRequest(Generic[SceneDataType, WorkflowDataType], ABC):
                 ref_img=ref_img,
                 output_dir=output_dir,
                 post_process=post_process,
-                post_process_args=post_process_args
+                post_process_args=post_process_args,
+                # Corrección determinística de color de ojos: independiente
+                # del flag post_process (portrait siempre lo tiene en False,
+                # pero igual necesita el color correcto). Se pasa siempre
+                # que la donante tenga un eye_color definido en el CSV.
+                eye_color=self.donor_data.eye_color,
             )
         
     def request(
