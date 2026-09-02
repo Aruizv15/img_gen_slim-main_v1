@@ -1,5 +1,7 @@
 import uuid
 import logging
+import os
+import importlib.util
 from typing import List, Tuple, Dict, Any, Optional
 
 from ..clients.comfyui_client import ComfyUIClient
@@ -9,10 +11,62 @@ from .components.builders.prompt_builder import PromptBuilder
 from .components.handlers.image_handler import ImageHandler
 from .components.handlers.memory_manager import MemoryManager
 from .components.post_processor.post_processor import PostProcessor
-# NOTA: ajustar esta ruta de import a donde efectivamente se coloque
-# eye_color_correction.py en el repo (por ejemplo junto a post_processor,
-# o como modulo propio components/eye_color/eye_color_correction.py).
-from .components.post_processor.eye_color_correction import correct_eye_color
+
+_module_logger = logging.getLogger(__name__)
+
+# --- Carga de eye_color_correction.py por RUTA DE ARCHIVO, no por import normal ---
+# El archivo vive en una carpeta llamada "fastapi/" en la raiz del repo, que
+# choca de nombre con el paquete real "fastapi" (el framework que corre el
+# servidor API). Un "from fastapi.eye_color_correction import ..." normal es
+# ambiguo y fragil segun el orden de sys.path. Cargarlo por ruta de archivo
+# evita el choque por completo, sin importar el nombre de la carpeta.
+#
+# IMPORTANTE: si esta carga falla (archivo movido, roto, modelo faltante,
+# etc.) NO debe tumbar el resto de la generacion -- antes, un import roto
+# a nivel de modulo crasheaba el handler ENTERO (ni portrait ni fullbody
+# generaban nada). Ahora se degrada a un no-op: se sigue generando todo
+# normal, solo sin correccion de color de ojos, con un log claro.
+_EYE_COLOR_MODULE_PATH = os.getenv(
+    "EYE_COLOR_CORRECTION_PATH",
+    "/workspace/ImgGenScript/fastapi/eye_color_correction.py",
+)
+
+
+def _load_correct_eye_color():
+    try:
+        if not os.path.exists(_EYE_COLOR_MODULE_PATH):
+            _module_logger.error(
+                f"[EYE_COLOR] No se encontro eye_color_correction.py en "
+                f"{_EYE_COLOR_MODULE_PATH}. La correccion de ojos quedara "
+                f"DESACTIVADA para esta corrida, pero la generacion sigue normal."
+            )
+            return None
+        spec = importlib.util.spec_from_file_location("eye_color_correction", _EYE_COLOR_MODULE_PATH)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _module_logger.info(f"[EYE_COLOR] Modulo cargado correctamente desde {_EYE_COLOR_MODULE_PATH}")
+        return module.correct_eye_color
+    except Exception as e:
+        _module_logger.error(
+            f"[EYE_COLOR] Error cargando eye_color_correction.py desde "
+            f"{_EYE_COLOR_MODULE_PATH}: {e}. La correccion de ojos quedara "
+            f"DESACTIVADA para esta corrida, pero la generacion sigue normal.",
+            exc_info=True,
+        )
+        return None
+
+
+_correct_eye_color_fn = _load_correct_eye_color()
+
+
+def correct_eye_color(image_bytes: bytes, target_color: str):
+    """Wrapper seguro: si el modulo no cargo, devuelve None (sin corregir)
+    en vez de lanzar una excepcion que tumbe la generacion."""
+    if _correct_eye_color_fn is None:
+        return None
+    return _correct_eye_color_fn(image_bytes, target_color)
+
+
 from src.utils import save_json_file
 from src.config.settings import get_settings
 
@@ -197,13 +251,7 @@ class ImageGenerator:
             else:
                 processed_images = None
 
-            # 7.5 Eye color correction -- deliberadamente INDEPENDIENTE del
-            # flag post_process (en portrait post_process siempre es False,
-            # y el color de ojos debe corregirse igual). Se aplica sobre
-            # raw_images y, si existe, tambien sobre processed_images, ya
-            # que save_images() recibe ambas listas y no sabemos aqui cual
-            # termina usandose para el archivo final -- asi queda cubierto
-            # cualquiera de los dos casos.
+            
             if eye_color:
                 raw_images = self._apply_eye_color_correction(raw_images, eye_color, verbose=v("images"))
                 if processed_images is not None:
