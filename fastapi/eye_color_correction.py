@@ -17,7 +17,14 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -157,37 +164,56 @@ _RIGHT_IRIS_IDX = [469, 470, 471, 472]
 def extract_primary_color_name(raw_value: str) -> str:
     """
     Extrae una palabra de color conocida de una descripcion larga, en
-    ingles O ESPAÑOL (ej. "ojos verdes" -> "green", "soft muted
-    gray-green eyes" -> "green").
+    ingles O ESPAÑOL. Usa la palabra que aparece MAS TEMPRANO en el texto
+    (no un orden de prioridad fijo), porque quien carga el CSV suele poner
+    el color principal primero y las palabras descriptivas despues --
+    ej. "dark gray-green hazel eyes" -> el color principal es "green"
+    (aparece antes que "hazel" en el texto), no al reves.
     """
     if not raw_value:
         logger.warning("[EYE_COLOR] raw_value vacio/None -- usando 'brown' por defecto.")
         return "brown"
     lowered = raw_value.lower()
 
-    # Mapa de equivalentes en espanol -> clave interna en ingles.
-    # Se revisa ANTES que las palabras en ingles sueltas para que
-    # "cafe"/"marron" no matcheen antes por accidente con otra cosa.
+    # PASO 1: compuestos con guion primero. "gray-green" significa "verde
+    # con tono gris" -- el color real es green, no gray. Si se buscara
+    # "gray" como palabra suelta matchearia antes por posicion en el texto
+    # y daria el color equivocado (bug real encontrado: "dark gray-green
+    # hazel eyes" resolvia a "gray" en vez de "green").
+    compound_overrides = {
+        "gray-green": "green", "grey-green": "green",
+        "blue-green": "green", "green-blue": "green",
+        "gray-blue": "blue", "grey-blue": "blue",
+        "hazel-green": "hazel", "green-hazel": "hazel",
+    }
+    for compound, mapped in compound_overrides.items():
+        if compound in lowered:
+            return mapped
+
+    # PASO 2: mapa de equivalentes en espanol -> clave interna en ingles.
     spanish_map = {
-        "avellana": "hazel",
-        "ambar": "amber",
-        "verde": "green",
-        "azul": "blue",
-        "gris": "gray",
-        "cafe": "brown",
-        "marron": "brown",
-        "castano": "brown",
-        "castaño": "brown",
+        "avellana": "hazel", "ambar": "amber", "verde": "green",
+        "azul": "blue", "gris": "gray", "cafe": "brown",
+        "marron": "brown", "castano": "brown", "castaño": "brown",
         "negro": "black",
     }
-    for es_word, en_key in spanish_map.items():
-        if es_word in lowered:
-            return en_key
+    all_keywords = list(spanish_map.items()) + [
+        (k, k) for k in ["hazel", "amber", "green", "blue", "gray", "grey", "brown", "black"]
+    ]
 
-    # Orden de prioridad: colores compuestos antes que sus componentes.
-    for keyword in ["hazel", "amber", "green", "blue", "gray", "grey", "brown", "black"]:
-        if keyword in lowered:
-            return keyword
+    # PASO 3: entre las palabras sueltas restantes, la que aparece MAS
+    # TEMPRANO en el texto (asumiendo que el color principal se escribe
+    # primero, y las palabras descriptivas despues).
+    best_match = None
+    best_index = len(lowered) + 1
+    for word, en_key in all_keywords:
+        idx = lowered.find(word)
+        if idx != -1 and idx < best_index:
+            best_index = idx
+            best_match = en_key
+
+    if best_match is not None:
+        return best_match
 
     # Si llegamos aca, no se reconocio NINGUNA palabra de color conocida
     # (ni en ingles ni en espanol). Antes esto caia a "brown" en total
