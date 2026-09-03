@@ -12,12 +12,81 @@ import nest_asyncio
 import subprocess
 import time
 import shutil
+import csv
+import importlib.util
+import logging
 
 nest_asyncio.apply()
 import urllib.request
 
+_h_logger = logging.getLogger(__name__)
+
+# --- Correccion de color de ojos, aplicada justo antes de subir a B2 ---
+# IMPORTANTE: el pipeline de Python (ImageGenerator.download_images/
+# save_images) guarda en project_path/generation_type, una carpeta que
+# esta funcion NUNCA sube -- upload_outputs_to_b2() sube directamente
+# desde /workspace/ComfyUI_app/output (donde ComfyUI escribe los
+# archivos nativamente via su nodo SaveImage). Por eso la correccion de
+# ojos debe aplicarse ACA, sobre los archivos reales que se suben, y no
+# en el pipeline paralelo de Python que nunca llega a B2.
+_EYE_COLOR_MODULE_PATH = os.getenv("EYE_COLOR_CORRECTION_PATH", "/app/eye_color_correction.py")
+
+
+def _load_correct_eye_color():
+    try:
+        if not os.path.exists(_EYE_COLOR_MODULE_PATH):
+            print(f"[EYE_COLOR] No se encontro eye_color_correction.py en {_EYE_COLOR_MODULE_PATH}. Correccion desactivada.")
+            return None
+        spec = importlib.util.spec_from_file_location("eye_color_correction", _EYE_COLOR_MODULE_PATH)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        print(f"[EYE_COLOR] Modulo cargado correctamente desde {_EYE_COLOR_MODULE_PATH}")
+        return module.correct_eye_color
+    except Exception as e:
+        print(f"[EYE_COLOR] Error cargando eye_color_correction.py: {e}. Correccion desactivada.")
+        return None
+
+
+_correct_eye_color_fn = _load_correct_eye_color()
+
+
+def _get_donor_eye_color(vrepro_id):
+    """
+    Busca el valor de color de ojos de la donante en donor_info.csv.
+    Tolerante al nombre exacto de la columna (busca cualquier header que
+    contenga "eye" y "color", sin importar mayusculas) para no depender
+    de adivinar el nombre exacto.
+    """
+    csv_path = '/workspace/ImgGenScript/files/csv/donor_info.csv'
+    if not os.path.exists(csv_path):
+        print(f"[EYE_COLOR] CSV no encontrado en {csv_path}")
+        return None
+    try:
+        with open(csv_path, newline='', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f, delimiter=';')
+            eye_color_col = None
+            if reader.fieldnames:
+                for col in reader.fieldnames:
+                    if col and 'eye' in col.lower() and 'color' in col.lower():
+                        eye_color_col = col
+                        break
+            if not eye_color_col:
+                print(f"[EYE_COLOR] No se encontro columna de eye color en el CSV. Columnas disponibles: {reader.fieldnames}")
+                return None
+            for row in reader:
+                row_id = (row.get('vreproID') or '').strip()
+                if row_id == vrepro_id.strip():
+                    value = row.get(eye_color_col)
+                    print(f"[EYE_COLOR] Columna detectada: '{eye_color_col}' -> valor para {vrepro_id}: {value!r}")
+                    return value
+        print(f"[EYE_COLOR] No se encontro fila con vreproID={vrepro_id} en el CSV")
+        return None
+    except Exception as e:
+        print(f"[EYE_COLOR] Error leyendo eye_color desde CSV: {e}")
+        return None
+
 print("=" * 60)
-print("[HANDLER BUILD] v5-todo-junto-2026-08-19")
+print("[HANDLER BUILD] v6-eye-color-en-upload-2026-09-03")
 print("[HANDLER BUILD] Si NO ves '[HANDLER] Ciclo X/N generado y")
 print("[HANDLER BUILD] subido a B2' entre cada ciclo mas abajo, este")
 print("[HANDLER BUILD] worker esta corriendo una imagen VIEJA. Termina")
@@ -259,6 +328,28 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
     if not all_files:
         print(f"[B2] No hay archivos en {output_dir}")
         return
+
+    # --- Correccion de color de ojos, sobre los archivos REALES que se suben ---
+    if _correct_eye_color_fn is not None:
+        eye_color = _get_donor_eye_color(vrepro_id)
+        if eye_color:
+            n_corrected = 0
+            for local_path in all_files:
+                try:
+                    with open(local_path, 'rb') as fp:
+                        original_bytes = fp.read()
+                    corrected_bytes = _correct_eye_color_fn(original_bytes, eye_color)
+                    if corrected_bytes is not None:
+                        with open(local_path, 'wb') as fp:
+                            fp.write(corrected_bytes)
+                        n_corrected += 1
+                except Exception as e:
+                    print(f"[EYE_COLOR] Excepcion corrigiendo {local_path}: {e}")
+            print(f"[EYE_COLOR] Corregidas {n_corrected}/{len(all_files)} imagenes antes de subir (color objetivo: {eye_color})")
+        else:
+            print(f"[EYE_COLOR] Sin color de ojos disponible para {vrepro_id} -- se sube sin corregir.")
+    else:
+        print("[EYE_COLOR] Modulo no disponible -- se sube sin corregir.")
 
     batch_ts = time.strftime('%Y%m%d-%H%M%S')
 
