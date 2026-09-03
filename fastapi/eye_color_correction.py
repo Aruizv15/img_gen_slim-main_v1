@@ -28,7 +28,9 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     with _landmarker_lock:
         if model_path not in _landmarker_cache:
             if not os.path.exists(model_path):
-               
+                # Fallar rapido y con mensaje claro, en vez de dejar que
+                # mediapipe intente cargar algo inexistente y se quede
+                # esperando/reintentando en silencio.
                 raise FileNotFoundError(
                     f"[EYE_COLOR] Modelo de landmarks no encontrado en {model_path}. "
                     f"Verificar que face_landmarker.task este presente en esa ruta."
@@ -45,7 +47,12 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     return _landmarker_cache[model_path]
 
 
-
+# --- FIX #2: detectar landmarks sobre una copia reducida ---
+# Los landmarks de mediapipe son coordenadas NORMALIZADAS (0-1), no pixeles
+# absolutos -- asi que detectar sobre una copia chica da el mismo resultado
+# relativo que detectar sobre la imagen completa, pero mucho mas rapido.
+# Esto importa mas ahora que las fullbody finales salen a ~2048px (fix de
+# nitidez reciente) en vez de ~1024px.
 _DETECTION_MAX_DIM = 640
 
 
@@ -57,7 +64,12 @@ def _resize_for_detection(image_bgr: np.ndarray) -> np.ndarray:
     return cv2.resize(image_bgr, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
 
-
+# --- FIX #3: timeout duro sobre la deteccion ---
+# landmarker.detect() es una llamada sincronica/bloqueante en C++. Si algo
+# interno se traba (contencion de CPU con ComfyUI, inicializacion rara del
+# delegate, etc.), esto garantiza que NUNCA vuelva a colgar el proceso
+# 10+ minutos: pasado el timeout se abandona esa foto puntual (se sigue
+# usando la imagen sin corregir) en vez de tumbar el job entero.
 def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeout_seconds: float = 25.0):
     result_holder: dict = {}
 
@@ -135,24 +147,59 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]
 
     return hue, saturation_boost
 
-
+# Indices de landmarks del iris en el modelo de mediapipe (478 puntos,
+# incluye refinamiento de iris). Cada iris tiene 5 puntos: el centro y
+# 4 en el borde.
 _LEFT_IRIS_IDX = [474, 475, 476, 477]
 _RIGHT_IRIS_IDX = [469, 470, 471, 472]
 
 
 def extract_primary_color_name(raw_value: str) -> str:
     """
-    Extrae una palabra de color conocida de una descripcion larga
-    (ej. "soft muted gray-green eyes, cool olive undertones" -> "green").
-    Reutiliza la misma logica de eye_color_helper.py.
+    Extrae una palabra de color conocida de una descripcion larga, en
+    ingles O ESPAÑOL (ej. "ojos verdes" -> "green", "soft muted
+    gray-green eyes" -> "green").
     """
     if not raw_value:
+        logger.warning("[EYE_COLOR] raw_value vacio/None -- usando 'brown' por defecto.")
         return "brown"
     lowered = raw_value.lower()
+
+    # Mapa de equivalentes en espanol -> clave interna en ingles.
+    # Se revisa ANTES que las palabras en ingles sueltas para que
+    # "cafe"/"marron" no matcheen antes por accidente con otra cosa.
+    spanish_map = {
+        "avellana": "hazel",
+        "ambar": "amber",
+        "verde": "green",
+        "azul": "blue",
+        "gris": "gray",
+        "cafe": "brown",
+        "marron": "brown",
+        "castano": "brown",
+        "castaño": "brown",
+        "negro": "black",
+    }
+    for es_word, en_key in spanish_map.items():
+        if es_word in lowered:
+            return en_key
+
     # Orden de prioridad: colores compuestos antes que sus componentes.
     for keyword in ["hazel", "amber", "green", "blue", "gray", "grey", "brown", "black"]:
         if keyword in lowered:
             return keyword
+
+    # Si llegamos aca, no se reconocio NINGUNA palabra de color conocida
+    # (ni en ingles ni en espanol). Antes esto caia a "brown" en total
+    # silencio -- ahora se deja constancia clara en el log, porque es
+    # la causa mas probable de que la correccion "no haga nada visible":
+    # el valor del CSV puede tener un formato inesperado (typo, otro
+    # idioma, emoji, etc.) que nadie detecto hasta ahora.
+    logger.warning(
+        f"[EYE_COLOR] No se reconocio ningun color en '{raw_value}' "
+        f"(ni ingles ni espanol) -- usando 'brown' por defecto. "
+        f"Revisar el formato real del dato en el CSV."
+    )
     return "brown"  # fallback seguro si no se reconoce ningun color
 
 
@@ -215,8 +262,10 @@ def correct_eye_color(
 ) -> Optional[bytes]:
 
     color_name = extract_primary_color_name(target_color)
+    logger.info(f"[EYE_COLOR] target_color recibido={target_color!r} -> color_name resuelto={color_name!r}")
     base_hue = _COLOR_HUE_MAP.get(color_name)
     if base_hue is None:
+        logger.error(f"[EYE_COLOR] color_name '{color_name}' no tiene hue asociado en _COLOR_HUE_MAP -- se omite correccion.")
         return None
 
     target_hue, saturation_boost = _compute_hue_and_intensity(target_color, base_hue)
