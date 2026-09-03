@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -134,8 +127,11 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]
     general (ej. "green") no salgan todos con el iris identico.
 
     Returns:
-        (hue_final, saturation_boost) -- ambos ya listos para usar en
-        _recolor_iris_region.
+        (hue_final, target_saturation) -- ambos ya listos para usar en
+        _recolor_iris_region. target_saturation es un nivel ABSOLUTO
+        (no un empuje aditivo) hacia el que se mezcla el iris completo,
+        para lograr un color parejo y bien formado en toda la zona
+        recoloreada.
     """
     lowered = raw_value.lower()
     hue = base_hue
@@ -145,14 +141,17 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]
             break  # solo el primer matiz que coincida, para no acumular varios
     hue = int(np.clip(hue, 0, 179))
 
-    saturation_boost = 8  # valor base, mismo que antes del ajuste de matices
+    # Nivel de saturacion objetivo base: un verde/azul/etc. natural pero
+    # con presencia real (no lavado). Los modificadores de intensidad
+    # empujan este nivel hacia arriba (vivid/bright) o abajo (muted/pale).
+    target_saturation = 130
     for keyword, offset in _INTENSITY_MODIFIERS:
         if keyword in lowered:
-            saturation_boost += offset
+            target_saturation += offset * 6  # escalado: offset original pensado para un empuje chico, ahora mueve un objetivo absoluto
             break
-    saturation_boost = int(np.clip(saturation_boost, 0, 25))
+    target_saturation = int(np.clip(target_saturation, 70, 200))
 
-    return hue, saturation_boost
+    return hue, target_saturation
 
 # Indices de landmarks del iris en el modelo de mediapipe (478 puntos,
 # incluye refinamiento de iris). Cada iris tiene 5 puntos: el centro y
@@ -244,7 +243,7 @@ def _recolor_iris_region(
     center: Tuple[int, int],
     radius: int,
     target_hue: int,
-    saturation_boost: int = 8,
+    target_saturation: int = 130,
 ) -> np.ndarray:
 
     h, w = image_bgr.shape[:2]
@@ -254,10 +253,12 @@ def _recolor_iris_region(
     # borde duro (que es lo que causaba las "manchas" en el enfoque de
     # prompt).
     mask = cv2.GaussianBlur(mask, (0, 0), sigmaX=radius * 0.25)
-    # Limitar la opacidad maxima (no llegar a 1.0 puro) para que se
-    # conserve algo de la textura/sombreado natural del iris original en
-    # vez de un relleno de color completamente plano y "pintado".
-    mask = mask * 0.82
+    # Opacidad maxima subida de 0.82 a 0.93: con 0.82 la mezcla de tono
+    # (cafe ~12 + verde ~65) quedaba a mitad de camino en el rango
+    # amarillo-oliva (~30-50) en vez de llegar a verde real. Con 0.93 el
+    # resultado se acerca mucho mas al tono objetivo real, sin llegar al
+    # 1.0 puro (para no perder del todo la sombra/textura original).
+    mask = mask * 0.93
 
     hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
     hue, sat, val = hsv[..., 0], hsv[..., 1], hsv[..., 2]
@@ -271,11 +272,9 @@ def _recolor_iris_region(
     new_hue = hue * (1 - effective_mask) + target_hue * effective_mask
 
     hsv[..., 0] = new_hue
-    # Empuje de saturacion MUY leve -- el valor anterior (+40) dejaba un
-    # verde plano y sobresaturado, muy distinto al tono natural y sutil
-    # de un ojo real. +8 es suficiente para que el color se note sin
-    # verse pintado.
-    hsv[..., 1] = np.clip(sat + effective_mask * saturation_boost, 0, 255)
+
+    new_sat = sat * (1 - effective_mask) + target_saturation * effective_mask
+    hsv[..., 1] = np.clip(new_sat, 0, 255)
 
     result = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
     return result
@@ -294,7 +293,7 @@ def correct_eye_color(
         logger.error(f"[EYE_COLOR] color_name '{color_name}' no tiene hue asociado en _COLOR_HUE_MAP -- se omite correccion.")
         return None
 
-    target_hue, saturation_boost = _compute_hue_and_intensity(target_color, base_hue)
+    target_hue, target_saturation = _compute_hue_and_intensity(target_color, base_hue)
 
     # Decodificar imagen
     arr = np.frombuffer(image_bytes, dtype=np.uint8)
@@ -324,8 +323,8 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-    corrected = _recolor_iris_region(image_bgr, left_center, left_radius, target_hue, saturation_boost)
-    corrected = _recolor_iris_region(corrected, right_center, right_radius, target_hue, saturation_boost)
+    corrected = _recolor_iris_region(image_bgr, left_center, left_radius, target_hue, target_saturation)
+    corrected = _recolor_iris_region(corrected, right_center, right_radius, target_hue, target_saturation)
 
     success, encoded = cv2.imencode(".png", corrected)
     if not success:
