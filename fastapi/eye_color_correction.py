@@ -17,7 +17,14 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -272,7 +279,14 @@ def _recolor_iris_region(
     new_hue = hue * (1 - effective_mask) + target_hue * effective_mask
 
     hsv[..., 0] = new_hue
-
+    # FIX: antes se le SUMABA un empuje leve (+8) a la saturacion
+    # original de cada pixel -- como el iris real tiene saturacion
+    # desigual (fibras mas y menos saturadas), el resultado quedaba
+    # parchado/desprolijo ("no se ve bien formado"). Ahora se MEZCLA
+    # hacia un nivel de saturacion objetivo parejo (target_saturation),
+    # igual que se hace con el tono, para un color mas uniforme y bien
+    # formado en todo el iris, preservando igual algo de la variacion
+    # original fuera del centro de la mascara.
     new_sat = sat * (1 - effective_mask) + target_saturation * effective_mask
     hsv[..., 1] = np.clip(new_sat, 0, 255)
 
@@ -315,8 +329,16 @@ def correct_eye_color(
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
 
     result = _detect_with_timeout(landmarker, mp_image, timeout_seconds=25.0)
-    if result is None or not result.face_landmarks:
-        return None  # no se detecto cara, hubo timeout, o hubo error -- devolver None, usar original
+    if result is None:
+        # _detect_with_timeout ya logueo el motivo especifico (timeout o excepcion).
+        return None
+    if not result.face_landmarks:
+        logger.warning(
+            f"[EYE_COLOR] No se detecto ninguna cara en la imagen "
+            f"(tamaño usado para deteccion: {detection_image.shape[1]}x{detection_image.shape[0]}, "
+            f"original: {img_w}x{img_h}). Se omite correccion, se mantiene original."
+        )
+        return None
 
     landmarks = result.face_landmarks[0]
 
