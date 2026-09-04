@@ -93,13 +93,14 @@ def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeo
 
 # --- Mapeo de nombre de color a tono (Hue) en el espacio HSV de OpenCV (0-179) ---
 _COLOR_HUE_MAP = {
-    "green": 42,
-    "hazel": 32,
-    "amber": 22,
-    "blue": 105,
-    "gray": 90,
+   
+    "green": 60,
+    "hazel": 46,
+    "amber": 36,
+    "blue": 120,
+    "gray": 105,
     "grey": 95,
-    "brown": 14,
+    "brown": 28,
     "black": 10,
 }
 
@@ -251,55 +252,68 @@ def _recolor_iris_region(
     center: Tuple[int, int],
     radius: int,
     target_hue: int,
-    target_saturation: int = 130,
+    target_saturation: int = 80,
 ) -> np.ndarray:
+    """
+    Recolorea el iris trabajando en espacio LAB, modificando SOLO los
+    canales cromaticos (a, b) y dejando L (luminancia/textura) intacto.
+    Esto preserva el patron de fibra y sombreado natural del iris en vez
+    de aplastarlo con un relleno de tono plano (que es lo que hacia el
+    enfoque anterior en HSV).
 
+    Incluye un anillo interior protegido (sin recolorear) para simular
+    la heterocromia central natural (centro avellana/miel con borde
+    verde) que tienen muchos ojos verdes/hazel reales, en vez de un
+    iris de un solo color uniforme de punta a punta.
+
+    NOTA DE CALIBRACION: el blend en LAB, medido empiricamente, entrega
+    un hue final MENOR al que se le pide en target_hue (probado: pedir
+    hue=60 en HSV para construir el color objetivo da como resultado un
+    hue percibido de ~40 tras el blend en LAB, que es un verde-oliva
+    natural). Por eso _COLOR_HUE_MAP usa valores mas altos que si
+    estuvieramos mezclando directo en HSV -- no son un error, estan
+    ajustados a este metodo especifico.
+    """
     h, w = image_bgr.shape[:2]
+
+    # Mascara circular con anillo interior protegido (heterocromia central).
     mask = np.zeros((h, w), dtype=np.float32)
     cv2.circle(mask, center, radius, 1.0, thickness=-1)
-    # Difuminar el borde de la mascara para una transicion suave, sin
-    # borde duro (que es lo que causaba las "manchas" en el enfoque de
-    # prompt).
-    # FIX: antes sigma = radius * 0.25 sin tope. En imagenes grandes (portrait
-    # ahora sale a ~2048px) el radio del iris en pixeles es grande, y ese
-    # 0.25 hacia un desenfoque proporcionalmente enorme -- el color se
-    # "derramaba" hacia el parpado y la ceja. Ahora el factor es mas chico
-    # (0.10) Y ademas se limita a un maximo absoluto de pixeles, para que
-    # el desenfoque se quede pegado al borde del iris sin importar la
-    # resolucion de la imagen.
-    sigma = min(radius * 0.10, 6.0)
+    inner_radius = max(1, int(radius * 0.35))
+    cv2.circle(mask, center, inner_radius, 0.0, thickness=-1)
+
+    # Desenfoque de borde contenido, con tope absoluto en pixeles para que
+    # no escale sin control en imagenes de alta resolucion (portrait sale
+    # a ~2048px) -- esto fue lo que causaba el sangrado hacia el parpado
+    # y la esclerotica en versiones anteriores.
+    sigma = min(radius * 0.15, 3.5)
     mask = cv2.GaussianBlur(mask, (0, 0), sigmaX=sigma)
-    # Opacidad maxima subida de 0.82 a 0.93: con 0.82 la mezcla de tono
-    # (cafe ~12 + verde ~65) quedaba a mitad de camino en el rango
-    # amarillo-oliva (~30-50) en vez de llegar a verde real. Con 0.93 el
-    # resultado se acerca mucho mas al tono objetivo real, sin llegar al
-    # 1.0 puro (para no perder del todo la sombra/textura original).
-    mask = mask * 0.85
 
-    hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
-    hue, sat, val = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+    lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
+    l_channel, a_channel, b_channel = lab[..., 0], lab[..., 1], lab[..., 2]
 
-    # No tocar pupila (muy oscura) ni catchlight (muy brillante) --
-    # solo el anillo del iris que tiene brillo intermedio.
-    brightness_ok = (val > 35) & (val < 210)
-    effective_mask = mask * brightness_ok.astype(np.float32)
+    # Color objetivo, calculado en HSV y convertido a LAB para tomar solo
+    # sus ejes cromaticos (a, b) -- el valor V=160 es arbitrario, ya que
+    # el brillo real lo aporta el canal L de la imagen original, no este.
+    target_bgr = cv2.cvtColor(
+        np.uint8([[[target_hue, target_saturation, 160]]]), cv2.COLOR_HSV2BGR
+    )
+    target_lab = cv2.cvtColor(target_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)[0][0]
+    target_a, target_b = target_lab[1], target_lab[2]
 
-    new_hue = hue.copy()
-    new_hue = hue * (1 - effective_mask) + target_hue * effective_mask
+    # No tocar reflejos de luz (catchlight) ni sombra muy profunda.
+    valid_range = ((l_channel > 30) & (l_channel < 220)).astype(np.float32)
+    effective_mask = mask * valid_range * 0.65
 
-    hsv[..., 0] = new_hue
-    # FIX: antes se le SUMABA un empuje leve (+8) a la saturacion
-    # original de cada pixel -- como el iris real tiene saturacion
-    # desigual (fibras mas y menos saturadas), el resultado quedaba
-    # parchado/desprolijo ("no se ve bien formado"). Ahora se MEZCLA
-    # hacia un nivel de saturacion objetivo parejo (target_saturation),
-    # igual que se hace con el tono, para un color mas uniforme y bien
-    # formado en todo el iris, preservando igual algo de la variacion
-    # original fuera del centro de la mascara.
-    new_sat = sat * (1 - effective_mask) + target_saturation * effective_mask
-    hsv[..., 1] = np.clip(new_sat, 0, 255)
+    new_a = a_channel * (1.0 - effective_mask) + target_a * effective_mask
+    new_b = b_channel * (1.0 - effective_mask) + target_b * effective_mask
 
-    result = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+    lab[..., 1] = new_a
+    lab[..., 2] = new_b
+    # L (luminancia/textura) queda exactamente igual al original -- por
+    # eso se conserva el patron de fibra natural del iris.
+
+    result = cv2.cvtColor(lab.astype(np.uint8), cv2.COLOR_LAB2BGR)
     return result
 
 
