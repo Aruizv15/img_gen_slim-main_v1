@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -35,9 +28,7 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     with _landmarker_lock:
         if model_path not in _landmarker_cache:
             if not os.path.exists(model_path):
-                # Fallar rapido y con mensaje claro, en vez de dejar que
-                # mediapipe intente cargar algo inexistente y se quede
-                # esperando/reintentando en silencio.
+              
                 raise FileNotFoundError(
                     f"[EYE_COLOR] Modelo de landmarks no encontrado en {model_path}. "
                     f"Verificar que face_landmarker.task este presente en esa ruta."
@@ -54,12 +45,7 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     return _landmarker_cache[model_path]
 
 
-# --- FIX #2: detectar landmarks sobre una copia reducida ---
-# Los landmarks de mediapipe son coordenadas NORMALIZADAS (0-1), no pixeles
-# absolutos -- asi que detectar sobre una copia chica da el mismo resultado
-# relativo que detectar sobre la imagen completa, pero mucho mas rapido.
-# Esto importa mas ahora que las fullbody finales salen a ~2048px (fix de
-# nitidez reciente) en vez de ~1024px.
+
 _DETECTION_MAX_DIM = 640
 
 
@@ -71,12 +57,7 @@ def _resize_for_detection(image_bgr: np.ndarray) -> np.ndarray:
     return cv2.resize(image_bgr, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
 
-# --- FIX #3: timeout duro sobre la deteccion ---
-# landmarker.detect() es una llamada sincronica/bloqueante en C++. Si algo
-# interno se traba (contencion de CPU con ComfyUI, inicializacion rara del
-# delegate, etc.), esto garantiza que NUNCA vuelva a colgar el proceso
-# 10+ minutos: pasado el timeout se abandona esa foto puntual (se sigue
-# usando la imagen sin corregir) en vez de tumbar el job entero.
+
 def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeout_seconds: float = 25.0):
     result_holder: dict = {}
 
@@ -100,13 +81,7 @@ def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeo
 
 # --- Mapeo de nombre de color a tono (Hue) en el espacio HSV de OpenCV (0-179) ---
 _COLOR_HUE_MAP = {
-    # NOTA: estos valores estan ajustados +18 respecto al hue "percibido"
-    # deseado, para compensar el subvalor sistematico que mide el blend en
-    # LAB (probado empiricamente solo para "green": pedir 60 da un
-    # resultado final de ~40, un verde oliva natural). El resto de los
-    # colores se ajusto con el mismo offset por consistencia, pero solo
-    # "green" fue verificado con el test numerico real -- si algun otro
-    # color sale desviado, puede necesitar su propio ajuste puntual.
+
     "green": 68,
     "hazel": 46,
     "amber": 36,
@@ -155,9 +130,7 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]
             break  # solo el primer matiz que coincida, para no acumular varios
     hue = int(np.clip(hue, 0, 179))
 
-    # Nivel de saturacion objetivo base: un verde/azul/etc. natural pero
-    # con presencia real (no lavado). Los modificadores de intensidad
-    # empujan este nivel hacia arriba (vivid/bright) o abajo (muted/pale).
+    
     target_saturation = 45
     for keyword, offset in _INTENSITY_MODIFIERS:
         if keyword in lowered:
@@ -398,7 +371,19 @@ def sample_target_color_from_reference(
 
     avg_a = sum(s[0] for s in samples) / len(samples)
     avg_b = sum(s[1] for s in samples) / len(samples)
-    logger.info(f"[EYE_COLOR] Color real muestreado de la referencia: a={avg_a:.1f}, b={avg_b:.1f} (de {len(samples)} ojo/s)")
+
+    # Amplificar la crominancia respecto al punto neutro (128,128) de LAB.
+    # El promedio de todo el anillo del iris (bordes, sombras, reflejos
+    # parciales) siempre da un color mas "apagado" que el que realmente
+    # se percibe al mirar el ojo -- este boost compensa eso sin inventar
+    # un color distinto, solo intensifica el mismo tono muestreado.
+    _CHROMA_BOOST = 1.3
+    avg_a = 128 + (avg_a - 128) * _CHROMA_BOOST
+    avg_b = 128 + (avg_b - 128) * _CHROMA_BOOST
+    avg_a = float(np.clip(avg_a, 0, 255))
+    avg_b = float(np.clip(avg_b, 0, 255))
+
+    logger.info(f"[EYE_COLOR] Color real muestreado de la referencia (con boost x{_CHROMA_BOOST}): a={avg_a:.1f}, b={avg_b:.1f} (de {len(samples)} ojo/s)")
     return avg_a, avg_b
 
 
