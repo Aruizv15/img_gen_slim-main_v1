@@ -88,7 +88,7 @@ portrait:
   checkpoint: "RealVisXL_V5.0_fp16.safetensors"
   batch_size: 1
   use_reference_pose: true
-  controlnet_preprocessor: "dwpose"  # confirmado vía [DEBUG PREPROCESSOR LIST] en el log del 2026-08-19
+  controlnet_preprocessor: "dwpose"
   controlnet_preprocessor_sd_version: "sdxl"
   pose_controlnet_model: "diffusion_pytorch_model_promax.safetensors"
   pose_controlnet_weight: 0.7
@@ -105,14 +105,14 @@ portrait:
   insightface_model_name: "buffalo_l"
   faceid_loader_preset: "FACEID"
   faceid_loader_lora_strength: 0.7
-  faceid_weight: 0.60
+  faceid_weight: 0.65
   faceid_v2_weight: 0.65
   faceid_weight_type: "linear"
   faceid_combine_embeds: "concat"
   faceid_start: 0.0
   faceid_end: 1.0
   plus_face_loader_preset: "STANDARD (medium strength)"
-  plus_face_weight: 0.45
+  plus_face_weight: 0.50
   plus_face_weight_type: "linear"
   plus_face_combine_embeds: "concat"
   plus_face_start: 0.0
