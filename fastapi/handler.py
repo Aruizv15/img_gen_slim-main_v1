@@ -21,6 +21,14 @@ import urllib.request
 
 _h_logger = logging.getLogger(__name__)
 
+# --- Correccion de color de ojos, aplicada justo antes de subir a B2 ---
+# IMPORTANTE: el pipeline de Python (ImageGenerator.download_images/
+# save_images) guarda en project_path/generation_type, una carpeta que
+# esta funcion NUNCA sube -- upload_outputs_to_b2() sube directamente
+# desde /workspace/ComfyUI_app/output (donde ComfyUI escribe los
+# archivos nativamente via su nodo SaveImage). Por eso la correccion de
+# ojos debe aplicarse ACA, sobre los archivos reales que se suben, y no
+# en el pipeline paralelo de Python que nunca llega a B2.
 _EYE_COLOR_MODULE_PATH = os.getenv("EYE_COLOR_CORRECTION_PATH", "/app/eye_color_correction.py")
 
 
@@ -82,24 +90,38 @@ def _get_donor_reference_image_bytes(vrepro_id):
     """
     Busca una foto de referencia REAL de la donante (la que ella subio,
     no una generada) para muestrear su color de ojos exacto en vez de
-    adivinarlo por texto. Se usa cualquier foto disponible -- el color
-    de ojos de la donante es el mismo sin importar cual de sus fotos se
-    use como referencia.
+    adivinarlo por texto.
+
+    FIX: antes se tomaba la primera foto alfabeticamente, sin importar
+    si era un primer plano de cara o una foto de cuerpo completo/lejana.
+    Con una foto donde el ojo ocupa pocos pixeles, el muestreo termina
+    agarrando piel/parpado en vez del iris real (confirmado en produccion:
+    dio un color practicamente neutro/piel en vez de verde). Ahora se
+    prioriza cualquier archivo con "portrait" en el nombre -- mismo
+    criterio que ya usa processor.py para elegir fotos de cara -- y solo
+    si no hay ninguna, se cae a cualquier otra foto disponible.
     """
     ref_dir = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
     if not os.path.isdir(ref_dir):
         print(f"[EYE_COLOR] Carpeta de referencia de la donante no encontrada: {ref_dir}")
         return None
     try:
-        for f in sorted(os.listdir(ref_dir)):
-            if f.lower().endswith(('.jpg', '.jpeg', '.png')):
-                try:
-                    with open(os.path.join(ref_dir, f), 'rb') as fp:
-                        print(f"[EYE_COLOR] Foto de referencia real elegida para muestreo: {f}")
-                        return fp.read()
-                except Exception as e:
-                    print(f"[EYE_COLOR] Error leyendo {f}: {e}")
-                    continue
+        all_imgs = sorted([
+            f for f in os.listdir(ref_dir)
+            if f.lower().endswith(('.jpg', '.jpeg', '.png'))
+        ])
+        portrait_imgs = [f for f in all_imgs if 'portrait' in f.lower()]
+        ordered_candidates = portrait_imgs + [f for f in all_imgs if f not in portrait_imgs]
+
+        for f in ordered_candidates:
+            try:
+                with open(os.path.join(ref_dir, f), 'rb') as fp:
+                    tag = "portrait" if f in portrait_imgs else "generica (sin foto portrait disponible)"
+                    print(f"[EYE_COLOR] Foto de referencia real elegida para muestreo ({tag}): {f}")
+                    return fp.read()
+            except Exception as e:
+                print(f"[EYE_COLOR] Error leyendo {f}: {e}")
+                continue
         print(f"[EYE_COLOR] No se encontro ninguna foto de referencia en {ref_dir}")
         return None
     except Exception as e:
