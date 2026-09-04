@@ -124,7 +124,7 @@ portrait:
   k2_denoise: 0.45
   detailer_bbox_model: "bbox/face_yolov8m.pt"
   detailer_steps: 24
-  detailer_cfg: 6.5
+  detailer_cfg: 5.5
   detailer_sampler_name: "dpmpp_2m"
   detailer_scheduler: "karras"
   detailer_denoise: 0.21
