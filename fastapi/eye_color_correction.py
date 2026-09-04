@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -100,7 +93,7 @@ def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeo
 
 # --- Mapeo de nombre de color a tono (Hue) en el espacio HSV de OpenCV (0-179) ---
 _COLOR_HUE_MAP = {
-    "green": 65,
+    "green": 58,
     "hazel": 30,
     "amber": 20,
     "blue": 110,
@@ -114,7 +107,7 @@ _COLOR_HUE_MAP = {
 _HUE_MODIFIERS = [
     ("emerald", 10), ("teal", 12), ("sea green", 12),
     ("olive", -15), ("forest", -8), ("moss", -12),
-    ("gray-green", -5), ("grey-green", -5), ("sage", -10),
+    ("gray-green", -12), ("grey-green", -12), ("sage", -10),
     ("turquoise", 15), ("sky blue", 8), ("steel blue", 5),
     ("navy", -10), ("cobalt", -5),
     ("golden", -5), ("honey", -3),
@@ -151,7 +144,7 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]
     # Nivel de saturacion objetivo base: un verde/azul/etc. natural pero
     # con presencia real (no lavado). Los modificadores de intensidad
     # empujan este nivel hacia arriba (vivid/bright) o abajo (muted/pale).
-    target_saturation = 130
+    target_saturation = 95
     for keyword, offset in _INTENSITY_MODIFIERS:
         if keyword in lowered:
             target_saturation += offset * 6  # escalado: offset original pensado para un empuje chico, ahora mueve un objetivo absoluto
@@ -256,16 +249,10 @@ def _recolor_iris_region(
     h, w = image_bgr.shape[:2]
     mask = np.zeros((h, w), dtype=np.float32)
     cv2.circle(mask, center, radius, 1.0, thickness=-1)
-    # Difuminar el borde de la mascara para una transicion suave, sin
-    # borde duro (que es lo que causaba las "manchas" en el enfoque de
-    # prompt).
+  
     mask = cv2.GaussianBlur(mask, (0, 0), sigmaX=radius * 0.25)
-    # Opacidad maxima subida de 0.82 a 0.93: con 0.82 la mezcla de tono
-    # (cafe ~12 + verde ~65) quedaba a mitad de camino en el rango
-    # amarillo-oliva (~30-50) en vez de llegar a verde real. Con 0.93 el
-    # resultado se acerca mucho mas al tono objetivo real, sin llegar al
-    # 1.0 puro (para no perder del todo la sombra/textura original).
-    mask = mask * 0.93
+
+    mask = mask * 0.88
 
     hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
     hue, sat, val = hsv[..., 0], hsv[..., 1], hsv[..., 2]
@@ -279,14 +266,7 @@ def _recolor_iris_region(
     new_hue = hue * (1 - effective_mask) + target_hue * effective_mask
 
     hsv[..., 0] = new_hue
-    # FIX: antes se le SUMABA un empuje leve (+8) a la saturacion
-    # original de cada pixel -- como el iris real tiene saturacion
-    # desigual (fibras mas y menos saturadas), el resultado quedaba
-    # parchado/desprolijo ("no se ve bien formado"). Ahora se MEZCLA
-    # hacia un nivel de saturacion objetivo parejo (target_saturation),
-    # igual que se hace con el tono, para un color mas uniforme y bien
-    # formado en todo el iris, preservando igual algo de la variacion
-    # original fuera del centro de la mascara.
+  
     new_sat = sat * (1 - effective_mask) + target_saturation * effective_mask
     hsv[..., 1] = np.clip(new_sat, 0, 255)
 
