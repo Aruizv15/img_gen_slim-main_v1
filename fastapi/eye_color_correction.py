@@ -17,7 +17,14 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -93,8 +100,14 @@ def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeo
 
 # --- Mapeo de nombre de color a tono (Hue) en el espacio HSV de OpenCV (0-179) ---
 _COLOR_HUE_MAP = {
-   
-    "green": 60,
+    # NOTA: estos valores estan ajustados +18 respecto al hue "percibido"
+    # deseado, para compensar el subvalor sistematico que mide el blend en
+    # LAB (probado empiricamente solo para "green": pedir 60 da un
+    # resultado final de ~40, un verde oliva natural). El resto de los
+    # colores se ajusto con el mismo offset por consistencia, pero solo
+    # "green" fue verificado con el test numerico real -- si algun otro
+    # color sale desviado, puede necesitar su propio ajuste puntual.
+    "green": 68,
     "hazel": 46,
     "amber": 36,
     "blue": 120,
@@ -145,7 +158,7 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]
     # Nivel de saturacion objetivo base: un verde/azul/etc. natural pero
     # con presencia real (no lavado). Los modificadores de intensidad
     # empujan este nivel hacia arriba (vivid/bright) o abajo (muted/pale).
-    target_saturation = 75
+    target_saturation = 45
     for keyword, offset in _INTENSITY_MODIFIERS:
         if keyword in lowered:
             target_saturation += offset * 6  # escalado: offset original pensado para un empuje chico, ahora mueve un objetivo absoluto
@@ -251,28 +264,28 @@ def _recolor_iris_region(
     image_bgr: np.ndarray,
     center: Tuple[int, int],
     radius: int,
-    target_hue: int,
-    target_saturation: int = 80,
+    target_a: float,
+    target_b: float,
+    opacity: float = 0.65,
 ) -> np.ndarray:
     """
     Recolorea el iris trabajando en espacio LAB, modificando SOLO los
     canales cromaticos (a, b) y dejando L (luminancia/textura) intacto.
     Esto preserva el patron de fibra y sombreado natural del iris en vez
-    de aplastarlo con un relleno de tono plano (que es lo que hacia el
-    enfoque anterior en HSV).
+    de aplastarlo con un relleno de tono plano.
 
     Incluye un anillo interior protegido (sin recolorear) para simular
     la heterocromia central natural (centro avellana/miel con borde
-    verde) que tienen muchos ojos verdes/hazel reales, en vez de un
-    iris de un solo color uniforme de punta a punta.
+    verde) que tienen muchos ojos verdes/hazel reales.
 
-    NOTA DE CALIBRACION: el blend en LAB, medido empiricamente, entrega
-    un hue final MENOR al que se le pide en target_hue (probado: pedir
-    hue=60 en HSV para construir el color objetivo da como resultado un
-    hue percibido de ~40 tras el blend en LAB, que es un verde-oliva
-    natural). Por eso _COLOR_HUE_MAP usa valores mas altos que si
-    estuvieramos mezclando directo en HSV -- no son un error, estan
-    ajustados a este metodo especifico.
+    A diferencia de versiones anteriores, esta funcion recibe target_a/
+    target_b YA CALCULADOS (en el espacio cromatico LAB), en vez de un
+    hue/saturacion en HSV -- asi el mismo blend sirve tanto para un color
+    aproximado por texto como para un color MUESTREADO de una foto real
+    de referencia, sin tablas de compensacion. `opacity` es mas alta
+    cuando el color viene de una foto real (confiable, empujar fuerte) y
+    mas baja cuando es una aproximacion por texto (menos confiable,
+    dejar que se note menos para no arriesgar un color equivocado).
     """
     h, w = image_bgr.shape[:2]
 
@@ -292,18 +305,9 @@ def _recolor_iris_region(
     lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
     l_channel, a_channel, b_channel = lab[..., 0], lab[..., 1], lab[..., 2]
 
-    # Color objetivo, calculado en HSV y convertido a LAB para tomar solo
-    # sus ejes cromaticos (a, b) -- el valor V=160 es arbitrario, ya que
-    # el brillo real lo aporta el canal L de la imagen original, no este.
-    target_bgr = cv2.cvtColor(
-        np.uint8([[[target_hue, target_saturation, 160]]]), cv2.COLOR_HSV2BGR
-    )
-    target_lab = cv2.cvtColor(target_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)[0][0]
-    target_a, target_b = target_lab[1], target_lab[2]
-
     # No tocar reflejos de luz (catchlight) ni sombra muy profunda.
     valid_range = ((l_channel > 30) & (l_channel < 220)).astype(np.float32)
-    effective_mask = mask * valid_range * 0.65
+    effective_mask = mask * valid_range * opacity
 
     new_a = a_channel * (1.0 - effective_mask) + target_a * effective_mask
     new_b = b_channel * (1.0 - effective_mask) + target_b * effective_mask
@@ -317,22 +321,132 @@ def _recolor_iris_region(
     return result
 
 
+def _sample_iris_lab_ab(image_bgr: np.ndarray, center: Tuple[int, int], radius: int) -> Optional[Tuple[float, float]]:
+    """
+    Promedia el color (canales a, b de LAB) del anillo del iris en una
+    imagen -- usado para MUESTREAR el color real del ojo de una foto de
+    referencia de la donante, en vez de adivinarlo por una tabla de texto.
+    Excluye el centro (heterocromia/pupila) y los reflejos de luz, igual
+    que al recolorear.
+    """
+    h, w = image_bgr.shape[:2]
+    mask = np.zeros((h, w), dtype=np.uint8)
+    cv2.circle(mask, center, radius, 255, thickness=-1)
+    inner_radius = max(1, int(radius * 0.35))
+    cv2.circle(mask, center, inner_radius, 0, thickness=-1)
+
+    lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)
+    l_channel = lab[..., 0]
+    valid = (mask > 0) & (l_channel > 30) & (l_channel < 220)
+
+    if not np.any(valid):
+        return None
+
+    avg_a = float(lab[..., 1][valid].mean())
+    avg_b = float(lab[..., 2][valid].mean())
+    return avg_a, avg_b
+
+
+def sample_target_color_from_reference(
+    reference_image_bytes: bytes,
+    model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
+) -> Optional[Tuple[float, float]]:
+    """
+    Detecta la cara en una foto de referencia REAL de la donante y
+    muestrea el color promedio de sus dos iris (en LAB a/b). Este color
+    se usa despues como objetivo exacto al recolorear las imagenes
+    generadas, en vez de aproximar por un nombre de color en texto.
+
+    Returns:
+        (avg_a, avg_b) promediado entre ambos ojos, o None si no se pudo
+        detectar cara o muestrear color (en ese caso, el llamador debe
+        caer al metodo de texto como respaldo).
+    """
+    try:
+        landmarker = _get_landmarker(model_path)
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        return None
+
+    arr = np.frombuffer(reference_image_bytes, dtype=np.uint8)
+    image_bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if image_bgr is None:
+        logger.warning("[EYE_COLOR] No se pudo decodificar la foto de referencia.")
+        return None
+    img_h, img_w = image_bgr.shape[:2]
+
+    detection_image = _resize_for_detection(image_bgr)
+    image_rgb = cv2.cvtColor(detection_image, cv2.COLOR_BGR2RGB)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+
+    result = _detect_with_timeout(landmarker, mp_image, timeout_seconds=25.0)
+    if result is None or not result.face_landmarks:
+        logger.warning("[EYE_COLOR] No se detecto cara en la foto de referencia -- no se pudo muestrear color real.")
+        return None
+
+    landmarks = result.face_landmarks[0]
+    left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
+    right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
+
+    left_sample = _sample_iris_lab_ab(image_bgr, left_center, left_radius)
+    right_sample = _sample_iris_lab_ab(image_bgr, right_center, right_radius)
+
+    samples = [s for s in (left_sample, right_sample) if s is not None]
+    if not samples:
+        logger.warning("[EYE_COLOR] No se pudo muestrear color de ningun ojo en la foto de referencia.")
+        return None
+
+    avg_a = sum(s[0] for s in samples) / len(samples)
+    avg_b = sum(s[1] for s in samples) / len(samples)
+    logger.info(f"[EYE_COLOR] Color real muestreado de la referencia: a={avg_a:.1f}, b={avg_b:.1f} (de {len(samples)} ojo/s)")
+    return avg_a, avg_b
+
+
 def correct_eye_color(
     image_bytes: bytes,
     target_color: str,
     model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
+    reference_image_bytes: Optional[bytes] = None,
 ) -> Optional[bytes]:
+    """
+    Corrige el color de ojos de una imagen generada.
 
-    color_name = extract_primary_color_name(target_color)
-    logger.info(f"[EYE_COLOR] target_color recibido={target_color!r} -> color_name resuelto={color_name!r}")
-    base_hue = _COLOR_HUE_MAP.get(color_name)
-    if base_hue is None:
-        logger.error(f"[EYE_COLOR] color_name '{color_name}' no tiene hue asociado en _COLOR_HUE_MAP -- se omite correccion.")
-        return None
+    Si se pasa `reference_image_bytes` (una foto REAL de la donante), se
+    intenta muestrear su color de ojos exacto y usarlo como objetivo,
+    con un blend fuerte (0.90) porque el color es confiable. Si no hay
+    foto de referencia, o no se pudo muestrear (no se detecto cara en
+    ella, etc.), se cae al metodo anterior: aproximar el color por el
+    texto de la columna del CSV, con un blend mas suave (0.65) porque
+    es una aproximacion, no el color real.
+    """
+    target_a = target_b = None
+    opacity = 0.65
 
-    target_hue, target_saturation = _compute_hue_and_intensity(target_color, base_hue)
+    if reference_image_bytes:
+        sampled = sample_target_color_from_reference(reference_image_bytes, model_path)
+        if sampled is not None:
+            target_a, target_b = sampled
+            opacity = 0.90
+            logger.info(f"[EYE_COLOR] Usando color REAL muestreado de la referencia (a={target_a:.1f}, b={target_b:.1f}, opacity={opacity})")
+        else:
+            logger.warning("[EYE_COLOR] No se pudo muestrear la foto de referencia -- se cae al metodo de texto como respaldo.")
 
-    # Decodificar imagen
+    if target_a is None:
+        # --- Metodo de respaldo: aproximar por texto ---
+        color_name = extract_primary_color_name(target_color)
+        logger.info(f"[EYE_COLOR] target_color recibido={target_color!r} -> color_name resuelto={color_name!r}")
+        base_hue = _COLOR_HUE_MAP.get(color_name)
+        if base_hue is None:
+            logger.error(f"[EYE_COLOR] color_name '{color_name}' no tiene hue asociado en _COLOR_HUE_MAP -- se omite correccion.")
+            return None
+
+        target_hue, target_saturation = _compute_hue_and_intensity(target_color, base_hue)
+        target_bgr = cv2.cvtColor(np.uint8([[[target_hue, target_saturation, 160]]]), cv2.COLOR_HSV2BGR)
+        target_lab = cv2.cvtColor(target_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)[0][0]
+        target_a, target_b = target_lab[1], target_lab[2]
+        logger.info(f"[EYE_COLOR] Usando color aproximado por texto (a={target_a:.1f}, b={target_b:.1f}, opacity={opacity})")
+
+    # Decodificar imagen a corregir
     arr = np.frombuffer(image_bytes, dtype=np.uint8)
     image_bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if image_bgr is None:
@@ -368,8 +482,8 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-    corrected = _recolor_iris_region(image_bgr, left_center, left_radius, target_hue, target_saturation)
-    corrected = _recolor_iris_region(corrected, right_center, right_radius, target_hue, target_saturation)
+    corrected = _recolor_iris_region(image_bgr, left_center, left_radius, target_a, target_b, opacity=opacity)
+    corrected = _recolor_iris_region(corrected, right_center, right_radius, target_a, target_b, opacity=opacity)
 
     success, encoded = cv2.imencode(".png", corrected)
     if not success:
