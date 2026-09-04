@@ -17,7 +17,14 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -249,9 +256,23 @@ def _recolor_iris_region(
     h, w = image_bgr.shape[:2]
     mask = np.zeros((h, w), dtype=np.float32)
     cv2.circle(mask, center, radius, 1.0, thickness=-1)
-  
-    mask = cv2.GaussianBlur(mask, (0, 0), sigmaX=radius * 0.25)
-
+    # Difuminar el borde de la mascara para una transicion suave, sin
+    # borde duro (que es lo que causaba las "manchas" en el enfoque de
+    # prompt).
+    # FIX: antes sigma = radius * 0.25 sin tope. En imagenes grandes (portrait
+    # ahora sale a ~2048px) el radio del iris en pixeles es grande, y ese
+    # 0.25 hacia un desenfoque proporcionalmente enorme -- el color se
+    # "derramaba" hacia el parpado y la ceja. Ahora el factor es mas chico
+    # (0.10) Y ademas se limita a un maximo absoluto de pixeles, para que
+    # el desenfoque se quede pegado al borde del iris sin importar la
+    # resolucion de la imagen.
+    sigma = min(radius * 0.10, 6.0)
+    mask = cv2.GaussianBlur(mask, (0, 0), sigmaX=sigma)
+    # Opacidad maxima subida de 0.82 a 0.93: con 0.82 la mezcla de tono
+    # (cafe ~12 + verde ~65) quedaba a mitad de camino en el rango
+    # amarillo-oliva (~30-50) en vez de llegar a verde real. Con 0.93 el
+    # resultado se acerca mucho mas al tono objetivo real, sin llegar al
+    # 1.0 puro (para no perder del todo la sombra/textura original).
     mask = mask * 0.88
 
     hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
@@ -266,7 +287,14 @@ def _recolor_iris_region(
     new_hue = hue * (1 - effective_mask) + target_hue * effective_mask
 
     hsv[..., 0] = new_hue
-  
+    # FIX: antes se le SUMABA un empuje leve (+8) a la saturacion
+    # original de cada pixel -- como el iris real tiene saturacion
+    # desigual (fibras mas y menos saturadas), el resultado quedaba
+    # parchado/desprolijo ("no se ve bien formado"). Ahora se MEZCLA
+    # hacia un nivel de saturacion objetivo parejo (target_saturation),
+    # igual que se hace con el tono, para un color mas uniforme y bien
+    # formado en todo el iris, preservando igual algo de la variacion
+    # original fuera del centro de la mascara.
     new_sat = sat * (1 - effective_mask) + target_saturation * effective_mask
     hsv[..., 1] = np.clip(new_sat, 0, 255)
 
