@@ -3,7 +3,7 @@ import re
 import os
 import logging
 import threading
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import cv2
 import numpy as np
@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -347,31 +340,19 @@ def _sample_iris_lab_ab(image_bgr: np.ndarray, center: Tuple[int, int], radius: 
     return avg_a, avg_b
 
 
-def sample_target_color_from_reference(
+def _sample_from_single_reference(
     reference_image_bytes: bytes,
-    model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
-) -> Optional[Tuple[float, float]]:
+    landmarker,
+) -> Optional[Tuple[float, float, int]]:
     """
-    Detecta la cara en una foto de referencia REAL de la donante y
-    muestrea el color promedio de sus dos iris (en LAB a/b). Este color
-    se usa despues como objetivo exacto al recolorear las imagenes
-    generadas, en vez de aproximar por un nombre de color en texto.
-
-    Returns:
-        (avg_a, avg_b) promediado entre ambos ojos, o None si no se pudo
-        detectar cara o muestrear color (en ese caso, el llamador debe
-        caer al metodo de texto como respaldo).
+    Intenta muestrear el color de iris de UNA foto de referencia puntual.
+    Returns (avg_a, avg_b, min_radius) o None si no se pudo, donde
+    min_radius es el menor de los dos radios de iris detectados (util
+    para comparar calidad entre varias fotos candidatas).
     """
-    try:
-        landmarker = _get_landmarker(model_path)
-    except FileNotFoundError as e:
-        logger.error(str(e))
-        return None
-
     arr = np.frombuffer(reference_image_bytes, dtype=np.uint8)
     image_bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if image_bgr is None:
-        logger.warning("[EYE_COLOR] No se pudo decodificar la foto de referencia.")
         return None
     img_h, img_w = image_bgr.shape[:2]
 
@@ -381,29 +362,77 @@ def sample_target_color_from_reference(
 
     result = _detect_with_timeout(landmarker, mp_image, timeout_seconds=25.0)
     if result is None or not result.face_landmarks:
-        logger.warning("[EYE_COLOR] No se detecto cara en la foto de referencia -- no se pudo muestrear color real.")
         return None
 
     landmarks = result.face_landmarks[0]
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
+    min_radius = min(left_radius, right_radius)
 
     logger.info(
-        f"[EYE_COLOR] Radio de iris detectado en referencia: "
-        f"izq={left_radius}px, der={right_radius}px (imagen {img_w}x{img_h}). "
-        f"Un radio muy chico (<10px) sugiere una foto lejana/de cuerpo completo, "
-        f"no un primer plano de cara -- el muestreo puede ser poco confiable."
+        f"[EYE_COLOR] Candidata: radio izq={left_radius}px, der={right_radius}px (imagen {img_w}x{img_h})"
     )
+
     left_sample = _sample_iris_lab_ab(image_bgr, left_center, left_radius)
     right_sample = _sample_iris_lab_ab(image_bgr, right_center, right_radius)
-
     samples = [s for s in (left_sample, right_sample) if s is not None]
     if not samples:
-        logger.warning("[EYE_COLOR] No se pudo muestrear color de ningun ojo en la foto de referencia.")
         return None
 
     avg_a = sum(s[0] for s in samples) / len(samples)
     avg_b = sum(s[1] for s in samples) / len(samples)
+    return avg_a, avg_b, min_radius
+
+
+def sample_target_color_from_reference(
+    reference_images: List[bytes],
+    model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
+    min_acceptable_radius: int = 20,
+) -> Optional[Tuple[float, float]]:
+    """
+    Prueba TODAS las fotos de referencia disponibles de la donante y se
+    queda con el muestreo de la que tenga el iris mas grande (mas
+    confiable). Si ninguna alcanza `min_acceptable_radius` pixeles, se
+    descarta el muestreo por completo -- es mejor caer al metodo de
+    texto (aproximado pero no confiadamente equivocado) que confiar en
+    una muestra de 15px que termina dando un color piel en vez de verde
+    (bug real encontrado en produccion).
+
+    Returns:
+        (avg_a, avg_b) de la mejor foto encontrada, o None si ninguna
+        foto alcanzo el minimo de confiabilidad.
+    """
+    if not reference_images:
+        return None
+
+    try:
+        landmarker = _get_landmarker(model_path)
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        return None
+
+    best_result = None  # (avg_a, avg_b, min_radius)
+    for idx, ref_bytes in enumerate(reference_images):
+        sample = _sample_from_single_reference(ref_bytes, landmarker)
+        if sample is None:
+            continue
+        avg_a, avg_b, min_radius = sample
+        if best_result is None or min_radius > best_result[2]:
+            best_result = (avg_a, avg_b, min_radius)
+
+    if best_result is None:
+        logger.warning("[EYE_COLOR] Ninguna foto de referencia produjo un muestreo valido.")
+        return None
+
+    avg_a, avg_b, min_radius = best_result
+    if min_radius < min_acceptable_radius:
+        logger.warning(
+            f"[EYE_COLOR] La mejor foto disponible tiene radio de iris={min_radius}px, "
+            f"por debajo del minimo aceptable ({min_acceptable_radius}px) -- el muestreo "
+            f"no es confiable (probablemente termine dando un color casi neutro/piel). "
+            f"Se descarta y se cae al metodo de texto como respaldo."
+        )
+        return None
 
     # Amplificar la crominancia respecto al punto neutro (128,128) de LAB.
     # El promedio de todo el anillo del iris (bordes, sombras, reflejos
@@ -416,7 +445,10 @@ def sample_target_color_from_reference(
     avg_a = float(np.clip(avg_a, 0, 255))
     avg_b = float(np.clip(avg_b, 0, 255))
 
-    logger.info(f"[EYE_COLOR] Color real muestreado de la referencia (con boost x{_CHROMA_BOOST}): a={avg_a:.1f}, b={avg_b:.1f} (de {len(samples)} ojo/s)")
+    logger.info(
+        f"[EYE_COLOR] Mejor foto de referencia: radio={min_radius}px "
+        f"(con boost x{_CHROMA_BOOST}): a={avg_a:.1f}, b={avg_b:.1f}"
+    )
     return avg_a, avg_b
 
 
@@ -424,49 +456,50 @@ def correct_eye_color(
     image_bytes: bytes,
     target_color: str,
     model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
-    reference_image_bytes: Optional[bytes] = None,
+    reference_images: Optional[List[bytes]] = None,
 ) -> Optional[bytes]:
-    """
-    Corrige el color de ojos de una imagen generada.
 
-    Si se pasa `reference_image_bytes` (una foto REAL de la donante), se
-    intenta muestrear su color de ojos exacto y usarlo como objetivo,
-    con un blend fuerte (0.90) porque el color es confiable. Si no hay
-    foto de referencia, o no se pudo muestrear (no se detecto cara en
-    ella, etc.), se cae al metodo anterior: aproximar el color por el
-    texto de la columna del CSV, con un blend mas suave (0.65) porque
-    es una aproximacion, no el color real.
-    """
-    target_a = target_b = None
+    # --- Ancla de color por texto: SIEMPRE se calcula, es la base garantizada ---
+    color_name = extract_primary_color_name(target_color)
+    logger.info(f"[EYE_COLOR] target_color recibido={target_color!r} -> color_name resuelto={color_name!r}")
+    base_hue = _COLOR_HUE_MAP.get(color_name)
+    if base_hue is None:
+        logger.error(f"[EYE_COLOR] color_name '{color_name}' no tiene hue asociado en _COLOR_HUE_MAP -- se omite correccion.")
+        return None
+
+    anchor_hue, anchor_saturation = _compute_hue_and_intensity(target_color, base_hue)
+    anchor_bgr = cv2.cvtColor(np.uint8([[[anchor_hue, anchor_saturation, 160]]]), cv2.COLOR_HSV2BGR)
+    anchor_lab = cv2.cvtColor(anchor_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)[0][0]
+    anchor_a, anchor_b = float(anchor_lab[1]), float(anchor_lab[2])
+
+    target_a, target_b = anchor_a, anchor_b
     opacity = 0.65
 
-    if reference_image_bytes:
-        sampled = sample_target_color_from_reference(reference_image_bytes, model_path)
+    if reference_images:
+        sampled = sample_target_color_from_reference(reference_images, model_path)
         if sampled is not None:
-            target_a, target_b = sampled
+            sampled_a, sampled_b = sampled
+            # Empuje fuerte (80%) hacia el ancla de texto -- garantiza que
+            # el resultado se lea como el color pedido, aunque la foto de
+            # referencia puntual no muestre mucho de ese color en crudo.
+            ANCHOR_PULL = 0.8
+            target_a = sampled_a * (1 - ANCHOR_PULL) + anchor_a * ANCHOR_PULL
+            target_b = sampled_b * (1 - ANCHOR_PULL) + anchor_b * ANCHOR_PULL
             opacity = 0.90
-            logger.info(f"[EYE_COLOR] Usando color REAL muestreado de la referencia (a={target_a:.1f}, b={target_b:.1f}, opacity={opacity})")
+            logger.info(
+                f"[EYE_COLOR] Color combinado: muestreado_real=({sampled_a:.1f},{sampled_b:.1f}) "
+                f"+ ancla_texto=({anchor_a:.1f},{anchor_b:.1f}) con empuje {ANCHOR_PULL} "
+                f"-> final=({target_a:.1f},{target_b:.1f}), opacity={opacity}"
+            )
         else:
-            logger.warning("[EYE_COLOR] No se pudo muestrear la foto de referencia -- se cae al metodo de texto como respaldo.")
-
-    if target_a is None:
-        # --- Metodo de respaldo: aproximar por texto ---
-        color_name = extract_primary_color_name(target_color)
-        logger.info(f"[EYE_COLOR] target_color recibido={target_color!r} -> color_name resuelto={color_name!r}")
-        base_hue = _COLOR_HUE_MAP.get(color_name)
-        if base_hue is None:
-            logger.error(f"[EYE_COLOR] color_name '{color_name}' no tiene hue asociado en _COLOR_HUE_MAP -- se omite correccion.")
-            return None
-
-        target_hue, target_saturation = _compute_hue_and_intensity(target_color, base_hue)
-        target_bgr = cv2.cvtColor(np.uint8([[[target_hue, target_saturation, 160]]]), cv2.COLOR_HSV2BGR)
-        target_lab = cv2.cvtColor(target_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)[0][0]
-        target_a, target_b = target_lab[1], target_lab[2]
-        logger.info(f"[EYE_COLOR] Usando color aproximado por texto (a={target_a:.1f}, b={target_b:.1f}, opacity={opacity})")
+            logger.warning(f"[EYE_COLOR] No se pudo muestrear la foto de referencia -- se usa solo el ancla de texto (a={anchor_a:.1f}, b={anchor_b:.1f}, opacity={opacity}).")
+    else:
+        logger.info(f"[EYE_COLOR] Sin fotos de referencia -- se usa solo el ancla de texto (a={anchor_a:.1f}, b={anchor_b:.1f}, opacity={opacity}).")
 
     # Decodificar imagen a corregir
     arr = np.frombuffer(image_bytes, dtype=np.uint8)
     image_bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+
     if image_bgr is None:
         return None
     img_h, img_w = image_bgr.shape[:2]
