@@ -21,14 +21,7 @@ import urllib.request
 
 _h_logger = logging.getLogger(__name__)
 
-# --- Correccion de color de ojos, aplicada justo antes de subir a B2 ---
-# IMPORTANTE: el pipeline de Python (ImageGenerator.download_images/
-# save_images) guarda en project_path/generation_type, una carpeta que
-# esta funcion NUNCA sube -- upload_outputs_to_b2() sube directamente
-# desde /workspace/ComfyUI_app/output (donde ComfyUI escribe los
-# archivos nativamente via su nodo SaveImage). Por eso la correccion de
-# ojos debe aplicarse ACA, sobre los archivos reales que se suben, y no
-# en el pipeline paralelo de Python que nunca llega a B2.
+
 _EYE_COLOR_MODULE_PATH = os.getenv("EYE_COLOR_CORRECTION_PATH", "/app/eye_color_correction.py")
 
 
@@ -86,25 +79,25 @@ def _get_donor_eye_color(vrepro_id):
         return None
 
 
-def _get_donor_reference_image_bytes(vrepro_id):
+def _get_donor_reference_images_bytes(vrepro_id):
     """
-    Busca una foto de referencia REAL de la donante (la que ella subio,
-    no una generada) para muestrear su color de ojos exacto en vez de
-    adivinarlo por texto.
+    Junta TODAS las fotos de referencia REALES disponibles de la donante
+    (no generadas), para que eye_color_correction.py pueda probarlas
+    todas y quedarse con la que tenga el iris mas grande/confiable.
 
-    FIX: antes se tomaba la primera foto alfabeticamente, sin importar
-    si era un primer plano de cara o una foto de cuerpo completo/lejana.
-    Con una foto donde el ojo ocupa pocos pixeles, el muestreo termina
-    agarrando piel/parpado en vez del iris real (confirmado en produccion:
-    dio un color practicamente neutro/piel en vez de verde). Ahora se
-    prioriza cualquier archivo con "portrait" en el nombre -- mismo
-    criterio que ya usa processor.py para elegir fotos de cara -- y solo
-    si no hay ninguna, se cae a cualquier otra foto disponible.
+    FIX: antes se devolvia solo LA PRIMERA foto encontrada (priorizando
+    "portrait" en el nombre) y se confiaba ciegamente en ella. En
+    produccion se vio que incluso la foto "portrait" de una donante
+    podia tener el iris muy chico (15px de radio) y dar un color
+    practicamente neutro/piel en vez de verde. Ahora se devuelven todas
+    las candidatas disponibles, ordenadas con las "portrait" primero
+    (mayor probabilidad de ser primeros planos), y el propio script de
+    correccion decide cual usar segun el tamano real del iris detectado.
     """
     ref_dir = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
     if not os.path.isdir(ref_dir):
         print(f"[EYE_COLOR] Carpeta de referencia de la donante no encontrada: {ref_dir}")
-        return None
+        return []
     try:
         all_imgs = sorted([
             f for f in os.listdir(ref_dir)
@@ -113,24 +106,24 @@ def _get_donor_reference_image_bytes(vrepro_id):
         portrait_imgs = [f for f in all_imgs if 'portrait' in f.lower()]
         ordered_candidates = portrait_imgs + [f for f in all_imgs if f not in portrait_imgs]
 
+        images_bytes = []
         for f in ordered_candidates:
             try:
                 with open(os.path.join(ref_dir, f), 'rb') as fp:
-                    tag = "portrait" if f in portrait_imgs else "generica (sin foto portrait disponible)"
-                    print(f"[EYE_COLOR] Foto de referencia real elegida para muestreo ({tag}): {f}")
-                    return fp.read()
+                    images_bytes.append(fp.read())
             except Exception as e:
                 print(f"[EYE_COLOR] Error leyendo {f}: {e}")
                 continue
-        print(f"[EYE_COLOR] No se encontro ninguna foto de referencia en {ref_dir}")
-        return None
+
+        print(f"[EYE_COLOR] {len(images_bytes)} foto(s) de referencia candidatas encontradas: {ordered_candidates}")
+        return images_bytes
     except Exception as e:
-        print(f"[EYE_COLOR] Error buscando foto de referencia: {e}")
-        return None
+        print(f"[EYE_COLOR] Error buscando fotos de referencia: {e}")
+        return []
 
 
 print("=" * 60)
-print("[HANDLER BUILD] v7-eye-color-muestreo-real-2026-09-04")
+print("[HANDLER BUILD] v8-eye-color-mejor-foto-2026-09-04")
 print("[HANDLER BUILD] Si NO ves '[HANDLER] Ciclo X/N generado y")
 print("[HANDLER BUILD] subido a B2' entre cada ciclo mas abajo, este")
 print("[HANDLER BUILD] worker esta corriendo una imagen VIEJA. Termina")
@@ -379,14 +372,14 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
         if eye_color:
             # Se busca UNA sola vez por donante (no por archivo) -- el color
             # de ojos real es el mismo para todas las fotos de esta corrida.
-            reference_bytes = _get_donor_reference_image_bytes(vrepro_id)
+            reference_images = _get_donor_reference_images_bytes(vrepro_id)
             n_corrected = 0
             for local_path in all_files:
                 try:
                     with open(local_path, 'rb') as fp:
                         original_bytes = fp.read()
                     corrected_bytes = _correct_eye_color_fn(
-                        original_bytes, eye_color, reference_image_bytes=reference_bytes
+                        original_bytes, eye_color, reference_images=reference_images
                     )
                     if corrected_bytes is not None:
                         with open(local_path, 'wb') as fp:
