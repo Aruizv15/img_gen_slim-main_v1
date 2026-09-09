@@ -325,8 +325,15 @@ def _recolor_iris_two_zones(
     # (los pixeles ya oscuros suben menos, los medios suben mas, se
     # conserva la variacion relativa de sombreado natural).
     _L_BOOST = 1.18
+    # FIX: el realce proporcional solo no bastaba para fotos donde el ojo
+    # de base venia MUY oscuro -- un 18% de un numero chico sigue siendo
+    # chico. Se agrega ademas un PISO minimo (no aplana, solo evita que
+    # caiga por debajo de este valor), para que el verde nunca se vea
+    # oscuro sin importar la iluminacion de la foto generada de base.
+    _L_MIN_FLOOR = 95
     combined_mask = np.clip(inner_mask + outer_mask, 0, 1)
     boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
+    boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
     new_l = l_channel * (1.0 - combined_mask) + boosted_l * combined_mask
     lab[..., 0] = new_l
     # L (luminancia/textura) se preserva relativamente -- solo se realza,
