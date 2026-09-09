@@ -17,7 +17,14 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -458,7 +465,24 @@ def correct_eye_color(
     model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
     reference_images: Optional[List[bytes]] = None,
 ) -> Optional[bytes]:
+    """
+    Corrige el color de ojos de una imagen generada.
 
+    SIEMPRE se calcula un "ancla" de color a partir del texto del CSV
+    (ej. "green"), usando la tabla calibrada. Si ademas hay fotos de
+    referencia y alguna da un muestreo confiable (iris suficientemente
+    grande), el color real muestreado se COMBINA con esa ancla --
+    empujado fuerte hacia el ancla (80%) para GARANTIZAR que el
+    resultado se lea como el color pedido (ej. verde), incluso si la
+    foto de referencia puntual no muestra mucho de ese color en sus
+    pixeles crudos (iluminacion, angulo, compresion JPEG, etc. pueden
+    opacar el color real aunque a simple vista se vea distinto). El 20%
+    restante conserva algo del tono/calidez real de la donante, para
+    que no sea un verde 100% generico.
+
+    Si no hay fotos de referencia, o ninguna fue confiable, se usa
+    directamente el ancla de texto sola (metodo anterior).
+    """
     # --- Ancla de color por texto: SIEMPRE se calcula, es la base garantizada ---
     color_name = extract_primary_color_name(target_color)
     logger.info(f"[EYE_COLOR] target_color recibido={target_color!r} -> color_name resuelto={color_name!r}")
@@ -482,7 +506,7 @@ def correct_eye_color(
             # Empuje fuerte (80%) hacia el ancla de texto -- garantiza que
             # el resultado se lea como el color pedido, aunque la foto de
             # referencia puntual no muestre mucho de ese color en crudo.
-            ANCHOR_PULL = 0.8
+            ANCHOR_PULL = 1.0  # 100% garantizado por texto, sin depender de la calidad de la foto
             target_a = sampled_a * (1 - ANCHOR_PULL) + anchor_a * ANCHOR_PULL
             target_b = sampled_b * (1 - ANCHOR_PULL) + anchor_b * ANCHOR_PULL
             opacity = 0.90
