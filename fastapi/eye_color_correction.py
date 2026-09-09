@@ -506,7 +506,7 @@ def correct_eye_color(
             # Empuje fuerte (80%) hacia el ancla de texto -- garantiza que
             # el resultado se lea como el color pedido, aunque la foto de
             # referencia puntual no muestre mucho de ese color en crudo.
-            ANCHOR_PULL = 1.0  # 100% garantizado por texto, sin depender de la calidad de la foto
+            ANCHOR_PULL = 0.15  # fidelidad al color REAL de la donante; solo un empujon minimo de seguridad
             target_a = sampled_a * (1 - ANCHOR_PULL) + anchor_a * ANCHOR_PULL
             target_b = sampled_b * (1 - ANCHOR_PULL) + anchor_b * ANCHOR_PULL
             opacity = 0.90
