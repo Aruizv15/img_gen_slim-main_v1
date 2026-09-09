@@ -394,7 +394,7 @@ def _sample_from_single_reference(
 def sample_target_color_from_reference(
     reference_images: List[bytes],
     model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
-    min_acceptable_radius: int = 20,
+    min_acceptable_radius: int = 12,
 ) -> Optional[Tuple[float, float]]:
     """
     Prueba TODAS las fotos de referencia disponibles de la donante y se
@@ -557,8 +557,17 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-    corrected = _recolor_iris_region(image_bgr, left_center, left_radius, target_a, target_b, opacity=opacity)
-    corrected = _recolor_iris_region(corrected, right_center, right_radius, target_a, target_b, opacity=opacity)
+    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
+    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
+    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
+    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
+    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
+    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
+    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
+    unified_radius = int(round((left_radius + right_radius) / 2))
+
+    corrected = _recolor_iris_region(image_bgr, left_center, unified_radius, target_a, target_b, opacity=opacity)
+    corrected = _recolor_iris_region(corrected, right_center, unified_radius, target_a, target_b, opacity=opacity)
 
     success, encoded = cv2.imencode(".png", corrected)
     if not success:
