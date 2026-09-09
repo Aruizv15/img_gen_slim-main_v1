@@ -60,7 +60,7 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
 # relativo que detectar sobre la imagen completa, pero mucho mas rapido.
 # Esto importa mas ahora que las fullbody finales salen a ~2048px (fix de
 # nitidez reciente) en vez de ~1024px.
-_DETECTION_MAX_DIM = 640
+_DETECTION_MAX_DIM = 1024  # subido de 640: en fullbody (1024x1024) la cara ya ocupa poco espacio; reducirla mas hacia 640px hacia que mediapipe no la detectara en algunas fotos ("Corregidas 0/1" confirmado en logs de produccion)
 
 
 def _resize_for_detection(image_bgr: np.ndarray) -> np.ndarray:
@@ -315,7 +315,22 @@ def _recolor_iris_two_zones(
 
     lab[..., 1] = new_a
     lab[..., 2] = new_b
-    # L (luminancia/textura) queda exactamente igual al original.
+
+    # FIX: se detecto en produccion que el verde salia "oscuro" -- no era
+    # el tono (a/b) sino que la zona del ojo en la foto GENERADA ya venia
+    # con brillo bajo (sombra de parpado, iluminacion de esa toma), y como
+    # L nunca se tocaba, el color heredaba esa oscuridad. Se aplica un
+    # realce PROPORCIONAL (no un valor plano) de brillo dentro de las
+    # zonas coloreadas, para que se vea mas claro sin aplanar la textura
+    # (los pixeles ya oscuros suben menos, los medios suben mas, se
+    # conserva la variacion relativa de sombreado natural).
+    _L_BOOST = 1.18
+    combined_mask = np.clip(inner_mask + outer_mask, 0, 1)
+    boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
+    new_l = l_channel * (1.0 - combined_mask) + boosted_l * combined_mask
+    lab[..., 0] = new_l
+    # L (luminancia/textura) se preserva relativamente -- solo se realza,
+    # nunca se aplana a un valor fijo.
 
     result = cv2.cvtColor(lab.astype(np.uint8), cv2.COLOR_LAB2BGR)
     return result
@@ -592,7 +607,13 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-
+    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
+    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
+    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
+    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
+    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
+    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
+    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
     unified_radius = int(round((left_radius + right_radius) / 2))
 
     corrected = _recolor_iris_two_zones(
