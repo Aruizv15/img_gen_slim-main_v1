@@ -260,80 +260,89 @@ def _iris_center_and_radius(landmarks, idx_list, img_w: int, img_h: int) -> Tupl
     return (int(center[0]), int(center[1])), int(radius) + 1
 
 
-def _recolor_iris_region(
+def _recolor_iris_two_zones(
     image_bgr: np.ndarray,
     center: Tuple[int, int],
     radius: int,
-    target_a: float,
-    target_b: float,
-    opacity: float = 0.65,
+    inner_a: float,
+    inner_b: float,
+    inner_opacity: float,
+    outer_a: float,
+    outer_b: float,
+    outer_opacity: float,
 ) -> np.ndarray:
     """
-    Recolorea el iris trabajando en espacio LAB, modificando SOLO los
-    canales cromaticos (a, b) y dejando L (luminancia/textura) intacto.
-    Esto preserva el patron de fibra y sombreado natural del iris en vez
-    de aplastarlo con un relleno de tono plano.
+    Recolorea el iris en DOS zonas concentricas independientes, cada una
+    con su propio color y opacidad -- reproduce heterocromia real
+    (centro miel/ambar + anillo exterior verde) en vez de un solo tono
+    plano para todo el iris. Trabaja en LAB, tocando solo los canales
+    cromaticos (a, b) y dejando L (luminancia/textura) intacto, igual
+    que la version de una sola zona.
 
-    Incluye un anillo interior protegido (sin recolorear) para simular
-    la heterocromia central natural (centro avellana/miel con borde
-    verde) que tienen muchos ojos verdes/hazel reales.
-
-    A diferencia de versiones anteriores, esta funcion recibe target_a/
-    target_b YA CALCULADOS (en el espacio cromatico LAB), en vez de un
-    hue/saturacion en HSV -- asi el mismo blend sirve tanto para un color
-    aproximado por texto como para un color MUESTREADO de una foto real
-    de referencia, sin tablas de compensacion. `opacity` es mas alta
-    cuando el color viene de una foto real (confiable, empujar fuerte) y
-    mas baja cuando es una aproximacion por texto (menos confiable,
-    dejar que se note menos para no arriesgar un color equivocado).
+    Zonas (como fraccion del radio, mismas que en el muestreo):
+      - 0 a 0.30: pupila/reflejo, nunca se toca.
+      - 0.30 a 0.60: zona interior (inner_a/inner_b).
+      - 0.60 a 0.70: transicion, se deja mezclar naturalmente por el
+        desenfoque de ambas mascaras.
+      - 0.70 a 1.0: zona exterior (outer_a/outer_b).
     """
     h, w = image_bgr.shape[:2]
-
-    # Mascara circular con anillo interior protegido (heterocromia central).
-    mask = np.zeros((h, w), dtype=np.float32)
-    cv2.circle(mask, center, radius, 1.0, thickness=-1)
-    inner_radius = max(1, int(radius * 0.35))
-    cv2.circle(mask, center, inner_radius, 0.0, thickness=-1)
-
-    # Desenfoque de borde contenido, con tope absoluto en pixeles para que
-    # no escale sin control en imagenes de alta resolucion (portrait sale
-    # a ~2048px) -- esto fue lo que causaba el sangrado hacia el parpado
-    # y la esclerotica en versiones anteriores.
-    sigma = min(radius * 0.15, 3.5)
-    mask = cv2.GaussianBlur(mask, (0, 0), sigmaX=sigma)
-
     lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
     l_channel, a_channel, b_channel = lab[..., 0], lab[..., 1], lab[..., 2]
-
-    # No tocar reflejos de luz (catchlight) ni sombra muy profunda.
     valid_range = ((l_channel > 30) & (l_channel < 220)).astype(np.float32)
-    effective_mask = mask * valid_range * opacity
 
-    new_a = a_channel * (1.0 - effective_mask) + target_a * effective_mask
-    new_b = b_channel * (1.0 - effective_mask) + target_b * effective_mask
+    sigma = min(radius * 0.15, 3.5)
+
+    def _zone_mask(inner_frac, outer_frac, opacity):
+        m = np.zeros((h, w), dtype=np.float32)
+        outer_px = max(1, int(radius * outer_frac))
+        inner_px = max(1, int(radius * inner_frac))
+        cv2.circle(m, center, outer_px, 1.0, thickness=-1)
+        if inner_px > 0:
+            cv2.circle(m, center, inner_px, 0.0, thickness=-1)
+        m = cv2.GaussianBlur(m, (0, 0), sigmaX=sigma)
+        return m * valid_range * opacity
+
+    inner_mask = _zone_mask(_INNER_ZONE[0], _INNER_ZONE[1], inner_opacity)
+    outer_mask = _zone_mask(_OUTER_ZONE[0], _OUTER_ZONE[1], outer_opacity)
+
+    new_a = a_channel.copy()
+    new_b = b_channel.copy()
+    new_a = new_a * (1.0 - inner_mask) + inner_a * inner_mask
+    new_b = new_b * (1.0 - inner_mask) + inner_b * inner_mask
+    new_a = new_a * (1.0 - outer_mask) + outer_a * outer_mask
+    new_b = new_b * (1.0 - outer_mask) + outer_b * outer_mask
 
     lab[..., 1] = new_a
     lab[..., 2] = new_b
-    # L (luminancia/textura) queda exactamente igual al original -- por
-    # eso se conserva el patron de fibra natural del iris.
+    # L (luminancia/textura) queda exactamente igual al original.
 
     result = cv2.cvtColor(lab.astype(np.uint8), cv2.COLOR_LAB2BGR)
     return result
 
 
-def _sample_iris_lab_ab(image_bgr: np.ndarray, center: Tuple[int, int], radius: int) -> Optional[Tuple[float, float]]:
+def _sample_iris_zone_lab_ab(
+    image_bgr: np.ndarray,
+    center: Tuple[int, int],
+    radius: int,
+    inner_frac: float,
+    outer_frac: float,
+) -> Optional[Tuple[float, float]]:
     """
-    Promedia el color (canales a, b de LAB) del anillo del iris en una
-    imagen -- usado para MUESTREAR el color real del ojo de una foto de
-    referencia de la donante, en vez de adivinarlo por una tabla de texto.
-    Excluye el centro (heterocromia/pupila) y los reflejos de luz, igual
-    que al recolorear.
+    Promedia el color (canales a, b de LAB) de una ZONA especifica del
+    iris (un anillo entre inner_frac y outer_frac del radio total).
+    Generaliza la version anterior para poder muestrear el centro
+    (miel/ambar) y el borde exterior (verde) POR SEPARADO -- muchos ojos
+    hazel/verdes tienen heterocromia real: centro de un color, anillo
+    exterior de otro. Un solo promedio de todo el iris diluye ambos.
     """
     h, w = image_bgr.shape[:2]
     mask = np.zeros((h, w), dtype=np.uint8)
-    cv2.circle(mask, center, radius, 255, thickness=-1)
-    inner_radius = max(1, int(radius * 0.35))
-    cv2.circle(mask, center, inner_radius, 0, thickness=-1)
+    outer_radius_px = max(1, int(radius * outer_frac))
+    inner_radius_px = max(1, int(radius * inner_frac))
+    cv2.circle(mask, center, outer_radius_px, 255, thickness=-1)
+    if inner_radius_px > 0:
+        cv2.circle(mask, center, inner_radius_px, 0, thickness=-1)
 
     lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)
     l_channel = lab[..., 0]
@@ -347,15 +356,26 @@ def _sample_iris_lab_ab(image_bgr: np.ndarray, center: Tuple[int, int], radius: 
     return avg_a, avg_b
 
 
+# Limites de las dos zonas, como fraccion del radio del iris:
+# - pupila/reflejo: 0 a 0.30 -- nunca se toca
+# - zona interior (centro miel/ambar): 0.30 a 0.60
+# - zona exterior (anillo verde, cerca del limbo oscuro): 0.70 a 1.0
+# (0.60-0.70 se deja como transicion, sin muestrear ahi para no mezclar)
+_INNER_ZONE = (0.30, 0.60)
+_OUTER_ZONE = (0.70, 1.0)
+
+
 def _sample_from_single_reference(
     reference_image_bytes: bytes,
     landmarker,
-) -> Optional[Tuple[float, float, int]]:
+) -> Optional[Tuple[float, float, float, float, int]]:
     """
-    Intenta muestrear el color de iris de UNA foto de referencia puntual.
-    Returns (avg_a, avg_b, min_radius) o None si no se pudo, donde
-    min_radius es el menor de los dos radios de iris detectados (util
-    para comparar calidad entre varias fotos candidatas).
+    Intenta muestrear el color de iris de UNA foto de referencia puntual,
+    por ZONA (interior/miel y exterior/verde) por separado.
+
+    Returns (inner_a, inner_b, outer_a, outer_b, min_radius) o None si no
+    se pudo, donde min_radius es el menor de los dos radios de iris
+    detectados (util para comparar calidad entre varias fotos candidatas).
     """
     arr = np.frombuffer(reference_image_bytes, dtype=np.uint8)
     image_bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
@@ -380,34 +400,41 @@ def _sample_from_single_reference(
         f"[EYE_COLOR] Candidata: radio izq={left_radius}px, der={right_radius}px (imagen {img_w}x{img_h})"
     )
 
-    left_sample = _sample_iris_lab_ab(image_bgr, left_center, left_radius)
-    right_sample = _sample_iris_lab_ab(image_bgr, right_center, right_radius)
-    samples = [s for s in (left_sample, right_sample) if s is not None]
-    if not samples:
+    def _sample_both_eyes(inner_frac, outer_frac):
+        l = _sample_iris_zone_lab_ab(image_bgr, left_center, left_radius, inner_frac, outer_frac)
+        r = _sample_iris_zone_lab_ab(image_bgr, right_center, right_radius, inner_frac, outer_frac)
+        samples = [s for s in (l, r) if s is not None]
+        if not samples:
+            return None
+        a = sum(s[0] for s in samples) / len(samples)
+        b = sum(s[1] for s in samples) / len(samples)
+        return a, b
+
+    inner = _sample_both_eyes(*_INNER_ZONE)
+    outer = _sample_both_eyes(*_OUTER_ZONE)
+    if inner is None or outer is None:
         return None
 
-    avg_a = sum(s[0] for s in samples) / len(samples)
-    avg_b = sum(s[1] for s in samples) / len(samples)
-    return avg_a, avg_b, min_radius
+    return inner[0], inner[1], outer[0], outer[1], min_radius
 
 
 def sample_target_color_from_reference(
     reference_images: List[bytes],
     model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
     min_acceptable_radius: int = 12,
-) -> Optional[Tuple[float, float]]:
+) -> Optional[Tuple[float, float, float, float]]:
     """
     Prueba TODAS las fotos de referencia disponibles de la donante y se
     queda con el muestreo de la que tenga el iris mas grande (mas
-    confiable). Si ninguna alcanza `min_acceptable_radius` pixeles, se
-    descarta el muestreo por completo -- es mejor caer al metodo de
-    texto (aproximado pero no confiadamente equivocado) que confiar en
-    una muestra de 15px que termina dando un color piel en vez de verde
-    (bug real encontrado en produccion).
+    confiable). Muestrea DOS zonas por separado: el centro (miel/ambar,
+    tal cual es en la realidad) y el anillo exterior cerca del limbo
+    (donde vive el verde en un ojo con heterocromia). Si ninguna foto
+    alcanza `min_acceptable_radius` pixeles, se descarta el muestreo por
+    completo y se cae al metodo de texto.
 
     Returns:
-        (avg_a, avg_b) de la mejor foto encontrada, o None si ninguna
-        foto alcanzo el minimo de confiabilidad.
+        (inner_a, inner_b, outer_a, outer_b) de la mejor foto encontrada,
+        o None si ninguna foto alcanzo el minimo de confiabilidad.
     """
     if not reference_images:
         return None
@@ -418,45 +445,42 @@ def sample_target_color_from_reference(
         logger.error(str(e))
         return None
 
-    best_result = None  # (avg_a, avg_b, min_radius)
+    best_result = None  # (inner_a, inner_b, outer_a, outer_b, min_radius)
     for idx, ref_bytes in enumerate(reference_images):
         sample = _sample_from_single_reference(ref_bytes, landmarker)
         if sample is None:
             continue
-        avg_a, avg_b, min_radius = sample
-        if best_result is None or min_radius > best_result[2]:
-            best_result = (avg_a, avg_b, min_radius)
+        inner_a, inner_b, outer_a, outer_b, min_radius = sample
+        if best_result is None or min_radius > best_result[4]:
+            best_result = (inner_a, inner_b, outer_a, outer_b, min_radius)
 
     if best_result is None:
         logger.warning("[EYE_COLOR] Ninguna foto de referencia produjo un muestreo valido.")
         return None
 
-    avg_a, avg_b, min_radius = best_result
+    inner_a, inner_b, outer_a, outer_b, min_radius = best_result
     if min_radius < min_acceptable_radius:
         logger.warning(
             f"[EYE_COLOR] La mejor foto disponible tiene radio de iris={min_radius}px, "
             f"por debajo del minimo aceptable ({min_acceptable_radius}px) -- el muestreo "
-            f"no es confiable (probablemente termine dando un color casi neutro/piel). "
-            f"Se descarta y se cae al metodo de texto como respaldo."
+            f"no es confiable. Se descarta y se cae al metodo de texto como respaldo."
         )
         return None
 
-    # Amplificar la crominancia respecto al punto neutro (128,128) de LAB.
-    # El promedio de todo el anillo del iris (bordes, sombras, reflejos
-    # parciales) siempre da un color mas "apagado" que el que realmente
-    # se percibe al mirar el ojo -- este boost compensa eso sin inventar
-    # un color distinto, solo intensifica el mismo tono muestreado.
-    _CHROMA_BOOST = 1.3
-    avg_a = 128 + (avg_a - 128) * _CHROMA_BOOST
-    avg_b = 128 + (avg_b - 128) * _CHROMA_BOOST
-    avg_a = float(np.clip(avg_a, 0, 255))
-    avg_b = float(np.clip(avg_b, 0, 255))
+    # Boost de crominancia SOLO en la zona exterior (donde necesitamos que
+    # el verde se note con claridad). El centro se deja tal cual se
+    # muestreo -- se busca fidelidad real ahi, no intensidad.
+    _OUTER_CHROMA_BOOST = 1.3
+    outer_a = 128 + (outer_a - 128) * _OUTER_CHROMA_BOOST
+    outer_b = 128 + (outer_b - 128) * _OUTER_CHROMA_BOOST
+    outer_a = float(np.clip(outer_a, 0, 255))
+    outer_b = float(np.clip(outer_b, 0, 255))
 
     logger.info(
-        f"[EYE_COLOR] Mejor foto de referencia: radio={min_radius}px "
-        f"(con boost x{_CHROMA_BOOST}): a={avg_a:.1f}, b={avg_b:.1f}"
+        f"[EYE_COLOR] Mejor foto de referencia: radio={min_radius}px -- "
+        f"centro(a={inner_a:.1f},b={inner_b:.1f}) anillo(a={outer_a:.1f},b={outer_b:.1f}, boost x{_OUTER_CHROMA_BOOST})"
     )
-    return avg_a, avg_b
+    return inner_a, inner_b, outer_a, outer_b
 
 
 def correct_eye_color(
@@ -466,22 +490,20 @@ def correct_eye_color(
     reference_images: Optional[List[bytes]] = None,
 ) -> Optional[bytes]:
     """
-    Corrige el color de ojos de una imagen generada.
+    Corrige el color de ojos de una imagen generada, en DOS zonas
+    independientes (heterocromia real):
 
-    SIEMPRE se calcula un "ancla" de color a partir del texto del CSV
-    (ej. "green"), usando la tabla calibrada. Si ademas hay fotos de
-    referencia y alguna da un muestreo confiable (iris suficientemente
-    grande), el color real muestreado se COMBINA con esa ancla --
-    empujado fuerte hacia el ancla (80%) para GARANTIZAR que el
-    resultado se lea como el color pedido (ej. verde), incluso si la
-    foto de referencia puntual no muestra mucho de ese color en sus
-    pixeles crudos (iluminacion, angulo, compresion JPEG, etc. pueden
-    opacar el color real aunque a simple vista se vea distinto). El 20%
-    restante conserva algo del tono/calidez real de la donante, para
-    que no sea un verde 100% generico.
+      - CENTRO (miel/ambar): se prioriza fidelidad al color real
+        muestreado de la donante -- empuje minimo hacia el ancla de
+        texto, para que se vea como es ella de verdad.
+      - ANILLO EXTERIOR (verde, cerca del limbo): se prioriza que el
+        color pedido (ej. "green") sea claramente visible -- empuje
+        fuerte hacia el ancla de texto, porque el promedio de pixeles
+        crudos de esta zona suele salir mas apagado de lo que se
+        percibe a simple vista.
 
-    Si no hay fotos de referencia, o ninguna fue confiable, se usa
-    directamente el ancla de texto sola (metodo anterior).
+    Si no hay fotos de referencia confiables, las dos zonas usan
+    directamente el ancla de texto (mismo color en todo el iris).
     """
     # --- Ancla de color por texto: SIEMPRE se calcula, es la base garantizada ---
     color_name = extract_primary_color_name(target_color)
@@ -496,29 +518,42 @@ def correct_eye_color(
     anchor_lab = cv2.cvtColor(anchor_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)[0][0]
     anchor_a, anchor_b = float(anchor_lab[1]), float(anchor_lab[2])
 
-    target_a, target_b = anchor_a, anchor_b
-    opacity = 0.65
+    # Valores por defecto: sin foto confiable, las dos zonas usan el ancla.
+    inner_target_a, inner_target_b = anchor_a, anchor_b
+    outer_target_a, outer_target_b = anchor_a, anchor_b
+    inner_opacity = 0.65
+    outer_opacity = 0.65
 
     if reference_images:
         sampled = sample_target_color_from_reference(reference_images, model_path)
         if sampled is not None:
-            sampled_a, sampled_b = sampled
-            # Empuje fuerte (80%) hacia el ancla de texto -- garantiza que
-            # el resultado se lea como el color pedido, aunque la foto de
-            # referencia puntual no muestre mucho de ese color en crudo.
-            ANCHOR_PULL = 0.15  # fidelidad al color REAL de la donante; solo un empujon minimo de seguridad
-            target_a = sampled_a * (1 - ANCHOR_PULL) + anchor_a * ANCHOR_PULL
-            target_b = sampled_b * (1 - ANCHOR_PULL) + anchor_b * ANCHOR_PULL
-            opacity = 0.90
+            s_inner_a, s_inner_b, s_outer_a, s_outer_b = sampled
+
+            # CENTRO: fidelidad real, empuje minimo hacia el ancla.
+            INNER_ANCHOR_PULL = 0.15
+            inner_target_a = s_inner_a * (1 - INNER_ANCHOR_PULL) + anchor_a * INNER_ANCHOR_PULL
+            inner_target_b = s_inner_b * (1 - INNER_ANCHOR_PULL) + anchor_b * INNER_ANCHOR_PULL
+
+            # ANILLO EXTERIOR: empuje fuerte hacia el ancla, para que el
+            # verde se note con claridad (el promedio crudo de esta zona
+            # suele salir muy apagado).
+            OUTER_ANCHOR_PULL = 0.6
+            outer_target_a = s_outer_a * (1 - OUTER_ANCHOR_PULL) + anchor_a * OUTER_ANCHOR_PULL
+            outer_target_b = s_outer_b * (1 - OUTER_ANCHOR_PULL) + anchor_b * OUTER_ANCHOR_PULL
+
+            inner_opacity = 0.85
+            outer_opacity = 0.90
+
             logger.info(
-                f"[EYE_COLOR] Color combinado: muestreado_real=({sampled_a:.1f},{sampled_b:.1f}) "
-                f"+ ancla_texto=({anchor_a:.1f},{anchor_b:.1f}) con empuje {ANCHOR_PULL} "
-                f"-> final=({target_a:.1f},{target_b:.1f}), opacity={opacity}"
+                f"[EYE_COLOR] Dos zonas -- centro: muestreado=({s_inner_a:.1f},{s_inner_b:.1f}) "
+                f"empuje={INNER_ANCHOR_PULL} -> final=({inner_target_a:.1f},{inner_target_b:.1f}); "
+                f"anillo: muestreado=({s_outer_a:.1f},{s_outer_b:.1f}) empuje={OUTER_ANCHOR_PULL} "
+                f"-> final=({outer_target_a:.1f},{outer_target_b:.1f})"
             )
         else:
-            logger.warning(f"[EYE_COLOR] No se pudo muestrear la foto de referencia -- se usa solo el ancla de texto (a={anchor_a:.1f}, b={anchor_b:.1f}, opacity={opacity}).")
+            logger.warning(f"[EYE_COLOR] No se pudo muestrear la foto de referencia -- se usa solo el ancla de texto en ambas zonas (a={anchor_a:.1f}, b={anchor_b:.1f}).")
     else:
-        logger.info(f"[EYE_COLOR] Sin fotos de referencia -- se usa solo el ancla de texto (a={anchor_a:.1f}, b={anchor_b:.1f}, opacity={opacity}).")
+        logger.info(f"[EYE_COLOR] Sin fotos de referencia -- se usa solo el ancla de texto en ambas zonas (a={anchor_a:.1f}, b={anchor_b:.1f}).")
 
     # Decodificar imagen a corregir
     arr = np.frombuffer(image_bytes, dtype=np.uint8)
@@ -557,17 +592,19 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
-    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
-    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
-    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
-    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
-    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
-    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
+
     unified_radius = int(round((left_radius + right_radius) / 2))
 
-    corrected = _recolor_iris_region(image_bgr, left_center, unified_radius, target_a, target_b, opacity=opacity)
-    corrected = _recolor_iris_region(corrected, right_center, unified_radius, target_a, target_b, opacity=opacity)
+    corrected = _recolor_iris_two_zones(
+        image_bgr, left_center, unified_radius,
+        inner_target_a, inner_target_b, inner_opacity,
+        outer_target_a, outer_target_b, outer_opacity,
+    )
+    corrected = _recolor_iris_two_zones(
+        corrected, right_center, unified_radius,
+        inner_target_a, inner_target_b, inner_opacity,
+        outer_target_a, outer_target_b, outer_opacity,
+    )
 
     success, encoded = cv2.imencode(".png", corrected)
     if not success:
