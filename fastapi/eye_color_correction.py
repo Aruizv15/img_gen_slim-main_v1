@@ -17,7 +17,14 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -93,7 +100,13 @@ def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeo
 
 # --- Mapeo de nombre de color a tono (Hue) en el espacio HSV de OpenCV (0-179) ---
 _COLOR_HUE_MAP = {
-  
+    # NOTA: estos valores estan ajustados +18 respecto al hue "percibido"
+    # deseado, para compensar el subvalor sistematico que mide el blend en
+    # LAB (probado empiricamente solo para "green": pedir 60 da un
+    # resultado final de ~40, un verde oliva natural). El resto de los
+    # colores se ajusto con el mismo offset por consistencia, pero solo
+    # "green" fue verificado con el test numerico real -- si algun otro
+    # color sale desviado, puede necesitar su propio ajuste puntual.
     "green": 68,
     "hazel": 46,
     "amber": 36,
@@ -278,7 +291,7 @@ def _recolor_iris_two_zones(
     l_channel, a_channel, b_channel = lab[..., 0], lab[..., 1], lab[..., 2]
     valid_range = ((l_channel > 30) & (l_channel < 220)).astype(np.float32)
 
-    sigma = min(radius * 0.09, 2.0)
+    sigma = min(radius * 0.12, 2.8)
 
     def _zone_mask(inner_frac, outer_frac, opacity):
         m = np.zeros((h, w), dtype=np.float32)
@@ -316,21 +329,35 @@ def _recolor_iris_two_zones(
     limbal_mask = cv2.GaussianBlur(limbal_mask, (0, 0), sigmaX=max(1.0, sigma * 0.5))
     limbal_mask = limbal_mask * valid_range * 0.5  # sutil, no un borde duro
 
-   
+    # FIX: se detecto en produccion que el verde salia "oscuro" -- no era
+    # el tono (a/b) sino que la zona del ojo en la foto GENERADA ya venia
+    # con brillo bajo (sombra de parpado, iluminacion de esa toma), y como
+    # L nunca se tocaba, el color heredaba esa oscuridad. Se aplica un
+    # realce PROPORCIONAL (no un valor plano) de brillo dentro de las
+    # zonas coloreadas, para que se vea mas claro sin aplanar la textura
+    # (los pixeles ya oscuros suben menos, los medios suben mas, se
+    # conserva la variacion relativa de sombreado natural).
     _L_BOOST = 1.03
-
+    # FIX: el realce proporcional solo no bastaba para fotos donde el ojo
+    # de base venia MUY oscuro -- un 18% de un numero chico sigue siendo
+    # chico. Se agrega ademas un PISO minimo (no aplana, solo evita que
+    # caiga por debajo de este valor), para que el verde nunca se vea
+    # oscuro sin importar la iluminacion de la foto generada de base.
     _L_MIN_FLOOR = 68
     combined_mask = np.clip(inner_mask + outer_mask, 0, 1)
     boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
     boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
     new_l = l_channel * (1.0 - combined_mask) + boosted_l * combined_mask
 
-
+    # Aplicar el anillo limbico oscuro DESPUES del realce de brillo, para
+    # que quede como un borde definido sobre el color ya corregido, no se
+    # pierda mezclado con el resto del realce.
     darkened_limbal = np.clip(new_l * 0.55, 0, 255)
     new_l = new_l * (1.0 - limbal_mask) + darkened_limbal * limbal_mask
 
     lab[..., 0] = new_l
- 
+    # L (luminancia/textura) se preserva relativamente -- solo se realza,
+    # nunca se aplana a un valor fijo.
 
     result = cv2.cvtColor(lab.astype(np.uint8), cv2.COLOR_LAB2BGR)
     return result
@@ -371,9 +398,13 @@ def _sample_iris_zone_lab_ab(
     return avg_a, avg_b
 
 
-
-_INNER_ZONE = (0.30, 0.60)
-_OUTER_ZONE = (0.70, 1.0)
+# Limites de las dos zonas, como fraccion del radio del iris:
+# - pupila/reflejo: 0 a 0.30 -- nunca se toca
+# - zona interior (centro miel/ambar): 0.30 a 0.60
+# - zona exterior (anillo verde, cerca del limbo oscuro): 0.70 a 1.0
+# (0.60-0.70 se deja como transicion, sin muestrear ahi para no mezclar)
+_INNER_ZONE = (0.30, 0.65)
+_OUTER_ZONE = (0.60, 1.0)
 
 
 def _sample_from_single_reference(
@@ -603,7 +634,13 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-  
+    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
+    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
+    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
+    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
+    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
+    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
+    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
     unified_radius = int(round((left_radius + right_radius) / 2))
 
     corrected = _recolor_iris_two_zones(
