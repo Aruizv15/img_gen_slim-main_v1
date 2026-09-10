@@ -342,21 +342,16 @@ def _recolor_iris_two_zones(
     # el tono (a/b) sino que la zona del ojo en la foto GENERADA ya venia
     # con brillo bajo (sombra de parpado, iluminacion de esa toma), y como
     # L nunca se tocaba, el color heredaba esa oscuridad. Se aplica un
-    # realce PROPORCIONAL (no un valor plano) de brillo dentro de las
-    # zonas coloreadas, para que se vea mas claro sin aplanar la textura
-    # (los pixeles ya oscuros suben menos, los medios suben mas, se
-    # conserva la variacion relativa de sombreado natural).
-    _L_BOOST = 1.03
-    # FIX: el realce proporcional solo no bastaba para fotos donde el ojo
-    # de base venia MUY oscuro -- un 18% de un numero chico sigue siendo
-    # chico. Se agrega ademas un PISO minimo (no aplana, solo evita que
-    # caiga por debajo de este valor), para que el verde nunca se vea
-    # oscuro sin importar la iluminacion de la foto generada de base.
-    _L_MIN_FLOOR = 68
-    combined_mask = np.clip(inner_mask + outer_mask, 0, 1)
+    # realce PROPORCIONAL (no un valor plano) de brillo, PERO SOLO en la
+    # zona exterior (verde) -- el centro (cafe/ambar) queda con su L
+    # original, sin tocar, tal como se pidio explicitamente.
+    _L_BOOST = 1.10
+    _L_MIN_FLOOR = 78
     boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
     boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
-    new_l = l_channel * (1.0 - combined_mask) + boosted_l * combined_mask
+    # Solo outer_mask participa aca -- inner_mask NO se incluye, para que
+    # el centro (cafe) quede exactamente como estaba.
+    new_l = l_channel * (1.0 - outer_mask) + boosted_l * outer_mask
 
     # Aplicar el anillo limbico oscuro DESPUES del realce de brillo, para
     # que quede como un borde definido sobre el color ya corregido, no se
@@ -472,7 +467,7 @@ def _sample_from_single_reference(
 def sample_target_color_from_reference(
     reference_images: List[bytes],
     model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
-    min_acceptable_radius: int = 12,
+    min_acceptable_radius: int = 8,
 ) -> Optional[Tuple[float, float, float, float]]:
     """
     Prueba TODAS las fotos de referencia disponibles de la donante y se
@@ -569,8 +564,15 @@ def correct_eye_color(
     anchor_lab = cv2.cvtColor(anchor_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)[0][0]
     anchor_a, anchor_b = float(anchor_lab[1]), float(anchor_lab[2])
 
-    # Valores por defecto: sin foto confiable, las dos zonas usan el ancla.
-    inner_target_a, inner_target_b = anchor_a, anchor_b
+    # Valores por defecto (sin foto confiable): en vez de que las dos zonas
+    # usen exactamente el mismo ancla (lo que se veia "todo verde parejo,
+    # sin centro"), se simula una heterocromia generica -- el centro se
+    # mezcla hacia un tono ambar/miel generico, para que incluso el
+    # respaldo por texto tenga la sensacion de un ojo real con dos tonos.
+    _GENERIC_WARM_A, _GENERIC_WARM_B = 140.0, 138.0  # ambar/miel generico
+    _GENERIC_WARM_MIX = 0.55
+    inner_target_a = anchor_a * (1 - _GENERIC_WARM_MIX) + _GENERIC_WARM_A * _GENERIC_WARM_MIX
+    inner_target_b = anchor_b * (1 - _GENERIC_WARM_MIX) + _GENERIC_WARM_B * _GENERIC_WARM_MIX
     outer_target_a, outer_target_b = anchor_a, anchor_b
     inner_opacity = 0.65
     outer_opacity = 0.65
