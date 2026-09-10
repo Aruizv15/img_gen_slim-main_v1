@@ -337,13 +337,13 @@ def _recolor_iris_two_zones(
     # zonas coloreadas, para que se vea mas claro sin aplanar la textura
     # (los pixeles ya oscuros suben menos, los medios suben mas, se
     # conserva la variacion relativa de sombreado natural).
-    _L_BOOST = 1.10
+    _L_BOOST = 1.03
     # FIX: el realce proporcional solo no bastaba para fotos donde el ojo
     # de base venia MUY oscuro -- un 18% de un numero chico sigue siendo
     # chico. Se agrega ademas un PISO minimo (no aplana, solo evita que
     # caiga por debajo de este valor), para que el verde nunca se vea
     # oscuro sin importar la iluminacion de la foto generada de base.
-    _L_MIN_FLOOR = 82
+    _L_MIN_FLOOR = 68
     combined_mask = np.clip(inner_mask + outer_mask, 0, 1)
     boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
     boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
@@ -634,7 +634,7 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-
+ 
     unified_radius = int(round((left_radius + right_radius) / 2))
 
     corrected = _recolor_iris_two_zones(
