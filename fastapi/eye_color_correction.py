@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -614,7 +607,7 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-
+  
     unified_radius = int(round((left_radius + right_radius) / 2))
 
     corrected = _recolor_iris_two_zones(
