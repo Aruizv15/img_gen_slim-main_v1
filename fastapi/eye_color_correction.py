@@ -306,12 +306,21 @@ def _recolor_iris_two_zones(
     inner_mask = _zone_mask(_INNER_ZONE[0], _INNER_ZONE[1], inner_opacity)
     outer_mask = _zone_mask(_OUTER_ZONE[0], _OUTER_ZONE[1], outer_opacity)
 
-    new_a = a_channel.copy()
-    new_b = b_channel.copy()
-    new_a = new_a * (1.0 - inner_mask) + inner_a * inner_mask
-    new_b = new_b * (1.0 - inner_mask) + inner_b * inner_mask
-    new_a = new_a * (1.0 - outer_mask) + outer_a * outer_mask
-    new_b = new_b * (1.0 - outer_mask) + outer_b * outer_mask
+    # FIX: aplicar las mascaras en secuencia (primero centro, despues
+    # anillo) hacia que en la zona de superposicion el anillo (verde)
+    # pisara al centro (ambar), empujando mas verde hacia adentro de lo
+    # que correspondia -- el color ya no coincidia con la referencia real.
+    # Ahora se calcula un blend PROPORCIONAL, independiente del orden: en
+    # la superposicion, se mezclan ambos colores segun su peso relativo,
+    # en vez de que uno gane sobre el otro.
+    total_weight = np.clip(inner_mask + outer_mask, 0.0, None)
+    safe_weight = np.maximum(total_weight, 1e-6)
+    combined_target_a = (inner_mask * inner_a + outer_mask * outer_a) / safe_weight
+    combined_target_b = (inner_mask * inner_b + outer_mask * outer_b) / safe_weight
+    combined_opacity = np.clip(total_weight, 0.0, 1.0)
+
+    new_a = a_channel * (1.0 - combined_opacity) + combined_target_a * combined_opacity
+    new_b = b_channel * (1.0 - combined_opacity) + combined_target_b * combined_opacity
 
     lab[..., 1] = new_a
     lab[..., 2] = new_b
