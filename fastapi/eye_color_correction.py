@@ -17,7 +17,14 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -309,6 +316,19 @@ def _recolor_iris_two_zones(
     lab[..., 1] = new_a
     lab[..., 2] = new_b
 
+    # Anillo limbico: una linea oscura fina justo en el borde exterior del
+    # iris (contra la esclerotica), que es lo que le da al ojo la
+    # sensacion de forma "redonda" bien definida en vez de difusa. Solo
+    # oscurece L en una franja muy angosta (0.92 a 1.0 del radio), sin
+    # tocar el color -- es sutil, no un borde negro duro.
+    limbal_mask = np.zeros((h, w), dtype=np.float32)
+    limbal_outer_px = max(1, int(radius * 1.0))
+    limbal_inner_px = max(1, int(radius * 0.92))
+    cv2.circle(limbal_mask, center, limbal_outer_px, 1.0, thickness=-1)
+    cv2.circle(limbal_mask, center, limbal_inner_px, 0.0, thickness=-1)
+    limbal_mask = cv2.GaussianBlur(limbal_mask, (0, 0), sigmaX=max(1.0, sigma * 0.5))
+    limbal_mask = limbal_mask * valid_range * 0.5  # sutil, no un borde duro
+
     # FIX: se detecto en produccion que el verde salia "oscuro" -- no era
     # el tono (a/b) sino que la zona del ojo en la foto GENERADA ya venia
     # con brillo bajo (sombra de parpado, iluminacion de esa toma), y como
@@ -328,6 +348,13 @@ def _recolor_iris_two_zones(
     boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
     boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
     new_l = l_channel * (1.0 - combined_mask) + boosted_l * combined_mask
+
+    # Aplicar el anillo limbico oscuro DESPUES del realce de brillo, para
+    # que quede como un borde definido sobre el color ya corregido, no se
+    # pierda mezclado con el resto del realce.
+    darkened_limbal = np.clip(new_l * 0.55, 0, 255)
+    new_l = new_l * (1.0 - limbal_mask) + darkened_limbal * limbal_mask
+
     lab[..., 0] = new_l
     # L (luminancia/textura) se preserva relativamente -- solo se realza,
     # nunca se aplana a un valor fijo.
@@ -545,7 +572,7 @@ def correct_eye_color(
             s_inner_a, s_inner_b, s_outer_a, s_outer_b = sampled
 
             # CENTRO: fidelidad real, empuje minimo hacia el ancla.
-            INNER_ANCHOR_PULL = 0.15
+            INNER_ANCHOR_PULL = 0.05
             inner_target_a = s_inner_a * (1 - INNER_ANCHOR_PULL) + anchor_a * INNER_ANCHOR_PULL
             inner_target_b = s_inner_b * (1 - INNER_ANCHOR_PULL) + anchor_b * INNER_ANCHOR_PULL
 
@@ -607,7 +634,7 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-  
+
     unified_radius = int(round((left_radius + right_radius) / 2))
 
     corrected = _recolor_iris_two_zones(
