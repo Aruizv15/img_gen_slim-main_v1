@@ -524,7 +524,7 @@ def sample_target_color_from_reference(
     # Boost de crominancia SOLO en la zona exterior (donde necesitamos que
     # el verde se note con claridad). El centro se deja tal cual se
     # muestreo -- se busca fidelidad real ahi, no intensidad.
-    _OUTER_CHROMA_BOOST = 1.3
+    _OUTER_CHROMA_BOOST = 1.1
     outer_a = 128 + (outer_a - 128) * _OUTER_CHROMA_BOOST
     outer_b = 128 + (outer_b - 128) * _OUTER_CHROMA_BOOST
     outer_a = float(np.clip(outer_a, 0, 255))
@@ -598,7 +598,7 @@ def correct_eye_color(
             # ANILLO EXTERIOR: empuje fuerte hacia el ancla, para que el
             # verde se note con claridad (el promedio crudo de esta zona
             # suele salir muy apagado).
-            OUTER_ANCHOR_PULL = 0.6
+            OUTER_ANCHOR_PULL = 0.45
             outer_target_a = s_outer_a * (1 - OUTER_ANCHOR_PULL) + anchor_a * OUTER_ANCHOR_PULL
             outer_target_b = s_outer_b * (1 - OUTER_ANCHOR_PULL) + anchor_b * OUTER_ANCHOR_PULL
 
@@ -653,7 +653,13 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-
+    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
+    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
+    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
+    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
+    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
+    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
+    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
     unified_radius = int(round((left_radius + right_radius) / 2))
 
     corrected = _recolor_iris_two_zones(
