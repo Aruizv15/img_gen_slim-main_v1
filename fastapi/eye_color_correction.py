@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -35,9 +28,7 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     with _landmarker_lock:
         if model_path not in _landmarker_cache:
             if not os.path.exists(model_path):
-                # Fallar rapido y con mensaje claro, en vez de dejar que
-                # mediapipe intente cargar algo inexistente y se quede
-                # esperando/reintentando en silencio.
+        
                 raise FileNotFoundError(
                     f"[EYE_COLOR] Modelo de landmarks no encontrado en {model_path}. "
                     f"Verificar que face_landmarker.task este presente en esa ruta."
@@ -54,12 +45,7 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     return _landmarker_cache[model_path]
 
 
-# --- FIX #2: detectar landmarks sobre una copia reducida ---
-# Los landmarks de mediapipe son coordenadas NORMALIZADAS (0-1), no pixeles
-# absolutos -- asi que detectar sobre una copia chica da el mismo resultado
-# relativo que detectar sobre la imagen completa, pero mucho mas rapido.
-# Esto importa mas ahora que las fullbody finales salen a ~2048px (fix de
-# nitidez reciente) en vez de ~1024px.
+
 _DETECTION_MAX_DIM = 1024  # subido de 640: en fullbody (1024x1024) la cara ya ocupa poco espacio; reducirla mas hacia 640px hacia que mediapipe no la detectara en algunas fotos ("Corregidas 0/1" confirmado en logs de produccion)
 
 
@@ -98,15 +84,8 @@ def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeo
     return result_holder.get("result")
 
 
-# --- Mapeo de nombre de color a tono (Hue) en el espacio HSV de OpenCV (0-179) ---
 _COLOR_HUE_MAP = {
-    # NOTA: estos valores estan ajustados +18 respecto al hue "percibido"
-    # deseado, para compensar el subvalor sistematico que mide el blend en
-    # LAB (probado empiricamente solo para "green": pedir 60 da un
-    # resultado final de ~40, un verde oliva natural). El resto de los
-    # colores se ajusto con el mismo offset por consistencia, pero solo
-    # "green" fue verificado con el test numerico real -- si algun otro
-    # color sale desviado, puede necesitar su propio ajuste puntual.
+
     "green": 68,
     "hazel": 46,
     "amber": 36,
@@ -289,7 +268,15 @@ def _recolor_iris_two_zones(
     h, w = image_bgr.shape[:2]
     lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
     l_channel, a_channel, b_channel = lab[..., 0], lab[..., 1], lab[..., 2]
+    # FIX: antes valid_range era un corte binario duro (> 30 y < 220), sin
+    # suavizar -- aunque el circulo de color SI estaba difuminado, al
+    # multiplicarlo por esta mascara binaria se reintroducia un borde
+    # duro y dentado justo donde el brillo cruzaba el umbral (tipicamente
+    # en la sombra del parpado superior). Ahora se suaviza tambien esta
+    # mascara, para que la inclusion/exclusion por brillo sea gradual,
+    # no un corte abrupto.
     valid_range = ((l_channel > 30) & (l_channel < 220)).astype(np.float32)
+    valid_range = cv2.GaussianBlur(valid_range, (0, 0), sigmaX=2.0)
 
     sigma = min(radius * 0.12, 2.8)
 
@@ -645,13 +632,7 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
-    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
-    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
-    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
-    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
-    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
-    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
+ 
     unified_radius = int(round((left_radius + right_radius) / 2))
 
     corrected = _recolor_iris_two_zones(
