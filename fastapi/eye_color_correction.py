@@ -653,18 +653,37 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-
+    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
+    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
+    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
+    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
+    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
+    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
+    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
     unified_radius = int(round((left_radius + right_radius) / 2))
+
+    # FIX DECISIVO: el sistema de dos zonas (centro ambar + anillo verde)
+    # seguia leyendose como un "circulo" en muchas fotos, sobre todo con
+    # el ojo en angulo o parcialmente tapado por el parpado -- se prioriza
+    # eliminar por completo esa posibilidad por sobre el detalle de
+    # heterocromia. Se fusiona el color de las dos zonas en UNO SOLO
+    # parejo (con mas peso al anillo/verde, que es el color de identidad
+    # pedido) y se aplica igual en todo el iris -- sin fronteras internas
+    # que puedan notarse.
+    _SINGLE_ZONE_OUTER_WEIGHT = 0.65
+    blended_a = inner_target_a * (1 - _SINGLE_ZONE_OUTER_WEIGHT) + outer_target_a * _SINGLE_ZONE_OUTER_WEIGHT
+    blended_b = inner_target_b * (1 - _SINGLE_ZONE_OUTER_WEIGHT) + outer_target_b * _SINGLE_ZONE_OUTER_WEIGHT
+    blended_opacity = max(inner_opacity, outer_opacity)
 
     corrected = _recolor_iris_two_zones(
         image_bgr, left_center, unified_radius,
-        inner_target_a, inner_target_b, inner_opacity,
-        outer_target_a, outer_target_b, outer_opacity,
+        blended_a, blended_b, blended_opacity,
+        blended_a, blended_b, blended_opacity,
     )
     corrected = _recolor_iris_two_zones(
         corrected, right_center, unified_radius,
-        inner_target_a, inner_target_b, inner_opacity,
-        outer_target_a, outer_target_b, outer_opacity,
+        blended_a, blended_b, blended_opacity,
+        blended_a, blended_b, blended_opacity,
     )
 
     success, encoded = cv2.imencode(".png", corrected)
