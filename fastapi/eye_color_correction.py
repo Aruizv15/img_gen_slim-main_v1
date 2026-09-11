@@ -653,13 +653,7 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
-    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
-    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
-    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
-    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
-    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
-    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
+
     unified_radius = int(round((left_radius + right_radius) / 2))
 
     corrected = _recolor_iris_two_zones(
