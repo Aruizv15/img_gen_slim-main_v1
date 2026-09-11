@@ -256,7 +256,7 @@ def _iris_center_and_radius(landmarks, idx_list, img_w: int, img_h: int) -> Tupl
     # ojo, parpadeo parcial, etc.). Se aplica un margen de seguridad del
     # 20% hacia adentro para que el circulo quede firmemente DENTRO del
     # iris, nunca tocando el blanco del ojo.
-    radius = radius * 0.88
+    radius = radius * 0.83
     return (int(center[0]), int(center[1])), int(radius) + 1
 
 
