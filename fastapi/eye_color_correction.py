@@ -113,7 +113,7 @@ _COLOR_HUE_MAP = {
     "blue": 120,
     "gray": 105,
     "grey": 95,
-    "brown": 28,
+    "brown": 10,
     "black": 10,
 }
 
