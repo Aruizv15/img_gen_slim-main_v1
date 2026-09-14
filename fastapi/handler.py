@@ -13,6 +13,7 @@ import subprocess
 import time
 import shutil
 import csv
+import re
 import importlib.util
 import logging
 
@@ -278,8 +279,25 @@ async def download_inputs_from_b2(vrepro_id):
         )
         for f in r.json().get("files", []):
             filename = f["fileName"].split("/")[-1]
-            
-            if filename and filename.startswith(vrepro_id):
+
+            # FIX: "filename.startswith(vrepro_id)" no tiene limite de borde.
+            # Los nombres de archivo van pegados directo al vrepro_id sin
+            # separador (ej. "OVOD03330Portrait.jpeg"), asi que si en algun
+            # momento un vrepro_id es prefijo literal de otro (ej. "OVOD0333"
+            # y "OVOD03330"), el mas corto terminaba descargando TAMBIEN las
+            # fotos del otro donante dentro de su propia carpeta -- mezclando
+            # referencias de dos personas sin que nada lo marque. Ahora se
+            # exige que, despues del vrepro_id, el resto del nombre sea
+            # exactamente uno de los sufijos conocidos ("", "portrait",
+            # "fullbody") seguido de la extension -- nada mas cuenta como
+            # match valido para este donante.
+            if not (filename and filename.startswith(vrepro_id)):
+                continue
+            remainder = filename[len(vrepro_id):].lower()
+            if not re.match(r'^(|portrait|fullbody)\.(jpe?g|png)$', remainder):
+                print(f"[WARN] Se omite {filename}: coincide con el prefijo de {vrepro_id} pero no es un archivo suyo (posible colision con otro donante).")
+                continue
+            if True:
                 dl = await client.get(
                     f"{auth['downloadUrl']}/file/{bucket}/{f['fileName']}",
                     headers={"Authorization": auth["authorizationToken"]}
