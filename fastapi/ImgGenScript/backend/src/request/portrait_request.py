@@ -85,6 +85,10 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
             ("8", "start_percent", self.workflow_data.pose_controlnet_start), # Inicio de ControlNet de pose
             ("8", "end_percent", self.workflow_data.pose_controlnet_end), # Fin de ControlNet de pose
 
+            ("32", "strength", self.workflow_data.pose_controlnet_weight_refine), # Peso de ControlNet de pose (suave) -- pasada de identidad
+            ("32", "start_percent", self.workflow_data.pose_controlnet_start), # Mismo rango que el de arriba
+            ("32", "end_percent", self.workflow_data.pose_controlnet_end),
+
             ("9", "seed", seed), # Semilla del primer Ksampler -- COMPARTIDA
             ("9", "steps", self.workflow_data.k1_steps), # Pasos del primer Ksampler
             ("9", "cfg", self.workflow_data.k1_cfg), # CFG del primer Ksampler
@@ -166,14 +170,15 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
 
         if not self.workflow_data.use_reference_pose:
  
-            changes["remove"].extend(["5", "6", "7", "8"])
+            changes["remove"].extend(["5", "6", "7", "8", "32"])
             changes["reconnect"].extend([
                 ("3", 0, "9", "positive"), ("4", 0, "9", "negative"), ("2", 0, "9", "latent_image"),
-                # Nodo 19 tambien colgaba de la salida de ControlNet (nodo 8, ver
-                # portrait.json) para que la pose se sostuviera durante la pasada
-                # de identidad, no solo en la base. Si se remueve el ControlNet
-                # (pose desactivada), hay que reconectar 19 a los mismos nodos de
-                # texto crudo que 9, o quedaria apuntando a un nodo inexistente.
+                # Nodo 19 tambien colgaba de la salida de ControlNet (nodo 32, la
+                # version suave para la pasada de identidad -- ver portrait.json)
+                # para que la pose se sostuviera durante esa pasada, no solo en
+                # la base. Si se remueve el ControlNet (pose desactivada), hay
+                # que reconectar 19 a los mismos nodos de texto crudo que 9, o
+                # quedaria apuntando a un nodo inexistente.
                 ("3", 0, "19", "positive"), ("4", 0, "19", "negative"),
             ])
 
