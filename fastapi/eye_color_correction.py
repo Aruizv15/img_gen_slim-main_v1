@@ -17,7 +17,14 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -575,6 +582,60 @@ def sample_target_color_from_reference(
     return inner_a, inner_b, outer_a, outer_b
 
 
+def correct_eye_color_and_downscale(
+    image_bytes: bytes,
+    target_color: str,
+    downscale_factor: float = 0.5,
+    model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
+    reference_images: Optional[List[bytes]] = None,
+) -> Optional[bytes]:
+    """
+    Pensada para fullbody: la imagen final que se sube (1024x1024, cuerpo
+    completo) tiene la cara -- y por lo tanto el iris -- en una fraccion
+    muy chica del cuadro comparado con portrait, asi que corregir
+    directamente sobre esa version reducida deja muy pocos pixeles de
+    iris para trabajar y el resultado se ve peor.
+
+    Esta version recibe la imagen ANTES del downscale final que aplica
+    ComfyUI (ej. 2048x2048 en vez de 1024x1024) -- corrige el color de
+    ojos ahi, con el doble de resolucion disponible, y RECIEN DESPUES
+    reduce el resultado YA corregido al mismo factor que hubiera aplicado
+    el nodo de ComfyUI que se esta reemplazando. La resolucion final
+    entregada no cambia; lo que cambia es que la correccion se hizo con
+    mas detalle disponible.
+
+    Devuelve None si la correccion en si fallo (mismos motivos que
+    correct_eye_color: no se detecto cara, timeout, etc.) -- en ese caso
+    el llamador deberia caer al camino normal (corregir directo sobre la
+    imagen final) en vez de perder la correccion por completo.
+    """
+    corrected = correct_eye_color(
+        image_bytes, target_color, model_path=model_path, reference_images=reference_images
+    )
+    if corrected is None:
+        return None
+
+    arr = np.frombuffer(corrected, dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        logger.error("[EYE_COLOR] No se pudo decodificar la imagen hires ya corregida para reducirla.")
+        return None
+
+    h, w = img.shape[:2]
+    new_w = max(1, int(round(w * downscale_factor)))
+    new_h = max(1, int(round(h * downscale_factor)))
+    # INTER_LANCZOS4 para igualar el metodo "lanczos" que usa el nodo
+    # ImageScaleBy de ComfyUI que este paso reemplaza -- que la reduccion
+    # se vea igual de nitida que la que hacia el workflow originalmente.
+    resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
+
+    success, encoded = cv2.imencode(".png", resized)
+    if not success:
+        logger.error("[EYE_COLOR] No se pudo re-encodear la imagen hires corregida y reducida.")
+        return None
+    return encoded.tobytes()
+
+
 def correct_eye_color(
     image_bytes: bytes,
     target_color: str,
@@ -699,10 +760,23 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-    
+    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
+    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
+    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
+    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
+    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
+    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
+    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
     unified_radius = int(round((left_radius + right_radius) / 2))
 
-  
+    # FIX DECISIVO: el sistema de dos zonas (centro ambar + anillo verde)
+    # seguia leyendose como un "circulo" en muchas fotos, sobre todo con
+    # el ojo en angulo o parcialmente tapado por el parpado -- se prioriza
+    # eliminar por completo esa posibilidad por sobre el detalle de
+    # heterocromia. Se fusiona el color de las dos zonas en UNO SOLO
+    # parejo (con mas peso al anillo/verde, que es el color de identidad
+    # pedido) y se aplica igual en todo el iris -- sin fronteras internas
+    # que puedan notarse.
     _SINGLE_ZONE_OUTER_WEIGHT = 0.65
     blended_a = inner_target_a * (1 - _SINGLE_ZONE_OUTER_WEIGHT) + outer_target_a * _SINGLE_ZONE_OUTER_WEIGHT
     blended_b = inner_target_b * (1 - _SINGLE_ZONE_OUTER_WEIGHT) + outer_target_b * _SINGLE_ZONE_OUTER_WEIGHT
