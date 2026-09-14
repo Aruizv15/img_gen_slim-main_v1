@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -118,6 +111,17 @@ _COLOR_HUE_MAP = {
 }
 
 
+# --- Colores "naturales/calidos" que NUNCA se verificaron con el test
+# numerico (solo "green" se verifico empiricamente, ver comentario en
+# _COLOR_HUE_MAP mas arriba). Café/negro son ademas colores donde CUALQUIER
+# desviacion de saturacion o brillo se nota muchisimo mas a simple vista que
+# en verde -- un ojo cafe "de mas" se ve pintado/plastico de inmediato,
+# mientras que un verde "de mas" todavia se lee como un verde valido.
+# Por eso estos colores usan un camino distinto mas abajo: se prioriza
+# fidelidad a la foto real de la donante por sobre "hacer notar" el color.
+_NATURAL_FIDELITY_COLORS = {"brown", "black"}
+
+
 _HUE_MODIFIERS = [
     ("emerald", 10), ("teal", 12), ("sea green", 12),
     ("olive", -15), ("forest", -8), ("moss", -12),
@@ -134,7 +138,7 @@ _INTENSITY_MODIFIERS = [
 ]
 
 
-def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]:
+def _compute_hue_and_intensity(raw_value: str, base_hue: int, color_name: str = "") -> Tuple[int, int]:
     """
     Ajusta el tono base segun palabras descriptivas presentes en la frase
     completa del Excel, para que distintos donantes del mismo color
@@ -163,7 +167,19 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int) -> Tuple[int, int]
         if keyword in lowered:
             target_saturation += offset * 6  # escalado: offset original pensado para un empuje chico, ahora mueve un objetivo absoluto
             break
-    target_saturation = int(np.clip(target_saturation, 70, 200))
+
+    # FIX: el piso de 70 de abajo se calibro para que verde/azul/etc. no
+    # salieran "lavados" -- para cafe/negro ese mismo piso empuja el ancla
+    # hacia un naranja-rojizo que un ojo cafe real no tiene (los ojos cafe
+    # reales son mucho menos saturados). Antes esto se notaba poco porque
+    # el ancla apenas pesaba (INNER_ANCHOR_PULL=0.05), pero SI pesaba
+    # fuerte en la zona exterior (OUTER_ANCHOR_PULL=0.45) y por completo
+    # cuando no habia foto de referencia -- de ahi el "cafe no se ve
+    # natural" reportado, mientras que verde (si verificado) salia bien.
+    if color_name in _NATURAL_FIDELITY_COLORS:
+        target_saturation = int(np.clip(target_saturation, 25, 90))
+    else:
+        target_saturation = int(np.clip(target_saturation, 70, 200))
 
     return hue, target_saturation
 
@@ -270,6 +286,7 @@ def _recolor_iris_two_zones(
     outer_a: float,
     outer_b: float,
     outer_opacity: float,
+    boost_outer_brightness: bool = True,
 ) -> np.ndarray:
     """
     Recolorea el iris en DOS zonas concentricas independientes, cada una
@@ -353,13 +370,25 @@ def _recolor_iris_two_zones(
     # realce PROPORCIONAL (no un valor plano) de brillo, PERO SOLO en la
     # zona exterior (verde) -- el centro (cafe/ambar) queda con su L
     # original, sin tocar, tal como se pidio explicitamente.
-    _L_BOOST = 1.10
-    _L_MIN_FLOOR = 78
-    boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
-    boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
-    # Solo outer_mask participa aca -- inner_mask NO se incluye, para que
-    # el centro (cafe) quede exactamente como estaba.
-    new_l = l_channel * (1.0 - outer_mask) + boosted_l * outer_mask
+    # FIX: este boost se disenó para el caso verde (centro+anillo con
+    # distinto color). Pero mas abajo, en correct_eye_color(), cafe/negro
+    # ahora fusionan centro y anillo en UN SOLO color (mismo flujo que ya
+    # existia para el resto) -- y este boost seguia aplicandose SOLO por
+    # geometria (mascara exterior), no por color. Resultado: un anillo mas
+    # brillante que el centro aun siendo el "mismo" color cafe, leyendose
+    # como un halo/aro pintado alrededor del iris en vez de un ojo cafe
+    # parejo. Se desactiva para los colores donde no se verifico que
+    # hiciera falta.
+    if boost_outer_brightness:
+        _L_BOOST = 1.10
+        _L_MIN_FLOOR = 78
+        boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
+        boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
+        # Solo outer_mask participa aca -- inner_mask NO se incluye, para que
+        # el centro (cafe) quede exactamente como estaba.
+        new_l = l_channel * (1.0 - outer_mask) + boosted_l * outer_mask
+    else:
+        new_l = l_channel
 
     # Aplicar el anillo limbico oscuro DESPUES del realce de brillo, para
     # que quede como un borde definido sobre el color ya corregido, no se
@@ -476,6 +505,7 @@ def sample_target_color_from_reference(
     reference_images: List[bytes],
     model_path: str = "/runpod-volume/models/mediapipe/face_landmarker.task",
     min_acceptable_radius: int = 8,
+    color_name: str = "",
 ) -> Optional[Tuple[float, float, float, float]]:
     """
     Prueba TODAS las fotos de referencia disponibles de la donante y se
@@ -524,11 +554,19 @@ def sample_target_color_from_reference(
     # Boost de crominancia SOLO en la zona exterior (donde necesitamos que
     # el verde se note con claridad). El centro se deja tal cual se
     # muestreo -- se busca fidelidad real ahi, no intensidad.
-    _OUTER_CHROMA_BOOST = 1.1
-    outer_a = 128 + (outer_a - 128) * _OUTER_CHROMA_BOOST
-    outer_b = 128 + (outer_b - 128) * _OUTER_CHROMA_BOOST
-    outer_a = float(np.clip(outer_a, 0, 255))
-    outer_b = float(np.clip(outer_b, 0, 255))
+    # FIX: este boost se calibro (x1.1) para que el verde -- que en el
+    # promedio de pixeles crudos sale apagado -- se notara. Para cafe/negro
+    # no hay ese problema de "no se nota": el cafe muestreado de la propia
+    # donante YA es el color correcto, y boostearlo lo saca de rango
+    # natural (se ve mas anaranjado/saturado de lo que es en la foto
+    # original). Se aplica solo a los colores donde SI se verifico que
+    # hacia falta.
+    if color_name not in _NATURAL_FIDELITY_COLORS:
+        _OUTER_CHROMA_BOOST = 1.1
+        outer_a = 128 + (outer_a - 128) * _OUTER_CHROMA_BOOST
+        outer_b = 128 + (outer_b - 128) * _OUTER_CHROMA_BOOST
+        outer_a = float(np.clip(outer_a, 0, 255))
+        outer_b = float(np.clip(outer_b, 0, 255))
 
     logger.info(
         f"[EYE_COLOR] Mejor foto de referencia: radio={min_radius}px -- "
@@ -567,7 +605,7 @@ def correct_eye_color(
         logger.error(f"[EYE_COLOR] color_name '{color_name}' no tiene hue asociado en _COLOR_HUE_MAP -- se omite correccion.")
         return None
 
-    anchor_hue, anchor_saturation = _compute_hue_and_intensity(target_color, base_hue)
+    anchor_hue, anchor_saturation = _compute_hue_and_intensity(target_color, base_hue, color_name)
     anchor_bgr = cv2.cvtColor(np.uint8([[[anchor_hue, anchor_saturation, 160]]]), cv2.COLOR_HSV2BGR)
     anchor_lab = cv2.cvtColor(anchor_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)[0][0]
     anchor_a, anchor_b = float(anchor_lab[1]), float(anchor_lab[2])
@@ -586,7 +624,7 @@ def correct_eye_color(
     outer_opacity = 0.65
 
     if reference_images:
-        sampled = sample_target_color_from_reference(reference_images, model_path)
+        sampled = sample_target_color_from_reference(reference_images, model_path, color_name=color_name)
         if sampled is not None:
             s_inner_a, s_inner_b, s_outer_a, s_outer_b = sampled
 
@@ -598,7 +636,15 @@ def correct_eye_color(
             # ANILLO EXTERIOR: empuje fuerte hacia el ancla, para que el
             # verde se note con claridad (el promedio crudo de esta zona
             # suele salir muy apagado).
-            OUTER_ANCHOR_PULL = 0.45
+            # FIX: ese empuje fuerte (0.45) se justifica en verde porque el
+            # muestreo crudo suele venir apagado y hay que "tirar" hacia el
+            # ancla de texto para que se note. En cafe/negro no aplica esa
+            # logica -- lo muestreado de la donante YA es fiable, y tirar
+            # fuerte hacia el ancla (que ademas usa un hue/saturacion nunca
+            # verificado para estos colores) es lo que desviaba el cafe.
+            # Se usa el mismo empuje minimo que el centro, para maxima
+            # fidelidad a la foto real.
+            OUTER_ANCHOR_PULL = 0.05 if color_name in _NATURAL_FIDELITY_COLORS else 0.45
             outer_target_a = s_outer_a * (1 - OUTER_ANCHOR_PULL) + anchor_a * OUTER_ANCHOR_PULL
             outer_target_b = s_outer_b * (1 - OUTER_ANCHOR_PULL) + anchor_b * OUTER_ANCHOR_PULL
 
@@ -653,37 +699,27 @@ def correct_eye_color(
     left_center, left_radius = _iris_center_and_radius(landmarks, _LEFT_IRIS_IDX, img_w, img_h)
     right_center, right_radius = _iris_center_and_radius(landmarks, _RIGHT_IRIS_IDX, img_w, img_h)
 
-    # FIX: en caras en angulo (3/4), un ojo puede detectarse con radio mas
-    # chico que el otro (perspectiva, oclusion parcial por pestañas, etc.),
-    # dejando ese ojo con menos cobertura de color -- se veia "un ojo bien,
-    # el otro con anillo delgado y centro sin cubrir". Se usa el PROMEDIO
-    # de ambos radios (no el mayor, para no arriesgar sangrado hacia la
-    # esclerotica en el ojo genuinamente mas chico por perspectiva), asi
-    # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
+    
     unified_radius = int(round((left_radius + right_radius) / 2))
 
-    # FIX DECISIVO: el sistema de dos zonas (centro ambar + anillo verde)
-    # seguia leyendose como un "circulo" en muchas fotos, sobre todo con
-    # el ojo en angulo o parcialmente tapado por el parpado -- se prioriza
-    # eliminar por completo esa posibilidad por sobre el detalle de
-    # heterocromia. Se fusiona el color de las dos zonas en UNO SOLO
-    # parejo (con mas peso al anillo/verde, que es el color de identidad
-    # pedido) y se aplica igual en todo el iris -- sin fronteras internas
-    # que puedan notarse.
+  
     _SINGLE_ZONE_OUTER_WEIGHT = 0.65
     blended_a = inner_target_a * (1 - _SINGLE_ZONE_OUTER_WEIGHT) + outer_target_a * _SINGLE_ZONE_OUTER_WEIGHT
     blended_b = inner_target_b * (1 - _SINGLE_ZONE_OUTER_WEIGHT) + outer_target_b * _SINGLE_ZONE_OUTER_WEIGHT
     blended_opacity = max(inner_opacity, outer_opacity)
 
+    boost_outer_brightness = color_name not in _NATURAL_FIDELITY_COLORS
     corrected = _recolor_iris_two_zones(
         image_bgr, left_center, unified_radius,
         blended_a, blended_b, blended_opacity,
         blended_a, blended_b, blended_opacity,
+        boost_outer_brightness=boost_outer_brightness,
     )
     corrected = _recolor_iris_two_zones(
         corrected, right_center, unified_radius,
         blended_a, blended_b, blended_opacity,
         blended_a, blended_b, blended_opacity,
+        boost_outer_brightness=boost_outer_brightness,
     )
 
     success, encoded = cv2.imencode(".png", corrected)
