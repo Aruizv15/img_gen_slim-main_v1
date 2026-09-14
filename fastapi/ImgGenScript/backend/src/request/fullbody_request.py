@@ -126,6 +126,7 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             ("37", "scheduler", self.workflow_data.hands_refiner_scheduler),
             ("37", "denoise", self.workflow_data.hands_refiner_denoise),
             ("40", "filename_prefix", self.donor_data.vrepro_id),
+            ("49", "filename_prefix", f"{self.donor_data.vrepro_id}__hires_eyecolor_tmp"),
         ]
         return workflow_args
 
