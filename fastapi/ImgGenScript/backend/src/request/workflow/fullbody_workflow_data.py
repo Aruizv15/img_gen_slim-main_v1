@@ -109,6 +109,12 @@ class FullBodyWorkflowData(WorkflowData):
     pose_controlnet_start: float
     pose_controlnet_end: float
 
+    # --- ControlNet (pasada de identidad, nodo 22) ---
+    # Ver el mismo campo en portrait_workflow_data.py -- evita que la pose
+    # se sobre-restrinja quando la cabeza/cuerpo real de la donante no
+    # coincide con las proporciones del esqueleto de referencia.
+    pose_controlnet_weight_refine: float
+
     # --- KSampler 1 ---
     k1_seed: int
     k1_steps: int
