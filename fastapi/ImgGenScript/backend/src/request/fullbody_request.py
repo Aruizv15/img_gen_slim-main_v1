@@ -59,6 +59,9 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
             ("11", "strength", self.workflow_data.pose_controlnet_weight),
             ("11", "start_percent", self.workflow_data.pose_controlnet_start),
             ("11", "end_percent", self.workflow_data.pose_controlnet_end),
+            ("48", "strength", self.workflow_data.pose_controlnet_weight_refine),
+            ("48", "start_percent", self.workflow_data.pose_controlnet_start),
+            ("48", "end_percent", self.workflow_data.pose_controlnet_end),
             ("12", "seed", seed),
             ("12", "steps", self.workflow_data.k1_steps),
             ("12", "cfg", self.workflow_data.k1_cfg),
@@ -130,11 +133,16 @@ class FullBodyRequest(BaseRequest[FullBodySceneData, FullBodyWorkflowData]):
         changes = {"remove": [], "reconnect": []}
 
         if not self.workflow_data.use_reference_pose:
-            changes["remove"].extend(["5", "6", "7", "8", "9", "10", "11", "44"])
+            changes["remove"].extend(["5", "6", "7", "8", "9", "10", "11", "44", "48"])
             changes["reconnect"].extend([
                 ("3", 0, "12", "positive"),
                 ("4", 0, "12", "negative"),
-                ("2", 0, "12", "latent_image")
+                ("2", 0, "12", "latent_image"),
+                # Nodo 22 (pasada de identidad) tambien colgaba del ControlNet
+                # suave (nodo 48) -- si se remueve el ControlNet (pose
+                # desactivada), hay que reconectarlo a texto crudo igual que 12.
+                ("3", 0, "22", "positive"),
+                ("4", 0, "22", "negative"),
             ])
 
         if not self.workflow_data.use_hands_refiner:
