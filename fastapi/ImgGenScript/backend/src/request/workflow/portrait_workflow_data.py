@@ -20,6 +20,16 @@ class PortraitWorkflowData(WorkflowData):
     pose_controlnet_start: float
     pose_controlnet_end: float
 
+    # --- ControlNet (pasada de identidad, nodo 19) ---
+    # Peso INDEPENDIENTE del de arriba -- se mantiene mas bajo a proposito.
+    # El de arriba (pose_controlnet_weight) fija la composicion/pose en la
+    # pasada base a fuerza completa; este otro solo evita que la pose se
+    # pierda del todo durante la pasada de identidad (FaceID), sin
+    # sobre-restringir la anatomia cuando la cabeza real de la donante no
+    # coincide exactamente con las proporciones del esqueleto de la pose
+    # fija (causa confirmada de "cuello estirado" en produccion).
+    pose_controlnet_weight_refine: float
+
     # --- KSampler 1 ---
     k1_seed: int
     k1_steps: int
