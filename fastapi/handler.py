@@ -29,18 +29,19 @@ def _load_correct_eye_color():
     try:
         if not os.path.exists(_EYE_COLOR_MODULE_PATH):
             print(f"[EYE_COLOR] No se encontro eye_color_correction.py en {_EYE_COLOR_MODULE_PATH}. Correccion desactivada.")
-            return None
+            return None, None
         spec = importlib.util.spec_from_file_location("eye_color_correction", _EYE_COLOR_MODULE_PATH)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         print(f"[EYE_COLOR] Modulo cargado correctamente desde {_EYE_COLOR_MODULE_PATH}")
-        return module.correct_eye_color
+        hires_fn = getattr(module, "correct_eye_color_and_downscale", None)
+        return module.correct_eye_color, hires_fn
     except Exception as e:
         print(f"[EYE_COLOR] Error cargando eye_color_correction.py: {e}. Correccion desactivada.")
-        return None
+        return None, None
 
 
-_correct_eye_color_fn = _load_correct_eye_color()
+_correct_eye_color_fn, _correct_eye_color_hires_fn = _load_correct_eye_color()
 
 
 def _get_donor_eye_color(vrepro_id):
@@ -366,7 +367,15 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
         print(f"[B2] No hay archivos en {output_dir}")
         return
 
-    # --- Correccion de color de ojos, sobre los archivos REALES que se suben ---
+    # --- Separar los temporales de alta resolucion (solo existen en fullbody,
+    # nodo 49 del workflow) de los archivos REALES que se suben. Los
+    # temporales nunca deben llegar a B2 -- son solo para tener mas
+    # resolucion disponible al corregir el color de ojos.
+    _HIRES_MARKER = "__hires_eyecolor_tmp"
+    hires_files = [f for f in all_files if _HIRES_MARKER in os.path.basename(f)]
+    final_files = [f for f in all_files if _HIRES_MARKER not in os.path.basename(f)]
+
+    # --- Correccion de color de ojos ---
     if _correct_eye_color_fn is not None:
         eye_color = _get_donor_eye_color(vrepro_id)
         if eye_color:
@@ -374,7 +383,58 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
             # de ojos real es el mismo para todas las fotos de esta corrida.
             reference_images = _get_donor_reference_images_bytes(vrepro_id)
             n_corrected = 0
-            for local_path in all_files:
+
+            # --- Camino hires (fullbody): corregir sobre la version de mayor
+            # resolucion (antes del downscale final de ComfyUI) y reemplazar
+            # el archivo final con el resultado YA corregido y reducido.
+            # Emparejamiento simple por orden: batch_size=1 y la carpeta de
+            # salida se limpia entre ciclos (ver handler()), asi que dentro
+            # de una misma corrida hay a lo sumo un archivo hires por cada
+            # archivo final.
+            corrected_final_bytes = {}  # final_path -> bytes ya listos para escribir
+            if hires_files and _correct_eye_color_hires_fn is not None:
+                for hires_path, final_path in zip(sorted(hires_files), sorted(final_files)):
+                    try:
+                        with open(hires_path, 'rb') as fp:
+                            hires_bytes = fp.read()
+                        result = _correct_eye_color_hires_fn(
+                            hires_bytes, eye_color, reference_images=reference_images
+                        )
+                        if result is not None:
+                            corrected_final_bytes[final_path] = result
+                            n_corrected += 1
+                        else:
+                            print(f"[EYE_COLOR] Correccion hires fallo para {hires_path} -- se usa el camino normal sobre {final_path}.")
+                    except Exception as e:
+                        print(f"[EYE_COLOR] Excepcion en camino hires para {hires_path}: {e}")
+                    finally:
+                        # Scratch temporal -- se borra siempre, haya salido
+                        # bien o mal la correccion, para que nunca se suba.
+                        try:
+                            os.remove(hires_path)
+                        except Exception as e:
+                            print(f"[EYE_COLOR] No se pudo borrar el temporal hires {hires_path}: {e}")
+            elif hires_files:
+                # Modulo cargado pero sin la funcion nueva (version vieja de
+                # eye_color_correction.py) -- igual hay que borrar los
+                # temporales para no subirlos sin corregir.
+                for hires_path in hires_files:
+                    try:
+                        os.remove(hires_path)
+                    except Exception as e:
+                        print(f"[EYE_COLOR] No se pudo borrar el temporal hires {hires_path}: {e}")
+
+            for local_path in final_files:
+                if local_path in corrected_final_bytes:
+                    try:
+                        with open(local_path, 'wb') as fp:
+                            fp.write(corrected_final_bytes[local_path])
+                    except Exception as e:
+                        print(f"[EYE_COLOR] Excepcion escribiendo resultado hires para {local_path}: {e}")
+                    continue  # ya corregido via camino hires, no se re-corrige en baja resolucion
+
+                # Camino normal (portrait siempre; fullbody solo si el hires
+                # fallo o no hay archivo hires para esta imagen).
                 try:
                     with open(local_path, 'rb') as fp:
                         original_bytes = fp.read()
@@ -387,11 +447,24 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
                         n_corrected += 1
                 except Exception as e:
                     print(f"[EYE_COLOR] Excepcion corrigiendo {local_path}: {e}")
-            print(f"[EYE_COLOR] Corregidas {n_corrected}/{len(all_files)} imagenes antes de subir (color objetivo: {eye_color})")
+            print(f"[EYE_COLOR] Corregidas {n_corrected}/{len(final_files)} imagenes antes de subir (color objetivo: {eye_color})")
         else:
             print(f"[EYE_COLOR] Sin color de ojos disponible para {vrepro_id} -- se sube sin corregir.")
+            for hires_path in hires_files:
+                try:
+                    os.remove(hires_path)
+                except Exception as e:
+                    print(f"[EYE_COLOR] No se pudo borrar el temporal hires {hires_path}: {e}")
     else:
         print("[EYE_COLOR] Modulo no disponible -- se sube sin corregir.")
+        for hires_path in hires_files:
+            try:
+                os.remove(hires_path)
+            except Exception as e:
+                print(f"[EYE_COLOR] No se pudo borrar el temporal hires {hires_path}: {e}")
+
+    all_files = final_files
+
 
     batch_ts = time.strftime('%Y%m%d-%H%M%S')
 
