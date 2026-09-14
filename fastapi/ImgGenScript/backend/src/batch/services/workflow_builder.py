@@ -72,6 +72,7 @@ class WorkflowBuilder:
             "pose_controlnet_weight": float(self.generation_settings.pose_controlnet_weight),
             "pose_controlnet_start": float(self.generation_settings.pose_controlnet_start),
             "pose_controlnet_end": float(self.generation_settings.pose_controlnet_end),
+            "pose_controlnet_weight_refine": float(self.generation_settings.pose_controlnet_weight_refine),
             "k1_seed": int(make_random_seed()),
             "k1_steps": int(self.generation_settings.k1_steps),
             "k1_cfg": float(self.generation_settings.k1_cfg),
