@@ -570,6 +570,19 @@
             "title": "Upscale Image By"
         }
     },
+    "49": {
+        "inputs": {
+            "filename_prefix": "ComfyUI__hires_eyecolor_tmp",
+            "images": [
+                "29",
+                0
+            ]
+        },
+        "class_type": "SaveImage",
+        "_meta": {
+            "title": "Save Image - HiRes temporal (para correccion de ojos, se borra despues)"
+        }
+    },
     "30": {
         "inputs": {
             "pixels": [
