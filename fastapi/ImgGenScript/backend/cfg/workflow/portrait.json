@@ -110,6 +110,37 @@
       "title": "Apply ControlNet - Pose"
     }
   },
+  "32": {
+    "inputs": {
+      "strength": 0.4,
+      "start_percent": 0.0,
+      "end_percent": 1.0,
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "control_net": [
+        "7",
+        0
+      ],
+      "image": [
+        "6",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "ControlNetApplyAdvanced",
+    "_meta": {
+      "title": "Apply ControlNet - Pose (suave, para pasada de identidad)"
+    }
+  },
   "9": {
     "inputs": {
       "seed": 0,
@@ -319,11 +350,11 @@
         0
       ],
       "positive": [
-        "8",
+        "32",
         0
       ],
       "negative": [
-        "8",
+        "32",
         1
       ],
       "latent_image": [
