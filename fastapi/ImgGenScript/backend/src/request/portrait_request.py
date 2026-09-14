@@ -167,6 +167,14 @@ class PortraitRequest(BaseRequest[PortraitSceneData, PortraitWorkflowData]):
         if not self.workflow_data.use_reference_pose:
  
             changes["remove"].extend(["5", "6", "7", "8"])
-            changes["reconnect"].extend([("3", 0, "9", "positive"), ("4", 0, "9", "negative"), ("2", 0, "9", "latent_image")])
+            changes["reconnect"].extend([
+                ("3", 0, "9", "positive"), ("4", 0, "9", "negative"), ("2", 0, "9", "latent_image"),
+                # Nodo 19 tambien colgaba de la salida de ControlNet (nodo 8, ver
+                # portrait.json) para que la pose se sostuviera durante la pasada
+                # de identidad, no solo en la base. Si se remueve el ControlNet
+                # (pose desactivada), hay que reconectar 19 a los mismos nodos de
+                # texto crudo que 9, o quedaria apuntando a un nodo inexistente.
+                ("3", 0, "19", "positive"), ("4", 0, "19", "negative"),
+            ])
 
         return changes
