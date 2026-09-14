@@ -252,6 +252,12 @@ def get_settings() -> Settings:
                 **config_dict
             )
         except ValidationError as e:
-            raise ValidationError(f"ERROR: Validation failed in configuration: {e}")
+            # FIX: pydantic_core.ValidationError no se puede construir con un
+            # solo string (le falta el argumento posicional 'line_errors'),
+            # asi que este raise tapaba el error real de validacion con un
+            # TypeError confuso ("missing 1 required positional argument").
+            # Se relanza la excepcion original -- ya trae el detalle de que
+            # campo fallo y por que.
+            raise RuntimeError(f"ERROR: Validation failed in configuration: {e}") from e
 
     return _settings
