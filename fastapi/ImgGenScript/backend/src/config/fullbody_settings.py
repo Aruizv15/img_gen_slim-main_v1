@@ -103,6 +103,9 @@ class FullbodySettings(BaseSettings):
     pose_controlnet_start: float
     pose_controlnet_end: float
 
+    # --- ControlNet (suave, pasada de identidad -- nodo 48) ---
+    pose_controlnet_weight_refine: float
+
     # --- KSampler 1 ---
     k1_steps: int
     k1_cfg: float
