@@ -293,8 +293,17 @@ async def download_inputs_from_b2(vrepro_id):
             # match valido para este donante.
             if not (filename and filename.startswith(vrepro_id)):
                 continue
+            # FIX2: la regex anterior solo aceptaba "", "portrait" o
+            # "fullbody" pegado directo al vrepro_id -- pero en produccion
+            # existen variantes numeradas como "OVOD03454.1Portrait.jpeg"
+            # (un ".N" intermedio antes de "Portrait"/"fullbody"). La regex
+            # anterior las rechazaba por error, perdiendo silenciosamente
+            # esas fotos de referencia -- esto SI afecto resultados reales
+            # (menos fotos disponibles para elegir el mejor iris al
+            # corregir color de ojos). Ahora se acepta ese sufijo numerico
+            # opcional ademas del patron original.
             remainder = filename[len(vrepro_id):].lower()
-            if not re.match(r'^(|portrait|fullbody)\.(jpe?g|png)$', remainder):
+            if not re.match(r'^(\.\d+)?(portrait|fullbody)?\.(jpe?g|png)$', remainder):
                 print(f"[WARN] Se omite {filename}: coincide con el prefijo de {vrepro_id} pero no es un archivo suyo (posible colision con otro donante).")
                 continue
             if True:
