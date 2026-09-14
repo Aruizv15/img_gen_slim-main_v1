@@ -1187,6 +1187,32 @@ async function startExecution() {
   if (hasModelImages) {
     await executeModelsSequentially();
   } else {
+    // FIX: antes, si el CSV tenia donantes cargados pero NINGUNO con
+    // imagenes asignadas todavia (ej. "0 imgs - Pendiente" en la lista),
+    // la app caia CALLADA al modo de ejecucion simple -- que usa el
+    // vreproID del campo de texto "LISTA DE MODELOS", no el CSV. Esto
+    // causo que se corriera para un donante viejo/equivocado (el que
+    // habia quedado en ese campo de una sesion anterior) mientras el
+    // usuario creia que estaba corriendo los donantes pendientes del
+    // CSV. Ahora se avisa explicitamente y pide confirmar antes de usar
+    // ese modo, si hay donantes de CSV sin imagenes esperando.
+    const pendingWithoutImages = csvModels.filter(
+      m => (modelImages[m.vreproID] || []).length === 0
+    );
+    if (pendingWithoutImages.length > 0) {
+      const donorsList = document.getElementById('model-list').value.trim();
+      const warnMsg =
+        `Tienes ${pendingWithoutImages.length} donante(s) en el CSV sin imagenes asignadas ` +
+        `(${pendingWithoutImages.map(m => m.vreproID).join(', ')}), asi que NO se van a procesar.\n\n` +
+        `En su lugar se va a correr el modo simple, usando el campo "LISTA DE MODELOS": ` +
+        `${donorsList ? `"${donorsList}"` : '(vacio)'}.\n\n` +
+        `Si tu intencion era generar para los donantes del CSV, cancela y sube primero ` +
+        `imagenes cuyo nombre de archivo empiece con su vreproID.\n\n` +
+        `¿Confirmas que quieres continuar con el modo simple?`;
+      if (!window.confirm(warnMsg)) {
+        return;
+      }
+    }
     // Ejecución normal (un solo batch)
     try {
       await startSingleExecution();
