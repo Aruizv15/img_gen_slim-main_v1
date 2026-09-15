@@ -503,8 +503,11 @@ def _recolor_iris_two_zones(
     # parejo entre corridas. Café/negro siguen sin tocarse (boost
     # desactivado por completo para esos colores, sin cambios ahi).
     if boost_outer_brightness:
-        _L_BOOST = 1.10
-        _L_MIN_FLOOR = 78
+        # AJUSTE (a pedido, ronda 2): 1.10/78 -> 1.25/100. Seguia saliendo
+        # oscuro incluso cubriendo todo el iris -- se sube la fuerza del
+        # boost, no solo su cobertura.
+        _L_BOOST = 1.25
+        _L_MIN_FLOOR = 100
         boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
         boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
         full_iris_mask = np.clip(inner_mask + outer_mask, 0.0, 1.0)
