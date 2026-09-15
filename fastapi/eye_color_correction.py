@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -140,19 +133,9 @@ _HUE_MODIFIERS = [
 
 
 _INTENSITY_MODIFIERS = [
-    # Palabras que indican un color MAS APAGADO/MENOS SATURADO. "hazel",
-    # "gray" y "grey" se agregan aca (antes no estaban reconocidas como
-    # moderadoras en absoluto) porque describen colores inherentemente
-    # menos vividos que un verde/azul puro -- van primero en la lista para
-    # que tengan prioridad si coinciden junto con una palabra intensificadora
-    # (ej. "dark gray-green hazel eyes" tiene "dark" Y "hazel" a la vez;
-    # debe leerse como apagado, no como vivido).
     ("muted", -6), ("soft", -4), ("pale", -8), ("light", -4), ("dull", -6),
-    ("hazel", -5), ("gray", -4), ("grey", -4),
-    # Palabras que indican un color MAS VIVIDO/SATURADO.
     ("vivid", 8), ("bright", 6), ("intense", 8), ("deep", 4), ("dark", 3),
 ]
-_MUTING_KEYWORDS = {"muted", "soft", "pale", "light", "dull", "hazel", "gray", "grey"}
 
 
 def _compute_hue_and_intensity(raw_value: str, base_hue: int, color_name: str = "") -> Tuple[int, int]:
@@ -180,11 +163,9 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int, color_name: str = 
     # con presencia real (no lavado). Los modificadores de intensidad
     # empujan este nivel hacia arriba (vivid/bright) o abajo (muted/pale).
     target_saturation = 45
-    matched_keyword = None
     for keyword, offset in _INTENSITY_MODIFIERS:
         if keyword in lowered:
             target_saturation += offset * 6  # escalado: offset original pensado para un empuje chico, ahora mueve un objetivo absoluto
-            matched_keyword = keyword
             break
 
     # FIX: el piso de 70 de abajo se calibro para que verde/azul/etc. no
@@ -195,18 +176,7 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int, color_name: str = 
     # fuerte en la zona exterior (OUTER_ANCHOR_PULL=0.45) y por completo
     # cuando no habia foto de referencia -- de ahi el "cafe no se ve
     # natural" reportado, mientras que verde (si verificado) salia bien.
-    #
-    # FIX2: el mismo piso de 70 tambien aplastaba SIEMPRE cualquier color
-    # "no cafe/negro" descrito como apagado ("pale green", "muted hazel",
-    # "dark gray-green hazel") de vuelta hacia arriba -- las palabras
-    # moderadoras nunca podian bajar el resultado por debajo de 70, aunque
-    # el calculo diera un numero mucho menor. Ahora, si la palabra que
-    # matcheo es una de las que indican un color apagado (_MUTING_KEYWORDS),
-    # se usa el mismo tipo de piso mas bajo que cafe/negro -- SOLO en ese
-    # caso. Un "green" liso, sin modificador, o con "vivid"/"dark"/etc.
-    # sin ninguna palabra apagada presente, sigue exactamente igual que
-    # antes (piso 70-200) -- esto no cambia en nada el verde ya verificado.
-    if color_name in _NATURAL_FIDELITY_COLORS or matched_keyword in _MUTING_KEYWORDS:
+    if color_name in _NATURAL_FIDELITY_COLORS:
         target_saturation = int(np.clip(target_saturation, 25, 90))
     else:
         target_saturation = int(np.clip(target_saturation, 70, 200))
