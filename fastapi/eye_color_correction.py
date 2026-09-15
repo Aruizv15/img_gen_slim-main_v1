@@ -227,7 +227,11 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int, color_name: str = 
         # AJUSTE (a pedido): piso subido de 25 a 33 -- un empuje chico para
         # que colores apagados (hazel/gray/muted/etc.) se vean un poco mas
         # presentes, sin acercarse al piso de 70 que usa el verde puro.
-        target_saturation = int(np.clip(target_saturation, 33, 90))
+        # AJUSTE (a pedido, ronda 2): piso subido de 33 a 45 -- seguia
+        # viendose "opaco/gris" segun feedback directo. Sigue bien por
+        # debajo del piso de 70 del verde puro, para no perder el matiz
+        # apagado real de la donante, pero es un salto mas notorio.
+        target_saturation = int(np.clip(target_saturation, 45, 90))
     else:
         target_saturation = int(np.clip(target_saturation, 70, 200))
 
