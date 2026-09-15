@@ -512,6 +512,20 @@ def _recolor_iris_two_zones(
         boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
         full_iris_mask = np.clip(inner_mask + outer_mask, 0.0, 1.0)
         new_l = l_channel * (1.0 - full_iris_mask) + boosted_l * full_iris_mask
+
+        # LOG: antes no habia forma de confirmar desde el log si este boost
+        # se estaba aplicando de verdad ni con que fuerza -- se ajustaron
+        # varios numeros a ciegas por esto. Se registra el L promedio
+        # (ponderado por la mascara) antes y despues, para que quede visible.
+        mask_weight = full_iris_mask.sum()
+        if mask_weight > 0:
+            l_before = float((l_channel * full_iris_mask).sum() / mask_weight)
+            l_after = float((new_l * full_iris_mask).sum() / mask_weight)
+            logger.info(
+                f"[EYE_COLOR] Boost de brillo -- L promedio en iris: "
+                f"antes={l_before:.1f} -> despues={l_after:.1f} "
+                f"(_L_BOOST={_L_BOOST}, _L_MIN_FLOOR={_L_MIN_FLOOR})"
+            )
     else:
         new_l = l_channel
 
