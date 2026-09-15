@@ -17,7 +17,14 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-
+# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
+# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
+# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
+# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
+# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
+# costo se multiplica por cada una -- la causa mas probable del cuelgue de
+# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
+# proceso y se reutiliza.
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -486,14 +493,22 @@ def _recolor_iris_two_zones(
     # como un halo/aro pintado alrededor del iris en vez de un ojo cafe
     # parejo. Se desactiva para los colores donde no se verifico que
     # hiciera falta.
+    # AJUSTE (a pedido): el boost solo cubria el anillo exterior -- el
+    # centro del iris quedaba con el brillo que trajera esa generacion en
+    # particular (variable segun sombra de parpado/luz de cada foto), y
+    # como el color se aplica sobre ese brillo sin normalizar, el mismo
+    # color se leia distinto de una foto a otra (a veces verde claro, a
+    # veces parduzco/oscuro). Se extiende el boost a TODO el iris (centro
+    # + anillo) cuando esta activo, para que el brillo de base quede mas
+    # parejo entre corridas. Café/negro siguen sin tocarse (boost
+    # desactivado por completo para esos colores, sin cambios ahi).
     if boost_outer_brightness:
         _L_BOOST = 1.10
         _L_MIN_FLOOR = 78
         boosted_l = np.clip(l_channel * _L_BOOST, 0, 215)
         boosted_l = np.maximum(boosted_l, _L_MIN_FLOOR)
-        # Solo outer_mask participa aca -- inner_mask NO se incluye, para que
-        # el centro (cafe) quede exactamente como estaba.
-        new_l = l_channel * (1.0 - outer_mask) + boosted_l * outer_mask
+        full_iris_mask = np.clip(inner_mask + outer_mask, 0.0, 1.0)
+        new_l = l_channel * (1.0 - full_iris_mask) + boosted_l * full_iris_mask
     else:
         new_l = l_channel
 
