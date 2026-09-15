@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -35,9 +28,7 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     with _landmarker_lock:
         if model_path not in _landmarker_cache:
             if not os.path.exists(model_path):
-                # Fallar rapido y con mensaje claro, en vez de dejar que
-                # mediapipe intente cargar algo inexistente y se quede
-                # esperando/reintentando en silencio.
+            
                 raise FileNotFoundError(
                     f"[EYE_COLOR] Modelo de landmarks no encontrado en {model_path}. "
                     f"Verificar que face_landmarker.task este presente en esa ruta."
@@ -54,12 +45,7 @@ def _get_landmarker(model_path: str) -> FaceLandmarker:
     return _landmarker_cache[model_path]
 
 
-# --- FIX #2: detectar landmarks sobre una copia reducida ---
-# Los landmarks de mediapipe son coordenadas NORMALIZADAS (0-1), no pixeles
-# absolutos -- asi que detectar sobre una copia chica da el mismo resultado
-# relativo que detectar sobre la imagen completa, pero mucho mas rapido.
-# Esto importa mas ahora que las fullbody finales salen a ~2048px (fix de
-# nitidez reciente) en vez de ~1024px.
+
 _DETECTION_MAX_DIM = 1024  # subido de 640: en fullbody (1024x1024) la cara ya ocupa poco espacio; reducirla mas hacia 640px hacia que mediapipe no la detectara en algunas fotos ("Corregidas 0/1" confirmado en logs de produccion)
 
 
@@ -100,13 +86,7 @@ def _detect_with_timeout(landmarker: FaceLandmarker, mp_image: "mp.Image", timeo
 
 # --- Mapeo de nombre de color a tono (Hue) en el espacio HSV de OpenCV (0-179) ---
 _COLOR_HUE_MAP = {
-    # NOTA: estos valores estan ajustados +18 respecto al hue "percibido"
-    # deseado, para compensar el subvalor sistematico que mide el blend en
-    # LAB (probado empiricamente solo para "green": pedir 60 da un
-    # resultado final de ~40, un verde oliva natural). El resto de los
-    # colores se ajusto con el mismo offset por consistencia, pero solo
-    # "green" fue verificado con el test numerico real -- si algun otro
-    # color sale desviado, puede necesitar su propio ajuste puntual.
+
     "green": 68,
     "hazel": 46,
     "amber": 36,
@@ -118,14 +98,7 @@ _COLOR_HUE_MAP = {
 }
 
 
-# --- Colores "naturales/calidos" que NUNCA se verificaron con el test
-# numerico (solo "green" se verifico empiricamente, ver comentario en
-# _COLOR_HUE_MAP mas arriba). Café/negro son ademas colores donde CUALQUIER
-# desviacion de saturacion o brillo se nota muchisimo mas a simple vista que
-# en verde -- un ojo cafe "de mas" se ve pintado/plastico de inmediato,
-# mientras que un verde "de mas" todavia se lee como un verde valido.
-# Por eso estos colores usan un camino distinto mas abajo: se prioriza
-# fidelidad a la foto real de la donante por sobre "hacer notar" el color.
+
 _NATURAL_FIDELITY_COLORS = {"brown", "black"}
 
 
@@ -140,13 +113,7 @@ _HUE_MODIFIERS = [
 
 
 _INTENSITY_MODIFIERS = [
-    # Palabras que indican un color MAS APAGADO/MENOS SATURADO. "hazel",
-    # "gray" y "grey" se agregan aca (antes no estaban reconocidas como
-    # moderadoras en absoluto) porque describen colores inherentemente
-    # menos vividos que un verde/azul puro -- van primero en la lista para
-    # que tengan prioridad si coinciden junto con una palabra intensificadora
-    # (ej. "dark gray-green hazel eyes" tiene "dark" Y "hazel" a la vez;
-    # debe leerse como apagado, no como vivido).
+ 
     ("muted", -6), ("soft", -4), ("pale", -8), ("light", -4), ("dull", -6),
     ("hazel", -5), ("gray", -4), ("grey", -4),
     # Palabras que indican un color MAS VIVIDO/SATURADO.
@@ -171,18 +138,7 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int, color_name: str = 
     lowered = raw_value.lower()
     hue = base_hue
 
-    # FIX3: cuando el color se resolvio como "green" pero el texto tambien
-    # menciona "hazel", el tono base de verde puro (68) se queda corto --
-    # "hazel" tiene su propio hue mucho mas amarillo/cafe (46 en
-    # _COLOR_HUE_MAP). Antes "hazel" solo afectaba saturacion (fix
-    # anterior); ahora tambien corre el punto de partida del matiz hacia
-    # ese lado ANTES de aplicar el resto de los modificadores de tono (ej.
-    # "gray-green"), para que un compuesto como "gray-green hazel" termine
-    # mas cerca de un verde-oliva/hazel real que de un verde puro.
-    # Solo aplica cuando color_name es "green" Y la palabra "hazel" esta
-    # presente -- un "green" liso, o un donante cuyo color_name YA se
-    # resolvio directo como "hazel" (que ya usa hue=46 de _COLOR_HUE_MAP),
-    # no se ven afectados por esto.
+    
     if color_name == "green" and "hazel" in lowered:
         hazel_base = _COLOR_HUE_MAP["hazel"]
         hue = int(round((hue + hazel_base) / 2))
@@ -204,25 +160,7 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int, color_name: str = 
             matched_keyword = keyword
             break
 
-    # FIX: el piso de 70 de abajo se calibro para que verde/azul/etc. no
-    # salieran "lavados" -- para cafe/negro ese mismo piso empuja el ancla
-    # hacia un naranja-rojizo que un ojo cafe real no tiene (los ojos cafe
-    # reales son mucho menos saturados). Antes esto se notaba poco porque
-    # el ancla apenas pesaba (INNER_ANCHOR_PULL=0.05), pero SI pesaba
-    # fuerte en la zona exterior (OUTER_ANCHOR_PULL=0.45) y por completo
-    # cuando no habia foto de referencia -- de ahi el "cafe no se ve
-    # natural" reportado, mientras que verde (si verificado) salia bien.
-    #
-    # FIX2: el mismo piso de 70 tambien aplastaba SIEMPRE cualquier color
-    # "no cafe/negro" descrito como apagado ("pale green", "muted hazel",
-    # "dark gray-green hazel") de vuelta hacia arriba -- las palabras
-    # moderadoras nunca podian bajar el resultado por debajo de 70, aunque
-    # el calculo diera un numero mucho menor. Ahora, si la palabra que
-    # matcheo es una de las que indican un color apagado (_MUTING_KEYWORDS),
-    # se usa el mismo tipo de piso mas bajo que cafe/negro -- SOLO en ese
-    # caso. Un "green" liso, sin modificador, o con "vivid"/"dark"/etc.
-    # sin ninguna palabra apagada presente, sigue exactamente igual que
-    # antes (piso 70-200) -- esto no cambia en nada el verde ya verificado.
+    
     if color_name in _NATURAL_FIDELITY_COLORS or matched_keyword in _MUTING_KEYWORDS:
         target_saturation = int(np.clip(target_saturation, 25, 90))
     else:
@@ -235,6 +173,13 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int, color_name: str = 
 # 4 en el borde.
 _LEFT_IRIS_IDX = [474, 475, 476, 477]
 _RIGHT_IRIS_IDX = [469, 470, 471, 472]
+
+# Contorno del ojo (la apertura real entre parpados, no el iris) -- indices
+# estandar del modelo de 478 puntos de MediaPipe. Se usan para EVITAR que
+# el color se pinte fuera del ojo abierto (parpado superior, piel debajo
+# del ojo), sin importar que tan grande salga el circulo/blur del iris.
+_LEFT_EYE_CONTOUR_IDX = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398]
+_RIGHT_EYE_CONTOUR_IDX = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246]
 
 
 def extract_primary_color_name(raw_value: str) -> str:
@@ -323,6 +268,39 @@ def _iris_center_and_radius(landmarks, idx_list, img_w: int, img_h: int) -> Tupl
     return (int(center[0]), int(center[1])), int(radius) + 1
 
 
+def _eye_contour_clip_mask(landmarks, idx_list, img_w: int, img_h: int) -> np.ndarray:
+    """
+    Mascara [0,1] del area REAL del ojo abierto (el poligono entre
+    parpados), a partir de los landmarks de contorno de MediaPipe -- no
+    el iris. Se usa como tope adicional: sin importar cuanto se agrande
+    o difumine el circulo del iris, el color nunca puede pintar fuera de
+    esta forma, porque se multiplica sobre el resultado final.
+
+    Se erosiona hacia adentro antes de difuminar: los landmarks de
+    contorno caen justo en la linea de pestañas, y sin ese margen el
+    difuminado empujaria el borde otra vez hacia el parpado/piel de
+    abajo -- el mismo problema que se queria evitar.
+    """
+    points = np.array([
+        (landmarks[i].x * img_w, landmarks[i].y * img_h) for i in idx_list
+    ], dtype=np.int32)
+
+    mask = np.zeros((img_h, img_w), dtype=np.uint8)
+    cv2.fillPoly(mask, [points], 255)
+
+    # Margen de erosion proporcional al tamaño del ojo en la imagen (no un
+    # numero fijo de pixeles, para que funcione igual de bien en fotos de
+    # distinta resolucion).
+    eye_width = float(np.max(points[:, 0]) - np.min(points[:, 0]))
+    erode_px = max(1, int(round(eye_width * 0.06)))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (erode_px * 2 + 1, erode_px * 2 + 1))
+    mask = cv2.erode(mask, kernel)
+
+    mask_f = mask.astype(np.float32) / 255.0
+    mask_f = cv2.GaussianBlur(mask_f, (0, 0), sigmaX=max(1.0, erode_px * 0.5))
+    return mask_f
+
+
 def _recolor_iris_two_zones(
     image_bgr: np.ndarray,
     center: Tuple[int, int],
@@ -334,6 +312,7 @@ def _recolor_iris_two_zones(
     outer_b: float,
     outer_opacity: float,
     boost_outer_brightness: bool = True,
+    contour_mask: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """
     Recolorea el iris en DOS zonas concentricas independientes, cada una
@@ -378,6 +357,18 @@ def _recolor_iris_two_zones(
     inner_mask = _zone_mask(_INNER_ZONE[0], _INNER_ZONE[1], inner_opacity)
     outer_mask = _zone_mask(_OUTER_ZONE[0], _OUTER_ZONE[1], outer_opacity)
 
+    # FIX: el circulo/difuminado del iris, por si solo, no sabe donde
+    # termina el ojo real -- si el radio sale un poco grande (angulo,
+    # pestañas, imprecision del modelo) o el difuminado se corre unos
+    # pixeles, el color se filtraba al parpado superior o a la piel
+    # debajo del ojo. Se multiplica por la mascara del contorno REAL del
+    # ojo (parpados) como tope duro adicional: pase lo que pase con el
+    # circulo del iris, el color nunca puede pintar fuera de la apertura
+    # real del ojo.
+    if contour_mask is not None:
+        inner_mask = inner_mask * contour_mask
+        outer_mask = outer_mask * contour_mask
+
     # FIX: aplicar las mascaras en secuencia (primero centro, despues
     # anillo) hacia que en la zona de superposicion el anillo (verde)
     # pisara al centro (ambar), empujando mas verde hacia adentro de lo
@@ -409,6 +400,8 @@ def _recolor_iris_two_zones(
     cv2.circle(limbal_mask, center, limbal_inner_px, 0.0, thickness=-1)
     limbal_mask = cv2.GaussianBlur(limbal_mask, (0, 0), sigmaX=max(1.0, sigma * 0.5))
     limbal_mask = limbal_mask * valid_range * 0.5  # sutil, no un borde duro
+    if contour_mask is not None:
+        limbal_mask = limbal_mask * contour_mask
 
     # FIX: se detecto en produccion que el verde salia "oscuro" -- no era
     # el tono (a/b) sino que la zona del ojo en la foto GENERADA ya venia
@@ -823,17 +816,25 @@ def correct_eye_color(
     blended_opacity = max(inner_opacity, outer_opacity)
 
     boost_outer_brightness = color_name not in _NATURAL_FIDELITY_COLORS
+
+    # Mascaras de contorno real del ojo (una por ojo, las formas no son
+    # simetricas entre si) -- ver _eye_contour_clip_mask.
+    left_contour_mask = _eye_contour_clip_mask(landmarks, _LEFT_EYE_CONTOUR_IDX, img_w, img_h)
+    right_contour_mask = _eye_contour_clip_mask(landmarks, _RIGHT_EYE_CONTOUR_IDX, img_w, img_h)
+
     corrected = _recolor_iris_two_zones(
         image_bgr, left_center, unified_radius,
         blended_a, blended_b, blended_opacity,
         blended_a, blended_b, blended_opacity,
         boost_outer_brightness=boost_outer_brightness,
+        contour_mask=left_contour_mask,
     )
     corrected = _recolor_iris_two_zones(
         corrected, right_center, unified_radius,
         blended_a, blended_b, blended_opacity,
         blended_a, blended_b, blended_opacity,
         boost_outer_brightness=boost_outer_brightness,
+        contour_mask=right_contour_mask,
     )
 
     success, encoded = cv2.imencode(".png", corrected)
