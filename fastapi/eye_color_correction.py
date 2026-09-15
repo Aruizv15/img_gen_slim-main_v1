@@ -170,6 +170,23 @@ def _compute_hue_and_intensity(raw_value: str, base_hue: int, color_name: str = 
     """
     lowered = raw_value.lower()
     hue = base_hue
+
+    # FIX3: cuando el color se resolvio como "green" pero el texto tambien
+    # menciona "hazel", el tono base de verde puro (68) se queda corto --
+    # "hazel" tiene su propio hue mucho mas amarillo/cafe (46 en
+    # _COLOR_HUE_MAP). Antes "hazel" solo afectaba saturacion (fix
+    # anterior); ahora tambien corre el punto de partida del matiz hacia
+    # ese lado ANTES de aplicar el resto de los modificadores de tono (ej.
+    # "gray-green"), para que un compuesto como "gray-green hazel" termine
+    # mas cerca de un verde-oliva/hazel real que de un verde puro.
+    # Solo aplica cuando color_name es "green" Y la palabra "hazel" esta
+    # presente -- un "green" liso, o un donante cuyo color_name YA se
+    # resolvio directo como "hazel" (que ya usa hue=46 de _COLOR_HUE_MAP),
+    # no se ven afectados por esto.
+    if color_name == "green" and "hazel" in lowered:
+        hazel_base = _COLOR_HUE_MAP["hazel"]
+        hue = int(round((hue + hazel_base) / 2))
+
     for keyword, offset in _HUE_MODIFIERS:
         if keyword in lowered:
             hue += offset
