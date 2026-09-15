@@ -867,14 +867,14 @@ def correct_eye_color(
     # la cobertura queda mas pareja sin pasarse de la cuenta en ninguno.
     unified_radius = int(round((left_radius + right_radius) / 2))
 
-    # FIX DECISIVO: el sistema de dos zonas (centro ambar + anillo verde)
-    # seguia leyendose como un "circulo" en muchas fotos, sobre todo con
-    # el ojo en angulo o parcialmente tapado por el parpado -- se prioriza
-    # eliminar por completo esa posibilidad por sobre el detalle de
-    # heterocromia. Se fusiona el color de las dos zonas en UNO SOLO
-    # parejo (con mas peso al anillo/verde, que es el color de identidad
-    # pedido) y se aplica igual en todo el iris -- sin fronteras internas
-    # que puedan notarse.
+    # REVERT (a pedido): se intento restaurar heterocromia real de dos
+    # zonas, pero el color de anillo exterior muestreado de la foto real
+    # resulto poco saturado en si mismo (cercano a neutro), y sin el
+    # boost de brillo (que se habia apagado para evitar el "circulo") esa
+    # zona se leia oscura y parda en vez de verde -- exactamente el
+    # "manchado de cafe hacia afuera" reportado. Se vuelve al color unico
+    # parejo con boost activo, que es la version confirmada funcionando
+    # bien despues de los fixes de tono/saturacion (hue/hazel/gray).
     _SINGLE_ZONE_OUTER_WEIGHT = 0.65
     blended_a = inner_target_a * (1 - _SINGLE_ZONE_OUTER_WEIGHT) + outer_target_a * _SINGLE_ZONE_OUTER_WEIGHT
     blended_b = inner_target_b * (1 - _SINGLE_ZONE_OUTER_WEIGHT) + outer_target_b * _SINGLE_ZONE_OUTER_WEIGHT
@@ -883,7 +883,8 @@ def correct_eye_color(
     boost_outer_brightness = color_name not in _NATURAL_FIDELITY_COLORS
 
     # Mascaras de contorno real del ojo (una por ojo, las formas no son
-    # simetricas entre si) -- ver _eye_contour_clip_mask.
+    # simetricas entre si) -- ver _eye_contour_clip_mask. Esto SI se
+    # mantiene -- no esta implicado en el problema de arriba.
     left_contour_mask = _eye_contour_clip_mask(landmarks, _LEFT_EYE_CONTOUR_IDX, img_w, img_h)
     right_contour_mask = _eye_contour_clip_mask(landmarks, _RIGHT_EYE_CONTOUR_IDX, img_w, img_h)
 
