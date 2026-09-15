@@ -17,14 +17,7 @@ from mediapipe.tasks.python.vision import (
 
 logger = logging.getLogger(__name__)
 
-# --- FIX #1: cachear el FaceLandmarker en vez de recrearlo en cada llamada ---
-# Antes, "with FaceLandmarker.create_from_options(options) as landmarker:"
-# corria DENTRO de correct_eye_color(), asi que cada foto volvia a leer el
-# .task de disco y reinicializar el interprete TFLite desde cero. Esa carga
-# es la parte mas cara de todo el proceso. En un batch de varias fotos, ese
-# costo se multiplica por cada una -- la causa mas probable del cuelgue de
-# 10+ minutos en produccion. Ahora el modelo se carga UNA sola vez por
-# proceso y se reutiliza.
+
 _landmarker_lock = threading.Lock()
 _landmarker_cache: dict = {}
 
@@ -812,7 +805,14 @@ def correct_eye_color(
             # verificado para estos colores) es lo que desviaba el cafe.
             # Se usa el mismo empuje minimo que el centro, para maxima
             # fidelidad a la foto real.
-            OUTER_ANCHOR_PULL = 0.05 if color_name in _NATURAL_FIDELITY_COLORS else 0.45
+            # AJUSTE (a pedido): 0.45 -> 0.70. El muestreo crudo de la foto
+            # real venia pesando mas de la mitad (55%) del resultado, y ese
+            # muestreo en si mismo no es muy verde en espacio LAB -- por
+            # mas que se subiera la saturacion de la ancla, el 55% de peso
+            # en un muestreo poco verde diluia el efecto (ver el calculo
+            # que se le mostro al usuario). Subir el peso de la ancla es
+            # la palanca con mas margen real todavia sin usar.
+            OUTER_ANCHOR_PULL = 0.05 if color_name in _NATURAL_FIDELITY_COLORS else 0.70
             outer_target_a = s_outer_a * (1 - OUTER_ANCHOR_PULL) + anchor_a * OUTER_ANCHOR_PULL
             outer_target_b = s_outer_b * (1 - OUTER_ANCHOR_PULL) + anchor_b * OUTER_ANCHOR_PULL
 
