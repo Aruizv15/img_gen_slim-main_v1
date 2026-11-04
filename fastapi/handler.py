@@ -17,7 +17,7 @@ nest_asyncio.apply()
 import urllib.request
 
 print("=" * 60)
-print("[HANDLER BUILD] v11-orientacion-exif-2026-11-04")
+print("[HANDLER BUILD] v12-face-check-2026-11-04")
 print("[HANDLER BUILD] Si NO ves '[HANDLER] Ciclo X/N generado y")
 print("[HANDLER BUILD] subido a B2' entre cada ciclo mas abajo, este")
 print("[HANDLER BUILD] worker esta corriendo una imagen VIEJA. Termina")
@@ -232,6 +232,41 @@ async def download_inputs_from_b2(vrepro_id):
                     print(f"[WARN] No se pudo normalizar {_fn}: {_e}")
         except Exception as _e:
             print(f"[WARN] Pillow no disponible, se omite correccion de orientacion: {_e}")
+
+        # Chequeo de caras con el mismo detector que usa FaceID (InsightFace).
+        # Para cada foto: cuenta las caras; si no hay, prueba girarla 90/270/180
+        # grados y, si asi aparece una cara, deja la foto girada. Deja en el
+        # log que fotos NO tienen cara detectable. Si algo falla, se omite.
+        try:
+            import numpy as np
+            import cv2
+            from insightface.app import FaceAnalysis
+            _fa = FaceAnalysis(name="buffalo_l", root="/workspace/ComfyUI_app/models/insightface",
+                               providers=["CPUExecutionProvider"], allowed_modules=["detection"])
+            _fa.prepare(ctx_id=-1, det_size=(640, 640))
+            for _fn in sorted(os.listdir(input_dir)):
+                _fp = os.path.join(input_dir, _fn)
+                _img = cv2.imread(_fp)
+                if _img is None:
+                    print(f"[FACE CHECK] {_fn}: no se pudo leer la imagen")
+                    continue
+                _n = len(_fa.get(_img))
+                if _n == 0:
+                    for _name, _code in (("90 horario", cv2.ROTATE_90_CLOCKWISE),
+                                         ("90 antihorario", cv2.ROTATE_90_COUNTERCLOCKWISE),
+                                         ("180", cv2.ROTATE_180)):
+                        _rot = cv2.rotate(_img, _code)
+                        if len(_fa.get(_rot)) > 0:
+                            cv2.imwrite(_fp, _rot, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                            print(f"[FACE CHECK] {_fn}: sin cara; girada {_name} y ahora SI hay cara")
+                            _n = -1
+                            break
+                if _n == 0:
+                    print(f"[FACE CHECK] {_fn}: SIN CARA detectable ({_img.shape[1]}x{_img.shape[0]})")
+                elif _n > 0:
+                    print(f"[FACE CHECK] {_fn}: {_n} cara(s) OK ({_img.shape[1]}x{_img.shape[0]})")
+        except Exception as _e:
+            print(f"[WARN] Chequeo de caras omitido: {_e}")
 
         csv_path = '/workspace/ImgGenScript/files/csv/donor_info.csv'
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
