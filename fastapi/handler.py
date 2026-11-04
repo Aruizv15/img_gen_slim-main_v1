@@ -17,7 +17,7 @@ nest_asyncio.apply()
 import urllib.request
 
 print("=" * 60)
-print("[HANDLER BUILD] v5-todo-junto-2026-08-19")
+print("[HANDLER BUILD] v9-sin-duplicados-2026-11-04")
 print("[HANDLER BUILD] Si NO ves '[HANDLER] Ciclo X/N generado y")
 print("[HANDLER BUILD] subido a B2' entre cada ciclo mas abajo, este")
 print("[HANDLER BUILD] worker esta corriendo una imagen VIEJA. Termina")
@@ -254,6 +254,11 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
     for root, dirs, files in os.walk(output_dir):
         for f in files:
             if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+                # Archivos temporales de la correccion de color de ojos:
+                # no son fotos finales, no deben subirse (duplicaban cada foto).
+                if "eyecolor_tmp" in f.lower():
+                    print(f"[B2] Se omite archivo temporal: {f}")
+                    continue
                 all_files.append(os.path.join(root, f))
     print(f"[B2] Archivos encontrados: {all_files}")
     if not all_files:
