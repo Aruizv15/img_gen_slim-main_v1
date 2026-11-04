@@ -12,120 +12,12 @@ import nest_asyncio
 import subprocess
 import time
 import shutil
-import csv
-import re
-import importlib.util
-import logging
 
 nest_asyncio.apply()
 import urllib.request
 
-_h_logger = logging.getLogger(__name__)
-
-
-_EYE_COLOR_MODULE_PATH = os.getenv("EYE_COLOR_CORRECTION_PATH", "/app/eye_color_correction.py")
-
-
-def _load_correct_eye_color():
-    try:
-        if not os.path.exists(_EYE_COLOR_MODULE_PATH):
-            print(f"[EYE_COLOR] No se encontro eye_color_correction.py en {_EYE_COLOR_MODULE_PATH}. Correccion desactivada.")
-            return None, None
-        spec = importlib.util.spec_from_file_location("eye_color_correction", _EYE_COLOR_MODULE_PATH)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        print(f"[EYE_COLOR] Modulo cargado correctamente desde {_EYE_COLOR_MODULE_PATH}")
-        hires_fn = getattr(module, "correct_eye_color_and_downscale", None)
-        return module.correct_eye_color, hires_fn
-    except Exception as e:
-        print(f"[EYE_COLOR] Error cargando eye_color_correction.py: {e}. Correccion desactivada.")
-        return None, None
-
-
-_correct_eye_color_fn, _correct_eye_color_hires_fn = _load_correct_eye_color()
-
-
-def _get_donor_eye_color(vrepro_id):
-    """
-    Busca el valor de color de ojos de la donante en donor_info.csv.
-    Tolerante al nombre exacto de la columna (busca cualquier header que
-    contenga "eye" y "color", sin importar mayusculas) para no depender
-    de adivinar el nombre exacto.
-    """
-    csv_path = '/workspace/ImgGenScript/files/csv/donor_info.csv'
-    if not os.path.exists(csv_path):
-        print(f"[EYE_COLOR] CSV no encontrado en {csv_path}")
-        return None
-    try:
-        with open(csv_path, newline='', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f, delimiter=';')
-            eye_color_col = None
-            if reader.fieldnames:
-                for col in reader.fieldnames:
-                    if col and 'eye' in col.lower() and 'color' in col.lower():
-                        eye_color_col = col
-                        break
-            if not eye_color_col:
-                print(f"[EYE_COLOR] No se encontro columna de eye color en el CSV. Columnas disponibles: {reader.fieldnames}")
-                return None
-            for row in reader:
-                row_id = (row.get('vreproID') or '').strip()
-                if row_id == vrepro_id.strip():
-                    value = row.get(eye_color_col)
-                    print(f"[EYE_COLOR] Columna detectada: '{eye_color_col}' -> valor para {vrepro_id}: {value!r}")
-                    return value
-        print(f"[EYE_COLOR] No se encontro fila con vreproID={vrepro_id} en el CSV")
-        return None
-    except Exception as e:
-        print(f"[EYE_COLOR] Error leyendo eye_color desde CSV: {e}")
-        return None
-
-
-def _get_donor_reference_images_bytes(vrepro_id):
-    """
-    Junta TODAS las fotos de referencia REALES disponibles de la donante
-    (no generadas), para que eye_color_correction.py pueda probarlas
-    todas y quedarse con la que tenga el iris mas grande/confiable.
-
-    FIX: antes se devolvia solo LA PRIMERA foto encontrada (priorizando
-    "portrait" en el nombre) y se confiaba ciegamente en ella. En
-    produccion se vio que incluso la foto "portrait" de una donante
-    podia tener el iris muy chico (15px de radio) y dar un color
-    practicamente neutro/piel en vez de verde. Ahora se devuelven todas
-    las candidatas disponibles, ordenadas con las "portrait" primero
-    (mayor probabilidad de ser primeros planos), y el propio script de
-    correccion decide cual usar segun el tamano real del iris detectado.
-    """
-    ref_dir = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
-    if not os.path.isdir(ref_dir):
-        print(f"[EYE_COLOR] Carpeta de referencia de la donante no encontrada: {ref_dir}")
-        return []
-    try:
-        all_imgs = sorted([
-            f for f in os.listdir(ref_dir)
-            if f.lower().endswith(('.jpg', '.jpeg', '.png'))
-        ])
-        portrait_imgs = [f for f in all_imgs if 'portrait' in f.lower()]
-        ordered_candidates = portrait_imgs + [f for f in all_imgs if f not in portrait_imgs]
-
-        images_bytes = []
-        for f in ordered_candidates:
-            try:
-                with open(os.path.join(ref_dir, f), 'rb') as fp:
-                    images_bytes.append(fp.read())
-            except Exception as e:
-                print(f"[EYE_COLOR] Error leyendo {f}: {e}")
-                continue
-
-        print(f"[EYE_COLOR] {len(images_bytes)} foto(s) de referencia candidatas encontradas: {ordered_candidates}")
-        return images_bytes
-    except Exception as e:
-        print(f"[EYE_COLOR] Error buscando fotos de referencia: {e}")
-        return []
-
-
 print("=" * 60)
-print("[HANDLER BUILD] v8-eye-color-mejor-foto-2026-09-04")
+print("[HANDLER BUILD] v5-todo-junto-2026-08-19")
 print("[HANDLER BUILD] Si NO ves '[HANDLER] Ciclo X/N generado y")
 print("[HANDLER BUILD] subido a B2' entre cada ciclo mas abajo, este")
 print("[HANDLER BUILD] worker esta corriendo una imagen VIEJA. Termina")
@@ -220,7 +112,10 @@ for _i in range(60):
 else:
     raise RuntimeError("[COMFYUI] No respondió en 5 minutos")
 
-
+# --- TEMPORAL: imprime la lista real de preprocesadores validos para
+# AV_ControlNetPreprocessor, para confirmar el valor correcto de
+# controlnet_preprocessor en config.yaml. Borrar este bloque despues
+# de leer el log una vez. ---
 try:
     _obj_info = urllib.request.urlopen(
         "http://127.0.0.1:8188/object_info/AV_ControlNetPreprocessor", timeout=10
@@ -228,9 +123,11 @@ try:
     print("[DEBUG PREPROCESSOR LIST] " + _obj_info)
 except Exception as _e:
     print(f"[DEBUG PREPROCESSOR LIST] No se pudo obtener: {_e}")
+# --- FIN BLOQUE TEMPORAL ---
 
-
-
+# --- TEMPORAL: imprime la lista real de valores validos de weight_type
+# para IPAdapterFaceID e IPAdapterAdvanced, para confirmar si "ease"
+# es un valor real o invalido. Borrar despues de leer el log una vez. ---
 for _node_name in ["IPAdapterFaceID", "IPAdapterAdvanced"]:
     try:
         _obj_info = urllib.request.urlopen(
@@ -266,52 +163,51 @@ async def download_inputs_from_b2(vrepro_id):
     auth = await b2_authorize()
     bucket = os.getenv('B2_BUCKET')
     input_dir = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
-    
- 
+    # Limpiar la carpeta antes de descargar: si en una corrida anterior
+    # (antes del filtro por donante) se guardaron ahi fotos de OTRO
+    # donante, seguirian copiandose para siempre si no se borran primero.
     if os.path.isdir(input_dir):
         shutil.rmtree(input_dir)
     os.makedirs(input_dir, exist_ok=True)
     async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{auth['apiUrl']}/b2api/v2/b2_list_file_names",
-            headers={"Authorization": auth["authorizationToken"]},
-            params={"bucketId": await get_bucket_id(auth), "prefix": "input_images/"}
-        )
-        for f in r.json().get("files", []):
+        # Listado paginado: B2 devuelve un maximo de 1000 por pagina, asi
+        # que se sigue pidiendo hasta que nextFileName sea null.
+        _listed = []
+        _bucket_id = await get_bucket_id(auth)
+        _params = {"bucketId": _bucket_id, "prefix": f"input_images/{vrepro_id}", "maxFileCount": 1000}
+        while True:
+            r = await client.get(
+                f"{auth['apiUrl']}/b2api/v2/b2_list_file_names",
+                headers={"Authorization": auth["authorizationToken"]},
+                params=_params
+            )
+            _data = r.json()
+            _listed.extend(_data.get("files", []))
+            _next = _data.get("nextFileName")
+            if not _next:
+                break
+            _params["startFileName"] = _next
+        print(f"[B2 INPUT] {vrepro_id}: {len(_listed)} archivos encontrados en input_images/ -> {[x['fileName'] for x in _listed]}")
+        if not _listed:
+            raise RuntimeError(
+                f"No hay fotos de referencia en B2 para {vrepro_id} "
+                f"(input_images/{vrepro_id}*). Sube las fotos de este donante y reintenta."
+            )
+        for f in _listed:
             filename = f["fileName"].split("/")[-1]
-
-            # FIX: "filename.startswith(vrepro_id)" no tiene limite de borde.
-            # Los nombres de archivo van pegados directo al vrepro_id sin
-            # separador (ej. "OVOD03330Portrait.jpeg"), asi que si en algun
-            # momento un vrepro_id es prefijo literal de otro (ej. "OVOD0333"
-            # y "OVOD03330"), el mas corto terminaba descargando TAMBIEN las
-            # fotos del otro donante dentro de su propia carpeta -- mezclando
-            # referencias de dos personas sin que nada lo marque. Ahora se
-            # exige que, despues del vrepro_id, el resto del nombre sea
-            # exactamente uno de los sufijos conocidos ("", "portrait",
-            # "fullbody") seguido de la extension -- nada mas cuenta como
-            # match valido para este donante.
-            if not (filename and filename.startswith(vrepro_id)):
-                continue
-            # FIX2: la regex anterior solo aceptaba "", "portrait" o
-            # "fullbody" pegado directo al vrepro_id -- pero en produccion
-            # existen variantes numeradas como "OVOD03454.1Portrait.jpeg"
-            # (un ".N" intermedio antes de "Portrait"/"fullbody"). La regex
-            # anterior las rechazaba por error, perdiendo silenciosamente
-            # esas fotos de referencia -- esto SI afecto resultados reales
-            # (menos fotos disponibles para elegir el mejor iris al
-            # corregir color de ojos). Ahora se acepta ese sufijo numerico
-            # opcional ademas del patron original.
-            remainder = filename[len(vrepro_id):].lower()
-            if not re.match(r'^(\.\d+)?(portrait|fullbody)?\.(jpe?g|png)$', remainder):
-                print(f"[WARN] Se omite {filename}: coincide con el prefijo de {vrepro_id} pero no es un archivo suyo (posible colision con otro donante).")
-                continue
-            if True:
+            # Solo descargar archivos que pertenezcan a ESTE donante.
+            # Sin este filtro, se descargaban las fotos de TODOS los
+            # donantes que hubiera en input_images/, y luego se mezclaban
+            # juntas en el mismo lote de referencia para FaceID,
+            # produciendo caras que no correspondian a la persona correcta.
+            if filename and filename.startswith(vrepro_id):
                 dl = await client.get(
                     f"{auth['downloadUrl']}/file/{bucket}/{f['fileName']}",
                     headers={"Authorization": auth["authorizationToken"]}
                 )
-          
+                # Verificar que la descarga fue exitosa y trae contenido
+                # real de imagen, no un error truncado guardado como si
+                # fuera la foto (causa de "image file is truncated").
                 if dl.status_code != 200 or len(dl.content) < 1024:
                     print(f"[WARN] Descarga sospechosa de {filename}: status={dl.status_code}, bytes={len(dl.content)}. Se omite.")
                     continue
@@ -329,56 +225,26 @@ async def download_inputs_from_b2(vrepro_id):
         except Exception as e:
             print(f"[WARN] CSV no descargado: {e}")
 
-        # Pose de referencia fija para portrait.
-        # FIX: antes solo se descargaba "if not os.path.exists", asi que si una
-        # descarga fallaba una vez, ningun job posterior la reintentaba y portrait
-        # salia SIN pose (niebla, pelo tieso, cara descolocada). Ahora:
-        #   1. Se descarga SIEMPRE, con reintentos.
-        #   2. Se copia la pose a AMBAS rutas conocidas (la de ref_portrait_dir que
-        #      usa processor.py para buscarla, y la comfyui_reference_dir que usa
-        #      workflow_builder.py para pasarsela a ComfyUI), para que coincidan
-        #      pase lo que pase. Esta era la causa raiz historica del bug de rutas.
-        pose_filename = 'pose_fija_portrait.png'
-        pose_dirs = [
-            '/workspace/ImgGenScript/files/reference/portrait',
-            os.getenv('COMFYUI_REFERENCE_DIR', '/app/reference'),
-        ]
-        for _d in pose_dirs:
-            os.makedirs(_d, exist_ok=True)
-
-        pose_content = None
-        for intento in range(3):
+        # Pose de referencia fija para portrait. La carpeta se recrea vacia
+        # en cada cold start (no es Network Volume persistente), asi que se
+        # revalida en cada job. Si el archivo ya esta ahi (worker "caliente"
+        # atendiendo otro job), no se vuelve a descargar.
+        pose_dir = '/workspace/ImgGenScript/files/reference/portrait'
+        pose_path = os.path.join(pose_dir, 'pose_fija_portrait.png')
+        if not os.path.exists(pose_path):
             try:
                 dl_pose = await client.get(
-                    f"{auth['downloadUrl']}/file/{bucket}/reference/{pose_filename}",
+                    f"{auth['downloadUrl']}/file/{bucket}/reference/pose_fija_portrait.png",
                     headers={"Authorization": auth["authorizationToken"]}
                 )
                 if dl_pose.status_code == 200 and len(dl_pose.content) > 1024:
-                    pose_content = dl_pose.content
-                    break
+                    with open(pose_path, "wb") as out:
+                        out.write(dl_pose.content)
+                    print(f"[B2] Pose de referencia descargada: {pose_path}")
                 else:
-                    print(f"[WARN] Pose intento {intento+1}/3: status={dl_pose.status_code}, bytes={len(dl_pose.content)}")
+                    print(f"[WARN] Pose de referencia no descargada: status={dl_pose.status_code}, bytes={len(dl_pose.content)}")
             except Exception as e:
-                print(f"[WARN] Pose intento {intento+1}/3 excepcion: {e}")
-
-        if pose_content is not None:
-            escritas = []
-            for _d in pose_dirs:
-                dest = os.path.join(_d, pose_filename)
-                try:
-                    with open(dest, "wb") as out:
-                        out.write(pose_content)
-                    escritas.append(dest)
-                except Exception as e:
-                    print(f"[WARN] No se pudo escribir la pose en {dest}: {e}")
-            print(f"[B2] Pose de referencia descargada y copiada a: {escritas}")
-        else:
-            # La pose es OBLIGATORIA para portrait. Si no se pudo bajar, se avisa
-            # de forma RUIDOSA. El processor.py corregido hara fallar el job de
-            # portrait en vez de generar una imagen sin pose en silencio.
-            print(f"[ERROR] POSE FIJA NO DESCARGADA tras 3 intentos. "
-                  f"Los portraits de este worker fallaran hasta que B2 responda. "
-                  f"Verificar que exista reference/{pose_filename} en el bucket '{bucket}'.")
+                print(f"[WARN] Pose de referencia no descargada: {e}")
 
 async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
     auth = await b2_authorize()
@@ -394,105 +260,15 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
         print(f"[B2] No hay archivos en {output_dir}")
         return
 
-    # --- Separar los temporales de alta resolucion (solo existen en fullbody,
-    # nodo 49 del workflow) de los archivos REALES que se suben. Los
-    # temporales nunca deben llegar a B2 -- son solo para tener mas
-    # resolucion disponible al corregir el color de ojos.
-    _HIRES_MARKER = "__hires_eyecolor_tmp"
-    hires_files = [f for f in all_files if _HIRES_MARKER in os.path.basename(f)]
-    final_files = [f for f in all_files if _HIRES_MARKER not in os.path.basename(f)]
-
-    # --- Correccion de color de ojos ---
-    if _correct_eye_color_fn is not None:
-        eye_color = _get_donor_eye_color(vrepro_id)
-        if eye_color:
-            # Se busca UNA sola vez por donante (no por archivo) -- el color
-            # de ojos real es el mismo para todas las fotos de esta corrida.
-            reference_images = _get_donor_reference_images_bytes(vrepro_id)
-            n_corrected = 0
-
-            # --- Camino hires (fullbody): corregir sobre la version de mayor
-            # resolucion (antes del downscale final de ComfyUI) y reemplazar
-            # el archivo final con el resultado YA corregido y reducido.
-            # Emparejamiento simple por orden: batch_size=1 y la carpeta de
-            # salida se limpia entre ciclos (ver handler()), asi que dentro
-            # de una misma corrida hay a lo sumo un archivo hires por cada
-            # archivo final.
-            corrected_final_bytes = {}  # final_path -> bytes ya listos para escribir
-            if hires_files and _correct_eye_color_hires_fn is not None:
-                for hires_path, final_path in zip(sorted(hires_files), sorted(final_files)):
-                    try:
-                        with open(hires_path, 'rb') as fp:
-                            hires_bytes = fp.read()
-                        result = _correct_eye_color_hires_fn(
-                            hires_bytes, eye_color, reference_images=reference_images
-                        )
-                        if result is not None:
-                            corrected_final_bytes[final_path] = result
-                            n_corrected += 1
-                        else:
-                            print(f"[EYE_COLOR] Correccion hires fallo para {hires_path} -- se usa el camino normal sobre {final_path}.")
-                    except Exception as e:
-                        print(f"[EYE_COLOR] Excepcion en camino hires para {hires_path}: {e}")
-                    finally:
-                        # Scratch temporal -- se borra siempre, haya salido
-                        # bien o mal la correccion, para que nunca se suba.
-                        try:
-                            os.remove(hires_path)
-                        except Exception as e:
-                            print(f"[EYE_COLOR] No se pudo borrar el temporal hires {hires_path}: {e}")
-            elif hires_files:
-                # Modulo cargado pero sin la funcion nueva (version vieja de
-                # eye_color_correction.py) -- igual hay que borrar los
-                # temporales para no subirlos sin corregir.
-                for hires_path in hires_files:
-                    try:
-                        os.remove(hires_path)
-                    except Exception as e:
-                        print(f"[EYE_COLOR] No se pudo borrar el temporal hires {hires_path}: {e}")
-
-            for local_path in final_files:
-                if local_path in corrected_final_bytes:
-                    try:
-                        with open(local_path, 'wb') as fp:
-                            fp.write(corrected_final_bytes[local_path])
-                    except Exception as e:
-                        print(f"[EYE_COLOR] Excepcion escribiendo resultado hires para {local_path}: {e}")
-                    continue  # ya corregido via camino hires, no se re-corrige en baja resolucion
-
-                # Camino normal (portrait siempre; fullbody solo si el hires
-                # fallo o no hay archivo hires para esta imagen).
-                try:
-                    with open(local_path, 'rb') as fp:
-                        original_bytes = fp.read()
-                    corrected_bytes = _correct_eye_color_fn(
-                        original_bytes, eye_color, reference_images=reference_images
-                    )
-                    if corrected_bytes is not None:
-                        with open(local_path, 'wb') as fp:
-                            fp.write(corrected_bytes)
-                        n_corrected += 1
-                except Exception as e:
-                    print(f"[EYE_COLOR] Excepcion corrigiendo {local_path}: {e}")
-            print(f"[EYE_COLOR] Corregidas {n_corrected}/{len(final_files)} imagenes antes de subir (color objetivo: {eye_color})")
-        else:
-            print(f"[EYE_COLOR] Sin color de ojos disponible para {vrepro_id} -- se sube sin corregir.")
-            for hires_path in hires_files:
-                try:
-                    os.remove(hires_path)
-                except Exception as e:
-                    print(f"[EYE_COLOR] No se pudo borrar el temporal hires {hires_path}: {e}")
-    else:
-        print("[EYE_COLOR] Modulo no disponible -- se sube sin corregir.")
-        for hires_path in hires_files:
-            try:
-                os.remove(hires_path)
-            except Exception as e:
-                print(f"[EYE_COLOR] No se pudo borrar el temporal hires {hires_path}: {e}")
-
-    all_files = final_files
-
-
+    # Sufijo unico por lote de subida. ComfyUI reinicia su contador de
+    # nombres (_00001_) cada vez que la carpeta de salida se limpia, asi
+    # que dos ciclos/jobs distintos pueden producir archivos con EL MISMO
+    # nombre. Subirlos a la misma ruta de B2 sobrescribe el anterior
+    # silenciosamente (asi se "perdian" 5 de 6 fotos: todas eran _00001_
+    # y cada subida pisaba a la anterior). Con este sufijo de fecha-hora
+    # cada subida va a una ruta unica, sin importar como se llame el
+    # archivo localmente. El nombre sigue empezando con el vreproID, asi
+    # que extractVreproID() del frontend sigue funcionando igual.
     batch_ts = time.strftime('%Y%m%d-%H%M%S')
 
     failed_files = []
@@ -500,14 +276,23 @@ async def upload_outputs_to_b2(vrepro_id, generation_type, job_batch):
         for idx, local_path in enumerate(all_files):
             f = os.path.basename(local_path)
             stem, ext = os.path.splitext(f)
-          
+            # Se agrega generation_type como subcarpeta para que las fotos
+            # de fullbody y portrait de un mismo donante NUNCA se mezclen
+            # en Backblaze, ni siquiera al listarlas despues.
+            # job_batch agrupa TODOS los ciclos de esta corrida bajo la
+            # misma carpeta, para que el servidor pueda identificar "la
+            # corrida mas reciente" de este donante+tipo sin ambiguedad.
             remote_name = f"generated_images/{vrepro_id}/{generation_type}/{job_batch}/{stem}{batch_ts}-{idx:02d}{ext}"
             with open(local_path, "rb") as fp:
                 content = fp.read()
 
             sha1 = hashlib.sha1(content).hexdigest()
 
-          
+            # Se pide una upload_url NUEVA para cada archivo (en vez de
+            # reutilizar una sola para todos): las upload_url de B2 pueden
+            # invalidarse despues de un solo uso o tras cierto tiempo, y
+            # reutilizarla podia causar fallos silenciosos en subidas
+            # posteriores dentro del mismo lote.
             success = False
             for intento in range(3):
                 try:
@@ -555,10 +340,18 @@ def handler(job):
     vrepro_id = job_input.get("vreproID", "")
     generation_type = job_input.get("generation_type", "fullbody")
     max_cycles = job_input.get("max_cycles", 1)
- 
+    # Identifica esta corrida completa (todos sus ciclos) para que Backblaze
+    # las agrupe juntas y el servidor pueda quedarse solo con la corrida
+    # mas reciente por donante+tipo. Si el job no trae job_batch (por
+    # ejemplo, una prueba manual con test_input.json), se genera uno local.
     job_batch = job_input.get("job_batch") or time.strftime('%Y%m%d-%H%M%S')
 
-    
+    # Leer los checkboxes de la interfaz desde el input del job.
+    # ANTES estaban hardcodeados (pose=False, hands=True, amateur=True),
+    # asi que lo que el usuario marcara en la UI se ignoraba por completo
+    # (p.ej. Amateur Effect salia SIEMPRE activado aunque estuviera
+    # desmarcado). Los defaults replican el comportamiento anterior por
+    # si main.py todavia no envia estos campos.
     use_pose = bool(job_input.get("use_pose", False))
     use_hands_refiner = bool(job_input.get("use_hands_refiner", True))
     use_amateur_effect = bool(job_input.get("use_amateur_effect", True))
@@ -579,27 +372,51 @@ def handler(job):
             shutil.rmtree(comfy_input)
         os.makedirs(comfy_input, exist_ok=True)
 
-        
+        # Limpiar tambien la carpeta de salida antes de generar. Sin esto,
+        # ComfyUI acumula las imagenes de TODAS las corridas anteriores en
+        # el mismo worker, y upload_outputs_to_b2 las sube TODAS bajo la
+        # carpeta del donante actual (mezclando fotos de donantes distintos
+        # en Backblaze).
         comfy_output = '/workspace/ComfyUI_app/output'
         if os.path.isdir(comfy_output):
             shutil.rmtree(comfy_output)
         os.makedirs(comfy_output, exist_ok=True)
         src = f'/workspace/ImgGenScript/files/images/{vrepro_id}'
         if os.path.isdir(src):
-           
+            # Filtrar por tipo de generacion: las fotos de referencia de
+            # portrait tienen "Portrait" en el nombre, las de fullbody no.
+            # Sin este filtro, LoadImagesFromDir en ComfyUI carga TODAS las
+            # fotos del donante (portrait + fullbody mezcladas) como
+            # referencia de identidad, y si alguna no tiene una cara clara
+            # (ej. una foto de cuerpo completo), el detector de rostro falla
+            # ("no detections") y arruina la generacion completa.
             all_files = os.listdir(src)
             if generation_type == "portrait":
                 relevant_files = [f for f in all_files if "portrait" in f.lower()]
             else:
                 relevant_files = [f for f in all_files if "portrait" not in f.lower()]
-    
+            # Si el filtro deja la lista vacia (ej. donante sin fotos
+            # etiquetadas), se usan todas como fallback seguro, en vez de
+            # no copiar nada.
             files_to_copy = relevant_files if relevant_files else all_files
             for f in files_to_copy:
                 shutil.copy2(os.path.join(src, f), os.path.join(comfy_input, f))
             print(f"[COMFYUI INPUT] Copiadas ({generation_type}): {os.listdir(comfy_input)}")
 
         async def main():
-         
+            # SUBIDA POR CICLO: se ejecuta cada ciclo por separado y se sube
+            # su resultado a B2 inmediatamente, en vez de generar todos los
+            # ciclos y subir una sola vez al final. Ventajas:
+            #   1. Las fotos aparecen en la galeria en tiempo real, ciclo a
+            #      ciclo, en vez de todas juntas al final.
+            #   2. Si el worker muere (Execution Timeout, crash, etc.) a
+            #      mitad de la corrida, los ciclos ya completados estan a
+            #      salvo en B2; solo se pierde el ciclo en curso.
+            # Esta es la misma estructura del bucle antiguo, que era correcta
+            # salvo por un defecto: ComfyUI nombraba todos los ciclos igual
+            # (_00001_) y las subidas se pisaban entre si en B2. Ese defecto
+            # ya no existe porque upload_outputs_to_b2 agrega un sufijo unico
+            # de fecha-hora a cada subida.
             for _ciclo in range(max_cycles):
                 orchestrator = BatchOrchestrator(generation_type=generation_type)
                 await orchestrator.run(
@@ -609,14 +426,20 @@ def handler(job):
                     use_hands_refiner_override=use_hands_refiner,
                     use_amateur_effect_override=use_amateur_effect,
                 )
-               
+                # TEMPORAL: volcar el log interno de ComfyUI justo despues de
+                # generar, para ver si algun nodo (24 en adelante en fullbody)
+                # fallo silenciosamente sin que orchestrator.run() lo reporte
+                # como excepcion. Borrar este bloque una vez diagnosticado.
                 try:
                     _comfyui_log.flush()
                     print(f"[DEBUG COMFYUI LOG POST-CICLO] {open('/tmp/comfyui.log').read()[-4000:]}")
                 except Exception as _e:
                     print(f"[DEBUG COMFYUI LOG POST-CICLO] No se pudo leer: {_e}")
                 await upload_outputs_to_b2(vrepro_id, generation_type, job_batch)
-      
+                # Vaciar la carpeta de salida despues de subir: si no, el
+                # siguiente ciclo volveria a encontrar (y re-subir con otro
+                # sufijo) las fotos de los ciclos anteriores, duplicandolas
+                # en B2 y en la galeria.
                 if os.path.isdir(comfy_output):
                     shutil.rmtree(comfy_output)
                 os.makedirs(comfy_output, exist_ok=True)
