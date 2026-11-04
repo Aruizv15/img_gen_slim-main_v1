@@ -17,7 +17,7 @@ nest_asyncio.apply()
 import urllib.request
 
 print("=" * 60)
-print("[HANDLER BUILD] v12-face-check-2026-11-04")
+print("[HANDLER BUILD] v13-margen-caras-2026-11-04")
 print("[HANDLER BUILD] Si NO ves '[HANDLER] Ciclo X/N generado y")
 print("[HANDLER BUILD] subido a B2' entre cada ciclo mas abajo, este")
 print("[HANDLER BUILD] worker esta corriendo una imagen VIEJA. Termina")
@@ -252,13 +252,29 @@ async def download_inputs_from_b2(vrepro_id):
                     continue
                 _n = len(_fa.get(_img))
                 if _n == 0:
+                    # Las selfies muy cercanas (cara ocupando todo el cuadro)
+                    # no las detecta InsightFace. Se agrega un margen negro
+                    # para que la cara quede mas pequena respecto al cuadro.
+                    def _pad(_im, _k):
+                        _p = int(max(_im.shape[:2]) * _k)
+                        return cv2.copyMakeBorder(_im, _p, _p, _p, _p, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+                    for _k in (0.25, 0.5, 1.0):
+                        _cand = _pad(_img, _k)
+                        if len(_fa.get(_cand)) > 0:
+                            cv2.imwrite(_fp, _cand, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                            print(f"[FACE CHECK] {_fn}: sin cara; con margen {int(_k*100)}% SI hay cara (foto corregida)")
+                            _n = -1
+                            break
+                if _n == 0:
                     for _name, _code in (("90 horario", cv2.ROTATE_90_CLOCKWISE),
                                          ("90 antihorario", cv2.ROTATE_90_COUNTERCLOCKWISE),
                                          ("180", cv2.ROTATE_180)):
                         _rot = cv2.rotate(_img, _code)
+                        _p = int(max(_rot.shape[:2]) * 0.5)
+                        _rot = cv2.copyMakeBorder(_rot, _p, _p, _p, _p, cv2.BORDER_CONSTANT, value=(0, 0, 0))
                         if len(_fa.get(_rot)) > 0:
                             cv2.imwrite(_fp, _rot, [cv2.IMWRITE_JPEG_QUALITY, 95])
-                            print(f"[FACE CHECK] {_fn}: sin cara; girada {_name} y ahora SI hay cara")
+                            print(f"[FACE CHECK] {_fn}: sin cara; girada {_name} con margen y ahora SI hay cara")
                             _n = -1
                             break
                 if _n == 0:
