@@ -774,6 +774,7 @@ async def start_job(
                 raise RuntimeError(f"RunPod no devolvio id de job: {runpod_job}")
             jobs_by_type[generation_type]["runpod_job_id"] = runpod_job_id
 
+            _sin_estado = 0
             while True:
                 status_response = req.get(
                     f"https://api.runpod.ai/v2/{runpod_endpoint}/status/{runpod_job_id}",
@@ -790,7 +791,11 @@ async def start_job(
                     return
                 # Respuesta sin estado valido (id inexistente, error de API): no seguir preguntando para siempre.
                 if _st is None:
-                    raise RuntimeError(f"Respuesta de RunPod sin estado: {status}")
+                    _sin_estado += 1
+                    if _sin_estado >= 24:  # ~2 minutos seguidos sin respuesta valida
+                        raise RuntimeError(f"Respuesta de RunPod sin estado: {status}")
+                else:
+                    _sin_estado = 0
 
                 time.sleep(5)
 
