@@ -770,6 +770,9 @@ async def start_job(
 
             runpod_job = response.json()
             runpod_job_id = runpod_job.get("id")
+            if not runpod_job_id:
+                raise RuntimeError(f"RunPod no devolvio id de job: {runpod_job}")
+            jobs_by_type[generation_type]["runpod_job_id"] = runpod_job_id
 
             while True:
                 status_response = req.get(
@@ -778,8 +781,16 @@ async def start_job(
                 )
                 status = status_response.json()
 
-                if status.get("status") in ["COMPLETED", "FAILED"]:
+                _st = status.get("status")
+                if _st in ["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]:
                     break
+                # Si la corrida fue reiniciada a mano (/jobs/reset), este hilo
+                # ya no es el vigente: se sale sin tocar el estado nuevo.
+                if jobs_by_type[generation_type].get("job_id") != job_id:
+                    return
+                # Respuesta sin estado valido (id inexistente, error de API): no seguir preguntando para siempre.
+                if _st is None:
+                    raise RuntimeError(f"Respuesta de RunPod sin estado: {status}")
 
                 time.sleep(5)
 
@@ -793,7 +804,11 @@ async def start_job(
                 except Exception as e:
                     print(f"[JOBS] Error descargando imagenes de B2: {e}")
 
-            jobs_by_type[generation_type]["status"] = "done"
+            if status.get("status") in ["FAILED", "CANCELLED", "TIMED_OUT"]:
+                jobs_by_type[generation_type]["status"] = "error"
+                jobs_by_type[generation_type]["error"] = f"RunPod: {status.get('status')}"
+            else:
+                jobs_by_type[generation_type]["status"] = "done"
             jobs_by_type[generation_type]["finished_at"] = time.time()
 
         except Exception as e:
@@ -803,6 +818,29 @@ async def start_job(
 
     threading.Thread(target=run, daemon=True).start()
     return {"job_id": job_id, "status": "running", "generation_type": generation_type, "message": "Batch iniciado en RunPod"}
+
+@app.post("/jobs/reset")
+async def reset_job(generation_type: str = "fullbody", session: dict = Depends(require_login)):
+    """Destraba un job que quedo 'running' (por ejemplo, el de RunPod murio o
+    se cancelo). Intenta cancelar el job en RunPod y deja el estado en idle."""
+    if generation_type not in jobs_by_type:
+        raise HTTPException(status_code=400, detail=f"generation_type invalido: {generation_type}")
+    rp_id = jobs_by_type[generation_type].get("runpod_job_id")
+    cancelled = False
+    if rp_id:
+        try:
+            import requests as req
+            r = req.post(
+                f"https://api.runpod.ai/v2/{os.getenv('RUNPOD_ENDPOINT')}/cancel/{rp_id}",
+                headers={"Authorization": f"Bearer {os.getenv('RUNPOD_API_KEY')}"},
+                timeout=15,
+            )
+            cancelled = r.status_code == 200
+        except Exception as e:
+            print(f"[JOBS] No se pudo cancelar en RunPod: {e}")
+    jobs_by_type[generation_type] = {"job_id": None, "status": "idle", "started_at": None,
+                                     "finished_at": None, "error": None}
+    return {"status": "reset", "generation_type": generation_type, "runpod_cancelled": cancelled}
 
 @app.get("/jobs/current")
 async def get_current_job(generation_type: Optional[str] = None, session: dict = Depends(require_login)):
