@@ -1232,7 +1232,11 @@ async function stopExecution() {
   hideSeqProgress();
 
   try {
-    await authFetch(`${API_BASE}/interrupt`, { method: 'POST' });
+    // Destrabar el job en el servidor (si quedó "en ejecución") y cancelarlo en RunPod
+    for (const t of ['fullbody', 'portrait']) {
+      try { await authFetch(`${API_BASE}/jobs/reset?generation_type=${t}`, { method: 'POST' }); } catch (_) {}
+    }
+    try { await authFetch(`${API_BASE}/interrupt`, { method: 'POST' }); } catch (_) {}
     showToast('Ejecución interrumpida.', 'success');
   } catch (err) {
     showToast('Error al detener: ' + err.message, 'error');
